@@ -1696,3 +1696,5 @@ server.listen(
     );
   }
 );
+
+  console.log("FIN SERVER");
