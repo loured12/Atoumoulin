@@ -5,30 +5,14 @@ const powers={
 };
 function connect(){ ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
  ws.onopen=()=>toast("Connecté");
- ws.onmessage=e=>{const m=JSON.parse(e.data); if(m.type==="state"){state=m.state; render()} if(m.type==="room"){
-  ws.pid=m.pid;
-  $("roomBadge").textContent="Salon "+m.code;
-} if(m.type==="error")toast(m.message)}
+ ws.onmessage=e=>{const m=JSON.parse(e.data); if(m.type==="state"){state=m.state; render()} if(m.type==="room"){ $("roomBadge").textContent="Salon "+m.code } if(m.type==="error")toast(m.message)}
 }
 function send(o){if(ws?.readyState===1)ws.send(JSON.stringify(o))}
 function createRoom(){connect(); const wait=setInterval(()=>{if(ws.readyState===1){clearInterval(wait);send({type:"create",name:$("createName").value||"Joueur",maxPlayers:+$("maxPlayers").value,rounds:+$("rounds").value})}},30)}
-function createSolo(){
-  connect();
-  const wait=setInterval(()=>{
-    if(ws.readyState===1){
-      clearInterval(wait);
-      send({
-        type:"createSolo",
-        name:$("createName").value||"Joueur"
-      });
-    }
-  },30);
-}
 function joinRoom(){connect(); const wait=setInterval(()=>{if(ws.readyState===1){clearInterval(wait);send({type:"join",name:$("joinName").value||"Joueur",code:$("joinCode").value.trim()})}},30)}
 function startGame(){send({type:"start"})}
 function forced(hand){const c={};hand.forEach(x=>c[x]=(c[x]||0)+1);if(c["7"])return ["7"];for(const k in c)if(c[k]>=2)return [k];return []}
 function render(){
- function art(c){return `<img class="cardart" src="/cards/${encodeURIComponent(c)}.svg" alt="Carte ${c}">`}
  $("lobby").classList.toggle("hidden",!!state);
  $("game").classList.toggle("hidden",!state); if(!state)return;
  $("target").textContent=`Objectif : ${state.target}`;
@@ -42,9 +26,6 @@ function render(){
  $("deck").innerHTML=`🂠<small>${state.deckCount} cartes</small>`;
  $("handCount").textContent=me?`(${me.hand.length})`:"";
  const f=forced(state.hand||[]);
- $("hand").style.display="flex";
-$("hand").style.visibility="visible";
-$("hand").style.opacity="1";
  $("hand").innerHTML=(state.hand||[]).map((c,i)=>{
    const isF=f.includes(String(c));
    return `<button class="card ${isF?"forced":""}" onclick="chooseCard('${c}')">
@@ -136,6 +117,6 @@ function submitPending(extra){
 }
 function isHost(){return state?.players?.[0]?.id===getPid()}
 function getPid(){return ws?.pid||""}
-function art(c){return `<div style="background:white;color:black;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:bold;border-radius:15px">${c}</div>`}
+function art(c){return `<img class="cardart" src="/cards/${encodeURIComponent(c)}.svg" alt="Carte ${c}">`}
 function toast(t){const x=$("toast");x.textContent=t;x.style.opacity=1;setTimeout(()=>x.style.opacity=0,2200)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
