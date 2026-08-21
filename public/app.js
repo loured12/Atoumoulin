@@ -42,6 +42,9 @@ function render(){
  $("deck").innerHTML=`🂠<small>${state.deckCount} cartes</small>`;
  $("handCount").textContent=me?`(${me.hand.length})`:"";
  const f=forced(state.hand||[]);
+ $("hand").style.display="flex";
+$("hand").style.visibility="visible";
+$("hand").style.opacity="1";
  $("hand").innerHTML=(state.hand||[]).map((c,i)=>{
    const isF=f.includes(String(c));
    return `<button class="card ${isF?"forced":""}" onclick="chooseCard('${c}')">
