@@ -252,7 +252,7 @@ wss.on("connection", ws=>{
       if(msg.type==="create"){
         const room=newRoom((msg.name||"Joueur").slice(0,18),Number(msg.maxPlayers)||2,Number(msg.rounds)||1);
         room.players[0].ws=ws; ws.room=room.code; ws.pid=room.players[0].id; rooms.set(room.code,room);
-        send(ws,"room",{code:room.code});
+        send(ws,"room",{code:room.code,pid:ws.pid});
         broadcast(room);
         } else if(msg.type==="createSolo"){
   const room=newRoom((msg.name||"Joueur").slice(0,18),2,1);
@@ -275,7 +275,7 @@ wss.on("connection", ws=>{
   room.players.push(bot);
   rooms.set(room.code,room);
 
-  send(ws,"room",{code:room.code});
+  send(ws,"room",{code:room.code,pid:ws.pid});
   startRound(room);
       } else if(msg.type==="join"){
         const room=rooms.get(String(msg.code||"").toUpperCase());
