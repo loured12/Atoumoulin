@@ -6,6 +6,9 @@ import crypto from "crypto";
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+console.log("WebSocket prêt");
+wss.on("connection", ws => {
+  console.log("Connexion WebSocket reçue");
 
 app.use(express.static("public"));
 
