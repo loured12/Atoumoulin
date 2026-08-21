@@ -5,7 +5,10 @@ const powers={
 };
 function connect(){ ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
  ws.onopen=()=>toast("Connecté");
- ws.onmessage=e=>{const m=JSON.parse(e.data); if(m.type==="state"){state=m.state; render()} if(m.type==="room"){ $("roomBadge").textContent="Salon "+m.code } if(m.type==="error")toast(m.message)}
+ ws.onmessage=e=>{const m=JSON.parse(e.data); if(m.type==="state"){state=m.state; render()} if(m.type==="room"){
+  ws.pid=m.pid;
+  $("roomBadge").textContent="Salon "+m.code;
+} if(m.type==="error")toast(m.message)}
 }
 function send(o){if(ws?.readyState===1)ws.send(JSON.stringify(o))}
 function createRoom(){connect(); const wait=setInterval(()=>{if(ws.readyState===1){clearInterval(wait);send({type:"create",name:$("createName").value||"Joueur",maxPlayers:+$("maxPlayers").value,rounds:+$("rounds").value})}},30)}
@@ -48,7 +51,6 @@ function render(){
 let pendingAction=null;
 
 function chooseCard(card){
- toast("Clic détecté : "+card);
  if(!state.started)return;
  const me=state.players.find(p=>p.id===getPid()); if(!me)return;
  const f=forced(state.hand||[]);
