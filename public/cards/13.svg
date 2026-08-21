@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 840">
+<defs>
+ <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d83d76"/><stop offset="1" stop-color="#ffd9e7"/></linearGradient>
+ <filter id="s"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-opacity=".28"/></filter>
+</defs>
+<rect x="12" y="12" width="576" height="816" rx="42" fill="url(#g)" stroke="#fff" stroke-width="10" filter="url(#s)"/>
+<path d="M40 180 Q300 90 560 180 M40 660 Q300 750 560 660" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="12"/>
+<circle cx="300" cy="420" r="160" fill="#ffffff" fill-opacity=".18"/>
+<text x="58" y="105" font-family="Arial,sans-serif" font-weight="900" font-size="74" fill="#15251d">13</text>
+<text x="542" y="105" text-anchor="end" font-family="Arial,sans-serif" font-weight="900" font-size="30" fill="#15251d">ATOUMOULIN</text>
+<text x="300" y="455" text-anchor="middle" font-family="Arial,sans-serif" font-size="132">🥷</text>
+<text x="300" y="570" text-anchor="middle" font-family="Arial,sans-serif" font-weight="1000" font-size="42" fill="#15251d">VOLE</text>
+<rect x="65" y="695" width="470" height="86" rx="28" fill="#15251d" fill-opacity=".82"/>
+<text x="300" y="728" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="19" fill="#fff">
+<tspan x="300" dy="0">Vole une carte de points</tspan>
+<tspan x="300" dy="26"></tspan>
+</text>
+</svg>
