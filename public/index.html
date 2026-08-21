@@ -6,57 +6,189 @@
 <title>Atoumoulin — Jeu de cartes</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<header><div class="logo">AT<em>O</em>UMOULIN</div><div id="roomBadge"></div></header>
+
+<header>
+  <div class="logo">AT<em>O</em>UMOULIN</div>
+  <div id="roomBadge"></div>
+</header>
+
 <main>
+
 <section id="lobby" class="panel">
+
   <h1>Atoumoulin</h1>
-  <p>Le jeu de cartes fun où les doubles et le 7 changent tout.</p>
+
+  <p>
+    Le jeu de cartes fun où les doubles et le 7 changent tout.
+  </p>
+
   <div class="grid2">
+
     <div>
       <h2>Créer une partie</h2>
-      <input id="createName" placeholder="Ton nom" maxlength="18">
-      <select id="maxPlayers"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
-      <select id="rounds"><option value="1">1 manche</option><option value="5">Premier à 5 manches</option><option value="10">Premier à 10 manches</option></select>
-      <button onclick="createRoom()">Créer</button>
-      <button onclick="createSolo()">Jouer contre un bot</button>
+
+      <input
+        id="createName"
+        placeholder="Ton nom"
+        maxlength="18"
+      >
+
+      <select id="maxPlayers">
+        <option>2</option>
+        <option>3</option>
+        <option>4</option>
+        <option>5</option>
+        <option>6</option>
+        <option>7</option>
+        <option>8</option>
+      </select>
+
+      <select id="rounds">
+        <option value="1">1 manche</option>
+        <option value="5">Premier à 5 manches</option>
+        <option value="10">Premier à 10 manches</option>
+      </select>
+
+      <button onclick="createRoom()">
+        Créer
+      </button>
+
+      <button onclick="createSolo()">
+        Jouer contre un bot
+      </button>
     </div>
+
     <div>
+
       <h2>Rejoindre</h2>
-      <input id="joinName" placeholder="Ton nom" maxlength="18">
-      <input id="joinCode" placeholder="Code du salon" maxlength="6">
-      <button onclick="joinRoom()">Rejoindre</button>
+
+      <input
+        id="joinName"
+        placeholder="Ton nom"
+        maxlength="18"
+      >
+
+      <input
+        id="joinCode"
+        placeholder="Code du salon"
+        maxlength="6"
+      >
+
+      <button onclick="joinRoom()">
+        Rejoindre
+      </button>
+
     </div>
+
   </div>
+
 </section>
+
 <section id="game" class="hidden">
+
   <div class="topbar">
-    <div><b id="status"></b><span id="target"></span></div>
-    <button id="startBtn" class="hidden" onclick="startGame()">Lancer la partie</button>
-  </div>
-  <div id="players" class="players"></div>
-  <div class="table">
-    <div class="center">
-      <div class="deck" id="deck">🂠<small>Pioche</small></div>
-      <div class="discard"><div id="discardCards"></div><small>Défausse — pouvoirs joués</small></div>
+
+    <div>
+      <b id="status"></b>
+      <span id="target"></span>
     </div>
-    <div id="history" class="history"></div>
+
+    <button
+      id="startBtn"
+      class="hidden"
+      onclick="startGame()"
+    >
+      Lancer la partie
+    </button>
+
   </div>
+
+  <div id="players" class="players"></div>
+
+  <div class="table">
+
+    <div class="center">
+
+      <div class="deck" id="deck">
+        🂠
+        <small>Pioche</small>
+      </div>
+
+      <div class="discard">
+
+        <div id="discardCards"></div>
+
+        <small>
+          Défausse — pouvoirs joués
+        </small>
+
+      </div>
+
+    </div>
+
+    <div
+      id="history"
+      class="history"
+    ></div>
+
+  </div>
+
   <div class="myarea">
-    <div class="mytitle">Ta main <span id="handCount"></span></div>
-    <div id="hand" class="hand"></div>
+
+    <div class="mytitle">
+      Ta main
+      <span id="handCount"></span>
+    </div>
+
+    <div
+      id="hand"
+      class="hand"
+    ></div>
+
   </div>
+
 </section>
+
 </main>
-<div id="choiceModal" class="modal hidden">
+
+<div
+  id="choiceModal"
+  class="modal hidden"
+>
+
   <div class="modalBox">
-    <button class="modalClose" onclick="closeChoice()">×</button>
-    <div id="choiceTitle" class="modalTitle"></div>
-    <div id="choiceText" class="modalText"></div>
-    <div id="choiceOptions" class="choiceOptions"></div>
+
+    <button
+      class="modalClose"
+      onclick="closeChoice()"
+    >
+      ×
+    </button>
+
+    <div
+      id="choiceTitle"
+      class="modalTitle"
+    ></div>
+
+    <div
+      id="choiceText"
+      class="modalText"
+    ></div>
+
+    <div
+      id="choiceOptions"
+      class="choiceOptions"
+    ></div>
+
   </div>
+
 </div>
+
 <div id="toast"></div>
+
 <script src="app.js"></script>
+
 </body>
 </html>
