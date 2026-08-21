@@ -924,5 +924,6 @@ document.addEventListener(
    DEMARRAGE
 ========================================================= */
 
+console.log("APP JS CHARGE");
 connect();
 ```
