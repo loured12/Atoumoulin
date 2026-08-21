@@ -1,4 +1,3 @@
-```javascript
 import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -49,7 +48,7 @@ function shuffle(array) {
 
 function makeDeck(players) {
   const copies =
-    players <= 2 ? 2 :
+    players === 2 ? 2 :
     players === 3 ? 2 :
     players;
 
@@ -75,21 +74,49 @@ function pointValue(card) {
   return Number(card);
 }
 
-function randomId() {
-  return crypto.randomUUID();
+function clampPoints(player) {
+  if (player.points < 0) {
+    player.points = 0;
+  }
+}
+
+function recomputePoints(player) {
+  player.points = player.pile.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
 }
 
 /* =========================================================
    SALONS
 ========================================================= */
 
-function newRoom(hostName, maxPlayers, rounds) {
+function createPlayer(name, isBot = false) {
+  return {
+    id: crypto.randomUUID(),
+    name: String(name || "Joueur").slice(0, 18),
+
+    ws: null,
+    isBot,
+
+    hand: [],
+    points: 0,
+    pile: [],
+    skip: 0,
+
+    connected: false
+  };
+}
+
+function newRoom(hostName, maxPlayers, rounds, solo = false) {
   const code = crypto
     .randomBytes(3)
     .toString("hex")
     .toUpperCase();
 
-  return {
+  const host = createPlayer(hostName);
+
+  const room = {
     code,
     maxPlayers,
     rounds,
@@ -98,30 +125,25 @@ function newRoom(hostName, maxPlayers, rounds) {
     started: false,
     winner: null,
 
-    players: [
-      {
-        id: randomId(),
-        name: hostName,
-        ws: null,
-        bot: false,
-
-        hand: [],
-        points: 0,
-        pile: [],
-        skip: 0,
-
-        roundWins: 0
-      }
-    ],
+    players: [host],
 
     deck: [],
     discard: [],
     turn: 0,
+
     target: TARGETS[maxPlayers] || 120,
 
     log: [],
-    botTimer: null
+
+    solo
   };
+
+  if (solo) {
+    const bot = createPlayer("Bot Atoumoulin", true);
+    room.players.push(bot);
+  }
+
+  return room;
 }
 
 /* =========================================================
@@ -145,8 +167,6 @@ function publicState(room) {
 
     discard: room.discard.slice(-12),
 
-    log: room.log.slice(-40),
-
     players: room.players.map(p => ({
       id: p.id,
       name: p.name,
@@ -154,8 +174,8 @@ function publicState(room) {
       points: p.points,
       pile: p.pile.slice(-12),
       skip: p.skip,
-      bot: !!p.bot,
-      roundWins: p.roundWins
+      isBot: !!p.isBot,
+      connected: !!p.connected
     }))
   };
 }
@@ -165,7 +185,10 @@ function publicState(room) {
 ========================================================= */
 
 function send(ws, type, payload = {}) {
-  if (ws && ws.readyState === 1) {
+  if (
+    ws &&
+    ws.readyState === 1
+  ) {
     ws.send(
       JSON.stringify({
         type,
@@ -175,16 +198,30 @@ function send(ws, type, payload = {}) {
   }
 }
 
-function broadcast(room) {
-  const base = publicState(room);
+function sendStateToPlayer(room, player) {
+  if (!player.ws) {
+    return;
+  }
 
-  for (const p of room.players) {
-    send(p.ws, "state", {
+  send(
+    player.ws,
+    "state",
+    {
       state: {
-        ...base,
-        hand: [...p.hand]
+        ...publicState(room),
+
+        /*
+         * Uniquement la main du joueur concerné.
+         */
+        hand: [...player.hand]
       }
-    });
+    }
+  );
+}
+
+function broadcast(room) {
+  for (const player of room.players) {
+    sendStateToPlayer(room, player);
   }
 }
 
@@ -194,49 +231,7 @@ function log(room, text) {
 }
 
 /* =========================================================
-   JOUEUR / BOT
-========================================================= */
-
-function getPlayer(room, id) {
-  return room.players.find(p => p.id === id);
-}
-
-function getCurrentPlayer(room) {
-  return room.players[room.turn];
-}
-
-function isBot(player) {
-  return !!player?.bot;
-}
-
-function addBot(room) {
-  if (room.players.length >= room.maxPlayers) {
-    throw new Error("Salon complet.");
-  }
-
-  const bot = {
-    id: randomId(),
-    name: "Bot Atoumoulin",
-    ws: null,
-    bot: true,
-
-    hand: [],
-    points: 0,
-    pile: [],
-    skip: 0,
-
-    roundWins: 0
-  };
-
-  room.players.push(bot);
-
-  log(room, "🤖 Le Bot Atoumoulin rejoint la partie.");
-
-  return bot;
-}
-
-/* =========================================================
-   FIN DE PARTIE / MANCHES
+   FIN DE PARTIE
 ========================================================= */
 
 function exactWinner(room) {
@@ -255,17 +250,17 @@ function finishRound(room) {
   const exact = exactWinner(room);
 
   if (exact) {
-    exact.roundWins++;
-
     room.winner = {
       id: exact.id,
       name: exact.name,
       reason: "exact"
     };
 
+    room.started = false;
+
     log(
       room,
-      `${exact.name} atteint exactement ${room.target} points et remporte la manche.`
+      `${exact.name} atteint exactement ${room.target} points et gagne !`
     );
 
     return true;
@@ -286,8 +281,6 @@ function finishRound(room) {
     );
 
     if (winners.length === 1) {
-      winners[0].roundWins++;
-
       room.winner = {
         id: winners[0].id,
         name: winners[0].name,
@@ -307,42 +300,21 @@ function finishRound(room) {
 
       log(
         room,
-        "Partie nulle : plusieurs joueurs sont à égale distance."
+        "Partie nulle."
       );
     }
 
-    return true;
-  }
-
-  return false;
-}
-
-function finishMatch(room) {
-  const requiredWins = room.rounds;
-
-  const winner = room.players.find(
-    p => p.roundWins >= requiredWins
-  );
-
-  if (winner) {
     room.started = false;
 
-    room.winner = {
-      id: winner.id,
-      name: winner.name,
-      reason: "match"
-    };
-
-    log(
-      room,
-      `🏆 ${winner.name} remporte la partie avec ${winner.roundWins} manche(s) gagnée(s) !`
-    );
-
     return true;
   }
 
   return false;
 }
+
+/* =========================================================
+   MANCHE
+========================================================= */
 
 function startRound(room) {
   room.deck = makeDeck(room.players.length);
@@ -355,17 +327,22 @@ function startRound(room) {
     TARGETS[room.maxPlayers] ||
     120;
 
-  for (const p of room.players) {
-    p.hand = [];
-    p.points = 0;
-    p.pile = [];
-    p.skip = 0;
+  for (const player of room.players) {
+    player.hand = [];
+    player.points = 0;
+    player.pile = [];
+    player.skip = 0;
   }
 
+  /*
+   * 4 cartes initiales.
+   */
   for (let i = 0; i < 4; i++) {
-    for (const p of room.players) {
+    for (const player of room.players) {
       if (room.deck.length) {
-        p.hand.push(room.deck.pop());
+        player.hand.push(
+          room.deck.pop()
+        );
       }
     }
   }
@@ -374,67 +351,12 @@ function startRound(room) {
 
   log(
     room,
-    `🎴 Manche ${room.round}/${room.rounds} commencée. Objectif : ${room.target} points.`
+    `Manche ${room.round} commencée. Objectif : ${room.target} points.`
   );
 
   broadcast(room);
-  maybeBotTurn(room);
-}
 
-function endRound(room) {
-  room.started = false;
-
-  broadcast(room);
-
-  if (finishMatch(room)) {
-    broadcast(room);
-    return;
-  }
-
-  if (room.round >= room.rounds) {
-    /*
-     * Même si aucune personne n'a atteint le nombre
-     * de manches demandé, on désigne le meilleur.
-     */
-    const best = Math.max(
-      ...room.players.map(p => p.roundWins)
-    );
-
-    const winners = room.players.filter(
-      p => p.roundWins === best
-    );
-
-    if (winners.length === 1) {
-      room.winner = {
-        id: winners[0].id,
-        name: winners[0].name,
-        reason: "match"
-      };
-
-      log(
-        room,
-        `🏆 ${winners[0].name} remporte la partie !`
-      );
-    } else {
-      room.winner = {
-        id: null,
-        name: null,
-        reason: "draw"
-      };
-
-      log(room, "🏆 Partie nulle.");
-    }
-
-    broadcast(room);
-    return;
-  }
-
-  room.round++;
-
-  setTimeout(() => {
-    if (!rooms.has(room.code)) return;
-    startRound(room);
-  }, 1800);
+  scheduleBot(room);
 }
 
 /* =========================================================
@@ -445,27 +367,30 @@ function nextTurn(room) {
   const n = room.players.length;
 
   for (let i = 1; i <= n; i++) {
-    const idx = (room.turn + i) % n;
-    const p = room.players[idx];
+    const idx =
+      (room.turn + i) % n;
 
-    if (!p || p.hand.length === 0) {
+    const player =
+      room.players[idx];
+
+    if (player.hand.length === 0) {
       continue;
     }
 
     room.turn = idx;
 
-    if (p.skip > 0) {
-      p.skip--;
+    if (player.skip > 0) {
+      player.skip--;
 
       log(
         room,
-        `${p.name} passe son tour.`
+        `${player.name} passe son tour.`
       );
 
       continue;
     }
 
-    return p;
+    return player;
   }
 
   return null;
@@ -493,10 +418,16 @@ function counts(hand) {
 function forcedSet(player) {
   const c = counts(player.hand);
 
+  /*
+   * Le 7 est prioritaire.
+   */
   if (c.has("7")) {
     return ["7"];
   }
 
+  /*
+   * Puis une paire.
+   */
   for (const [key, count] of c) {
     if (count >= 2) {
       return [key];
@@ -511,16 +442,21 @@ function removeOne(hand, id) {
     c => cardKey(c) === cardKey(id)
   );
 
-  if (index < 0) return false;
+  if (index < 0) {
+    return false;
+  }
 
   hand.splice(index, 1);
+
   return true;
 }
 
 function removeDouble(hand, id) {
   const first = removeOne(hand, id);
 
-  if (!first) return false;
+  if (!first) {
+    return false;
+  }
 
   const second = removeOne(hand, id);
 
@@ -544,6 +480,7 @@ function addPileCard(
 ) {
   const item = {
     card,
+
     value:
       value === null
         ? pointValue(card)
@@ -558,14 +495,11 @@ function addPileCard(
   return item;
 }
 
-function recalculatePoints(player) {
-  player.points = player.pile.reduce(
-    (sum, item) => sum + item.value,
-    0
-  );
-}
-
-function stealPoint(from, to, index = -1) {
+function stealPoint(
+  from,
+  to,
+  index = -1
+) {
   if (!from.pile.length) {
     return null;
   }
@@ -583,7 +517,8 @@ function stealPoint(from, to, index = -1) {
     return null;
   }
 
-  const item = from.pile.splice(idx, 1)[0];
+  const item =
+    from.pile.splice(idx, 1)[0];
 
   from.points -= item.value;
 
@@ -604,11 +539,19 @@ function applyCard(
   targetId = null,
   extra = {}
 ) {
-  const target = getPlayer(room, targetId);
+  const target =
+    room.players.find(
+      p => p.id === targetId
+    );
+
   const n = Number(card);
 
+  /*
+   * CARTES DE POINTS
+   */
   if (isPointCard(card)) {
-    const item = addPileCard(actor, card);
+    const item =
+      addPileCard(actor, card);
 
     log(
       room,
@@ -618,31 +561,36 @@ function applyCard(
     return;
   }
 
+  /*
+   * 1
+   */
   if (n === 1) {
     room.discard.push(1);
 
     if (target) {
-      const item = stealPoint(target, actor);
+      const item =
+        stealPoint(target, actor);
 
       log(
         room,
         item
-          ? `${actor.name} vole la dernière carte de points de ${target.name}.`
-          : `${actor.name} joue 1, mais ${target.name} n'a aucune carte de points.`
+          ? `${actor.name} vole une carte à ${target.name}.`
+          : `${target.name} n'a aucune carte de points à voler.`
       );
     }
 
     return;
   }
 
+  /*
+   * 3
+   */
   if (n === 3) {
     room.discard.push(3);
 
     if (target) {
-      target.points = Math.max(
-        0,
-        target.points - 20
-      );
+      target.points -= 20;
+      clampPoints(target);
 
       log(
         room,
@@ -653,10 +601,15 @@ function applyCard(
     return;
   }
 
+  /*
+   * 5
+   */
   if (n === 5) {
     room.discard.push(5);
 
-    const draws = extra.double ? 4 : 2;
+    const draws =
+      extra.double ? 4 : 2;
+
     let drawn = 0;
 
     for (
@@ -664,39 +617,54 @@ function applyCard(
       i < draws && room.deck.length;
       i++
     ) {
-      actor.hand.push(room.deck.pop());
+      actor.hand.push(
+        room.deck.pop()
+      );
+
       drawn++;
     }
 
     log(
       room,
-      `${actor.name} joue ${extra.double ? "double " : ""}5 et pioche ${drawn} carte(s).`
+      `${actor.name} pioche ${drawn} carte(s).`
     );
 
     return;
   }
 
+  /*
+   * 7
+   */
   if (n === 7) {
     room.discard.push(7);
 
-    const value = extra.double ? 40 : 20;
+    const value =
+      extra.double ? 40 : 20;
 
     actor.points += value;
 
     log(
       room,
-      `${actor.name} joue ${extra.double ? "double " : ""}7 et gagne ${value} points.`
+      `${actor.name} gagne ${value} points avec le 7.`
     );
 
     return;
   }
 
+  /*
+   * 9
+   */
   if (n === 9) {
     room.discard.push(9);
 
     if (target) {
-      [actor.hand, target.hand] =
-        [target.hand, actor.hand];
+      [
+        actor.hand,
+        target.hand
+      ] = [
+        target.hand,
+        actor.hand
+      ];
 
       log(
         room,
@@ -707,6 +675,9 @@ function applyCard(
     return;
   }
 
+  /*
+   * 11
+   */
   if (n === 11) {
     room.discard.push(11);
 
@@ -715,42 +686,47 @@ function applyCard(
         ? -(extra.double ? 20 : 10)
         : (extra.double ? 20 : 10);
 
-    actor.points = Math.max(
-      0,
-      actor.points + value
-    );
+    actor.points += value;
+    clampPoints(actor);
 
     log(
       room,
-      `${actor.name} applique ${value > 0 ? "+" : ""}${value} avec ${extra.double ? "double " : ""}11.`
+      `${actor.name} applique ${value > 0 ? "+" : ""}${value}.`
     );
 
     return;
   }
 
+  /*
+   * 13
+   */
   if (n === 13) {
     room.discard.push(13);
 
     if (target) {
-      const item = stealPoint(
-        target,
-        actor,
-        Number.isInteger(extra.index)
-          ? extra.index
-          : -1
-      );
+      const item =
+        stealPoint(
+          target,
+          actor,
+          Number.isInteger(extra.index)
+            ? extra.index
+            : -1
+        );
 
       log(
         room,
         item
           ? `${actor.name} vole une carte de points à ${target.name}.`
-          : `${actor.name} joue 13 mais ne vole aucune carte.`
+          : `${target.name} n'a aucune carte de points.`
       );
     }
 
     return;
   }
 
+  /*
+   * 15
+   */
   if (n === 15) {
     room.discard.push(15);
 
@@ -759,48 +735,69 @@ function applyCard(
         ? extra.index
         : actor.pile.length - 1;
 
-    const item = actor.pile[idx];
+    const item =
+      actor.pile[idx];
 
-    if (item) {
-      const oldValue = item.value;
-
-      item.value *= extra.double ? 4 : 2;
-
-      actor.points +=
-        item.value - oldValue;
-
-      item.attachments.push(
-        ...(extra.double
-          ? ["15", "15"]
-          : ["15"])
-      );
-
-      log(
-        room,
-        `${actor.name} ${extra.double ? "quadruple" : "double"} une carte de points.`
-      );
+    if (!item) {
+      return;
     }
+
+    const oldValue =
+      item.value;
+
+    item.value *=
+      extra.double ? 4 : 2;
+
+    actor.points +=
+      item.value - oldValue;
+
+    item.attachments.push(
+      ...(extra.double
+        ? ["15", "15"]
+        : ["15"])
+    );
+
+    log(
+      room,
+      `${actor.name} renforce une carte de points avec le 15.`
+    );
 
     return;
   }
 
+  /*
+   * 17
+   */
   if (n === 17) {
     room.discard.push(17);
 
-    const count = extra.double ? 2 : 1;
+    const count =
+      extra.double ? 2 : 1;
 
     for (let i = 0; i < count; i++) {
-      if (!target || !target.hand.length) {
+      if (
+        !target ||
+        !target.hand.length
+      ) {
         break;
       }
 
-      const index = Math.floor(
-        Math.random() * target.hand.length
-      );
+      const index =
+        Math.floor(
+          Math.random() *
+          target.hand.length
+        );
 
       const stolen =
-        target.hand.splice(index, 1)[0];
+        target.hand.splice(
+          index,
+          1
+        )[0];
 
+      /*
+       * La carte volée est jouée
+       * immédiatement.
+       */
       applyCard(
         room,
         actor,
@@ -813,17 +810,27 @@ function applyCard(
     return;
   }
 
+  /*
+   * 19
+   */
   if (n === 19) {
     room.discard.push(19);
 
     if (target) {
-      const amount = extra.double ? 2 : 1;
+      const amount =
+        extra.double ? 2 : 1;
 
       for (let k = 0; k < amount; k++) {
-        const ai = actor.pile.length - 1 - k;
-        const bi = target.pile.length - 1 - k;
+        const ai =
+          actor.pile.length - 1 - k;
 
-        if (ai >= 0 && bi >= 0) {
+        const bi =
+          target.pile.length - 1 - k;
+
+        if (
+          ai >= 0 &&
+          bi >= 0
+        ) {
           [
             actor.pile[ai],
             target.pile[bi]
@@ -834,8 +841,8 @@ function applyCard(
         }
       }
 
-      recalculatePoints(actor);
-      recalculatePoints(target);
+      recomputePoints(actor);
+      recomputePoints(target);
 
       log(
         room,
@@ -846,6 +853,9 @@ function applyCard(
     return;
   }
 
+  /*
+   * 21
+   */
   if (n === 21) {
     room.discard.push(21);
 
@@ -854,19 +864,20 @@ function applyCard(
         ? -(extra.double ? 40 : 20)
         : (extra.double ? 40 : 20);
 
-    actor.points = Math.max(
-      0,
-      actor.points + value
-    );
+    actor.points += value;
+    clampPoints(actor);
 
     log(
       room,
-      `${actor.name} applique ${value > 0 ? "+" : ""}${value} avec ${extra.double ? "double " : ""}21.`
+      `${actor.name} applique ${value > 0 ? "+" : ""}${value}.`
     );
 
     return;
   }
 
+  /*
+   * JOKER
+   */
   if (String(card) === "J") {
     room.discard.push("J");
 
@@ -882,43 +893,40 @@ function applyCard(
 
         log(
           room,
-          `${actor.name} échange tous ses points avec ${target.name}.`
+          `${actor.name} échange ses points avec ${target.name}.`
         );
       }
-    } else {
-      const value =
-        extra.choice === "22"
-          ? 22
-          : 10;
 
-      actor.points += value;
-
-      log(
-        room,
-        `${actor.name} choisit +${value} avec le Joker.`
-      );
+      return;
     }
 
-    return;
+    const value =
+      extra.choice === "22"
+        ? 22
+        : 10;
+
+    actor.points += value;
+
+    log(
+      room,
+      `${actor.name} choisit +${value} avec le Joker.`
+    );
   }
 }
 
 /* =========================================================
-   JOUER UNE CARTE
+   JOUER
 ========================================================= */
 
 function play(
   room,
   player,
   card,
-  targetId,
+  targetId = null,
   extra = {}
 ) {
-  if (!room.started) {
-    throw new Error("Partie inactive.");
-  }
-
-  const forced = forcedSet(player);
+  const forced =
+    forcedSet(player);
 
   if (
     forced.length &&
@@ -931,11 +939,15 @@ function play(
 
   const count =
     player.hand.filter(
-      c => cardKey(c) === cardKey(card)
+      c =>
+        cardKey(c) ===
+        cardKey(card)
     ).length;
 
-  if (count <= 0) {
-    throw new Error("Carte absente de la main.");
+  if (count === 0) {
+    throw new Error(
+      "Carte absente de la main."
+    );
   }
 
   const isDouble =
@@ -944,11 +956,15 @@ function play(
 
   if (isDouble) {
     if (!removeDouble(player.hand, card)) {
-      throw new Error("Impossible de jouer la paire.");
+      throw new Error(
+        "Impossible de jouer la paire."
+      );
     }
   } else {
     if (!removeOne(player.hand, card)) {
-      throw new Error("Carte absente de la main.");
+      throw new Error(
+        "Impossible de jouer la carte."
+      );
     }
   }
 
@@ -965,18 +981,28 @@ function play(
 
   /*
    * Pioche normale.
+   *
+   * 7 ne pioche pas.
+   * 5 fait sa propre pioche.
+   * Joker double ne pioche pas.
    */
   if (
     Number(card) !== 7 &&
     Number(card) !== 5 &&
-    !(String(card) === "J" && isDouble) &&
+    !(
+      String(card) === "J" &&
+      isDouble
+    ) &&
     room.deck.length > 0
   ) {
-    player.hand.push(room.deck.pop());
+    player.hand.push(
+      room.deck.pop()
+    );
   }
 
   /*
-   * Double Joker : deux tours sautés.
+   * Double Joker :
+   * deux tours de pénalité.
    */
   if (
     String(card) === "J" &&
@@ -986,7 +1012,7 @@ function play(
   }
 
   if (finishRound(room)) {
-    endRound(room);
+    broadcast(room);
     return;
   }
 
@@ -994,36 +1020,22 @@ function play(
 
   broadcast(room);
 
-  maybeBotTurn(room);
+  scheduleBot(room);
 }
 
 /* =========================================================
    BOT
 ========================================================= */
 
-function chooseBotTarget(room, bot, card) {
-  const opponents = room.players.filter(
-    p => p.id !== bot.id &&
-         (p.hand.length || p.pile.length || p.points > 0)
+function botPlayer(room) {
+  return room.players.find(
+    p => p.isBot
   );
-
-  if (!opponents.length) {
-    return null;
-  }
-
-  /*
-   * Pour les cartes offensives, le bot vise
-   * généralement le joueur ayant le plus de points.
-   */
-  opponents.sort(
-    (a, b) => b.points - a.points
-  );
-
-  return opponents[0];
 }
 
 function chooseBotCard(bot) {
-  const forced = forcedSet(bot);
+  const forced =
+    forcedSet(bot);
 
   if (forced.length) {
     return forced[0];
@@ -1032,111 +1044,161 @@ function chooseBotCard(bot) {
   /*
    * Priorité aux cartes de points.
    */
-  const pointCards = bot.hand
-    .filter(isPointCard)
-    .sort(
-      (a, b) => Number(b) - Number(a)
+  const points =
+    bot.hand.filter(
+      card => isPointCard(card)
     );
 
-  if (pointCards.length) {
-    return pointCards[0];
+  if (points.length) {
+    return points
+      .sort(
+        (a, b) =>
+          pointValue(b) -
+          pointValue(a)
+      )[0];
   }
 
   /*
-   * Sinon cartes offensives.
+   * Sinon une carte de pouvoir.
    */
-  const preferred = [
-    "7", "5", "17", "13",
-    "15", "1", "21", "11",
-    "9", "19", "3", "J"
-  ];
-
-  for (const wanted of preferred) {
-    const found = bot.hand.find(
-      c => String(c) === wanted
-    );
-
-    if (found !== undefined) {
-      return found;
-    }
-  }
-
   return bot.hand[0];
 }
 
+function chooseBotTarget(room, bot) {
+  const opponents =
+    room.players.filter(
+      p =>
+        p.id !== bot.id &&
+        p.hand.length > 0
+    );
+
+  if (!opponents.length) {
+    return null;
+  }
+
+  /*
+   * Le bot cible en priorité
+   * le joueur avec le plus de points.
+   */
+  opponents.sort(
+    (a, b) =>
+      b.points - a.points
+  );
+
+  return opponents[0];
+}
+
+function botExtra(room, bot, card, target) {
+  const n = Number(card);
+
+  if (n === 11) {
+    return {
+      choice:
+        bot.points > room.target
+          ? "minus"
+          : "plus"
+    };
+  }
+
+  if (n === 21) {
+    return {
+      choice:
+        bot.points > room.target
+          ? "minus"
+          : "plus"
+    };
+  }
+
+  if (String(card) === "J") {
+    if (
+      target &&
+      target.points > bot.points
+    ) {
+      return {
+        choice: "swap"
+      };
+    }
+
+    return {
+      choice: "22"
+    };
+  }
+
+  if (n === 13 && target?.pile?.length) {
+    return {
+      index:
+        target.pile.reduce(
+          (best, item, index) =>
+            item.value >
+            target.pile[best].value
+              ? index
+              : best,
+          0
+        )
+    };
+  }
+
+  if (n === 15 && bot.pile.length) {
+    return {
+      index:
+        bot.pile.reduce(
+          (best, item, index) =>
+            item.value >
+            bot.pile[best].value
+              ? index
+              : best,
+          0
+        )
+    };
+  }
+
+  return {};
+}
+
 function botPlay(room) {
-  if (!room.started) return;
+  if (!room.started) {
+    return;
+  }
 
-  const bot = getCurrentPlayer(room);
+  const bot =
+    botPlayer(room);
 
-  if (!bot || !bot.bot) return;
+  if (!bot) {
+    return;
+  }
+
+  if (
+    room.players[room.turn]?.id !==
+    bot.id
+  ) {
+    return;
+  }
 
   if (!bot.hand.length) {
     nextTurn(room);
     broadcast(room);
-    maybeBotTurn(room);
+    scheduleBot(room);
     return;
   }
 
+  const card =
+    chooseBotCard(bot);
+
+  const target =
+    chooseBotTarget(
+      room,
+      bot
+    );
+
+  const extra =
+    botExtra(
+      room,
+      bot,
+      card,
+      target
+    );
+
   try {
-    const card = chooseBotCard(bot);
-    const n = Number(card);
-
-    let target = null;
-    let extra = {};
-
-    if (
-      [1, 3, 9, 13, 17, 19].includes(n) ||
-      String(card) === "J"
-    ) {
-      target = chooseBotTarget(
-        room,
-        bot,
-        card
-      );
-    }
-
-    if (n === 11 || n === 21) {
-      /*
-       * Le bot choisit généralement le bonus.
-       * S'il est très haut, il préfère retirer des points
-       * à lui-même uniquement si nécessaire.
-       */
-      extra.choice = "plus";
-    }
-
-    if (n === 13 && target?.pile.length) {
-      extra.index =
-        target.pile.length - 1;
-    }
-
-    if (n === 15 && bot.pile.length) {
-      extra.index =
-        bot.pile.reduce(
-          (best, item, index) =>
-            item.value > bot.pile[best].value
-              ? index
-              : best,
-          0
-        );
-    }
-
-    if (String(card) === "J") {
-      /*
-       * Si le bot est proche de l'objectif,
-       * il choisit +22.
-       * Sinon +10.
-       */
-      if (
-        bot.points < room.target &&
-        room.target - bot.points <= 22
-      ) {
-        extra.choice = "22";
-      } else {
-        extra.choice = "10";
-      }
-    }
-
     play(
       room,
       bot,
@@ -1145,42 +1207,62 @@ function botPlay(room) {
       extra
     );
   } catch (error) {
-    console.error("Erreur bot :", error);
+    console.error(
+      "Bot error:",
+      error
+    );
 
     /*
-     * Sécurité pour éviter un bot bloqué.
+     * Sécurité : si une carte spéciale
+     * échoue, le bot tente une carte
+     * simple.
      */
-    if (bot.hand.length) {
+    const fallback =
+      bot.hand.find(
+        c => isPointCard(c)
+      ) ||
+      bot.hand[0];
+
+    if (fallback) {
       try {
         play(
           room,
           bot,
-          bot.hand[0],
+          fallback,
           null,
           {}
         );
       } catch {
         nextTurn(room);
         broadcast(room);
+        scheduleBot(room);
       }
     }
   }
 }
 
-function maybeBotTurn(room) {
-  if (!room.started) return;
+function scheduleBot(room) {
+  const bot =
+    botPlayer(room);
 
-  const current = getCurrentPlayer(room);
-
-  if (!current?.bot) {
+  if (
+    !bot ||
+    !room.started
+  ) {
     return;
   }
 
-  clearTimeout(room.botTimer);
+  if (
+    room.players[room.turn]?.id !==
+    bot.id
+  ) {
+    return;
+  }
 
-  room.botTimer = setTimeout(() => {
-    botPlay(room);
-  }, 900);
+  setTimeout(
+    () => botPlay(room),
+    700
+  );
 }
 
 /* =========================================================
@@ -1191,20 +1273,23 @@ wss.on("connection", ws => {
   ws.on("message", raw => {
     try {
       const msg =
-        JSON.parse(raw.toString());
+        JSON.parse(
+          raw.toString()
+        );
 
-      /* =====================================================
+      /* ===================================================
          CREER
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "create") {
-        const maxPlayers = Math.min(
-          8,
-          Math.max(
-            2,
-            Number(msg.maxPlayers) || 2
-          )
-        );
+        const maxPlayers =
+          Math.min(
+            8,
+            Math.max(
+              2,
+              Number(msg.maxPlayers) || 2
+            )
+          );
 
         const rounds =
           Number(msg.rounds) || 1;
@@ -1214,37 +1299,48 @@ wss.on("connection", ws => {
             msg.name || "Joueur"
           ).slice(0, 18);
 
-        const room = newRoom(
-          name,
-          maxPlayers,
-          rounds
-        );
+        const room =
+          newRoom(
+            name,
+            maxPlayers,
+            rounds,
+            false
+          );
 
-        const host = room.players[0];
+        const host =
+          room.players[0];
 
         host.ws = ws;
+        host.connected = true;
 
-        ws.room = room.code;
-        ws.pid = host.id;
+        ws.room =
+          room.code;
+
+        ws.pid =
+          host.id;
 
         rooms.set(
           room.code,
           room
         );
 
-        send(ws, "room", {
-          code: room.code,
-          pid: ws.pid
-        });
+        send(
+          ws,
+          "room",
+          {
+            code: room.code,
+            pid: host.id
+          }
+        );
 
         broadcast(room);
 
         return;
       }
 
-      /* =====================================================
+      /* ===================================================
          SOLO
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "solo") {
         const name =
@@ -1252,54 +1348,59 @@ wss.on("connection", ws => {
             msg.name || "Joueur"
           ).slice(0, 18);
 
-        const room = newRoom(
-          name,
-          2,
-          1
-        );
+        const room =
+          newRoom(
+            name,
+            2,
+            1,
+            true
+          );
 
-        const host = room.players[0];
+        const host =
+          room.players[0];
 
         host.ws = ws;
+        host.connected = true;
 
-        ws.room = room.code;
-        ws.pid = host.id;
+        ws.room =
+          room.code;
+
+        ws.pid =
+          host.id;
 
         rooms.set(
           room.code,
           room
         );
 
-        addBot(room);
+        send(
+          ws,
+          "room",
+          {
+            code: room.code,
+            pid: host.id
+          }
+        );
 
-        send(ws, "room", {
-          code: room.code,
-          pid: ws.pid
-        });
-
-        broadcast(room);
-
-        /*
-         * Le mode solo démarre immédiatement.
-         */
         startRound(room);
 
         return;
       }
 
-      /* =====================================================
+      /* ===================================================
          REJOINDRE
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "join") {
         const code =
           String(
             msg.code || ""
           )
-          .trim()
-          .toUpperCase();
+            .trim()
+            .toUpperCase();
 
-        const room = rooms.get(code);
+        const room =
+          rooms.get(code);
 
         if (!room) {
           throw new Error(
@@ -1322,43 +1423,104 @@ wss.on("connection", ws => {
           );
         }
 
-        const player = {
-          id: randomId(),
+        const player =
+          createPlayer(
+            String(
+              msg.name ||
+              "Joueur"
+            ).slice(0, 18)
+          );
 
-          name: String(
-            msg.name || "Joueur"
-          ).slice(0, 18),
+        player.ws = ws;
+        player.connected = true;
 
+        room.players.push(
+          player
+        );
+
+        ws.room =
+          room.code;
+
+        ws.pid =
+          player.id;
+
+        send(
           ws,
-
-          bot: false,
-
-          hand: [],
-          points: 0,
-          pile: [],
-          skip: 0,
-
-          roundWins: 0
-        };
-
-        room.players.push(player);
-
-        ws.room = room.code;
-        ws.pid = player.id;
-
-        send(ws, "room", {
-          code: room.code,
-          pid: ws.pid
-        });
+          "room",
+          {
+            code: room.code,
+            pid: player.id
+          }
+        );
 
         broadcast(room);
 
         return;
       }
 
-      /* =====================================================
+      /* ===================================================
+         RECONNEXION
+      =================================================== */
+
+      if (msg.type === "reconnect") {
+        const code =
+          String(
+            msg.code || ""
+          )
+            .trim()
+            .toUpperCase();
+
+        const pid =
+          String(
+            msg.pid || ""
+          );
+
+        const room =
+          rooms.get(code);
+
+        if (!room) {
+          throw new Error(
+            "Salon introuvable."
+          );
+        }
+
+        const player =
+          room.players.find(
+            p => p.id === pid
+          );
+
+        if (!player) {
+          throw new Error(
+            "Joueur introuvable."
+          );
+        }
+
+        player.ws = ws;
+        player.connected = true;
+
+        ws.room = code;
+        ws.pid = pid;
+
+        send(
+          ws,
+          "room",
+          {
+            code,
+            pid
+          }
+        );
+
+        sendStateToPlayer(
+          room,
+          player
+        );
+
+        return;
+      }
+
+      /* ===================================================
          LANCER
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "start") {
         const room =
@@ -1385,19 +1547,22 @@ wss.on("connection", ws => {
           );
         }
 
-        if (room.players.length < 2) {
+        if (
+          room.players.length < 2
+        ) {
           throw new Error(
             "Il faut au moins 2 joueurs."
           );
         }
 
         startRound(room);
+
         return;
       }
 
-      /* =====================================================
+      /* ===================================================
          JOUER
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "play") {
         const room =
@@ -1424,33 +1589,22 @@ wss.on("connection", ws => {
         }
 
         const current =
-          room.players[room.turn];
+          room.players[
+            room.turn
+          ];
 
-        if (!current) {
-          throw new Error(
-            "Tour introuvable."
-          );
-        }
-
-        if (current.id !== player.id) {
+        if (
+          !current ||
+          current.id !== player.id
+        ) {
           throw new Error(
             "Ce n'est pas votre tour."
           );
         }
 
-        if (player.hand.length === 0) {
+        if (!player.hand.length) {
           throw new Error(
             "Vous n'avez plus de cartes."
-          );
-        }
-
-        /*
-         * Un bot ne peut jamais être piloté
-         * par un client.
-         */
-        if (player.bot) {
-          throw new Error(
-            "Ce joueur est un bot."
           );
         }
 
@@ -1465,17 +1619,22 @@ wss.on("connection", ws => {
         return;
       }
 
-      /* =====================================================
+      /* ===================================================
          LOG
-      ===================================================== */
+      =================================================== */
 
       if (msg.type === "log") {
         const room =
           rooms.get(ws.room);
 
-        send(ws, "log", {
-          log: room?.log || []
-        });
+        send(
+          ws,
+          "log",
+          {
+            log:
+              room?.log || []
+          }
+        );
 
         return;
       }
@@ -1483,23 +1642,29 @@ wss.on("connection", ws => {
     } catch (error) {
       console.error(error);
 
-      send(ws, "error", {
-        message:
-          error?.message ||
-          "Erreur serveur."
-      });
+      send(
+        ws,
+        "error",
+        {
+          message:
+            error?.message ||
+            "Erreur serveur."
+        }
+      );
     }
   });
 
-  /* =======================================================
+  /* =====================================================
      DECONNEXION
-  ======================================================= */
+  ===================================================== */
 
   ws.on("close", () => {
     const room =
       rooms.get(ws.room);
 
-    if (!room) return;
+    if (!room) {
+      return;
+    }
 
     const player =
       room.players.find(
@@ -1508,14 +1673,10 @@ wss.on("connection", ws => {
 
     if (player) {
       player.ws = null;
-
-      log(
-        room,
-        `${player.name} est déconnecté.`
-      );
-
-      broadcast(room);
+      player.connected = false;
     }
+
+    broadcast(room);
   });
 });
 
@@ -1531,4 +1692,3 @@ server.listen(
     );
   }
 );
-```
