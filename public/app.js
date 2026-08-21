@@ -1,444 +1,374 @@
-let ws = null;
-let state = null;
-let pendingAction = null;
+```javascript
+let ws=null, state=null;
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 
-const powers = {
-  1: "Vole la dernière carte de points",
-  3: "−20 à un adversaire",
-  5: "Pioche 2",
-  7: "+20, ne pioche pas",
-  9: "Échange les mains",
-  11: "+10 ou −10",
-  13: "Vole une carte de points",
-  15: "Double une carte de points",
-  17: "Vole et joue une carte",
-  19: "Échange la dernière carte",
-  21: "+20 ou −20",
-  J: "10 / 22 / échange les points"
+const powers={
+  1:"Vole la dernière carte de points",
+  3:"−20 à un adversaire",
+  5:"Pioche 2",
+  7:"+20, ne pioche pas",
+  9:"Échange les mains",
+  11:"+10 ou −10",
+  13:"Vole une carte de points",
+  15:"Double une carte de points",
+  17:"Vole et joue une carte",
+  19:"Échange la dernière carte",
+  21:"+20 ou −20",
+  J:"10 / 22 / échange les points"
 };
 
-function connect() {
-  if (
-    ws &&
-    (
-      ws.readyState === WebSocket.OPEN ||
-      ws.readyState === WebSocket.CONNECTING
-    )
-  ) {
-    return;
-  }
-
-  ws = new WebSocket(
-    (location.protocol === "https:" ? "wss://" : "ws://") +
-    location.host
+function connect(){
+  ws=new WebSocket(
+    (location.protocol==="https:"?"wss://":"ws://")+location.host
   );
 
-  ws.onopen = () => {
+  ws.onopen=()=>{
     toast("Connecté");
   };
 
-  ws.onmessage = e => {
-    const m = JSON.parse(e.data);
+  ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
 
-    if (m.type === "room") {
-      ws.pid = m.pid;
-
-      if ($("roomBadge")) {
-        $("roomBadge").textContent =
-          "Salon " + m.code;
-      }
-    }
-
-    if (m.type === "state") {
-      state = m.state;
+    if(m.type==="state"){
+      state=m.state;
       render();
     }
 
-    if (m.type === "error") {
+    if(m.type==="room"){
+      ws.pid=m.pid;
+      $("roomBadge").textContent="Salon "+m.code;
+    }
+
+    if(m.type==="error"){
       toast(m.message);
     }
   };
 
-  ws.onclose = () => {
-    ws = null;
+  ws.onclose=()=>{
+    toast("Connexion fermée");
+  };
+
+  ws.onerror=()=>{
+    toast("Erreur de connexion");
   };
 }
 
-function send(o) {
-  if (
-    ws &&
-    ws.readyState === WebSocket.OPEN
-  ) {
+function send(o){
+  if(ws?.readyState===1){
     ws.send(JSON.stringify(o));
   }
 }
 
-function waitForConnection(callback) {
+function createRoom(){
   connect();
 
-  const timer = setInterval(() => {
-    if (
-      ws &&
-      ws.readyState === WebSocket.OPEN
-    ) {
-      clearInterval(timer);
-      callback();
+  const wait=setInterval(()=>{
+    if(ws?.readyState===1){
+      clearInterval(wait);
+
+      send({
+        type:"create",
+        name:$("createName").value||"Joueur",
+        maxPlayers:+$("maxPlayers").value,
+        rounds:+$("rounds").value
+      });
     }
-  }, 30);
-
-  setTimeout(() => {
-    clearInterval(timer);
-  }, 10000);
+  },30);
 }
 
-function createRoom() {
-  waitForConnection(() => {
-    send({
-      type: "create",
-      name:
-        $("createName").value ||
-        "Joueur",
-      maxPlayers:
-        Number($("maxPlayers").value) || 2,
-      rounds:
-        Number($("rounds").value) || 1
-    });
-  });
-}
+function joinRoom(){
+  connect();
 
-function createSolo() {
-  waitForConnection(() => {
-    send({
-      type: "createSolo",
-      name:
-        $("createName").value ||
-        "Joueur",
-      rounds:
-        Number($("rounds").value) || 1
-    });
-  });
-}
+  const wait=setInterval(()=>{
+    if(ws?.readyState===1){
+      clearInterval(wait);
 
-function joinRoom() {
-  waitForConnection(() => {
-    send({
-      type: "join",
-      name:
-        $("joinName").value ||
-        "Joueur",
-      code:
-        $("joinCode").value.trim()
-    });
-  });
-}
-
-function startGame() {
-  send({
-    type: "start"
-  });
-}
-
-function forced(hand) {
-  const c = {};
-
-  hand.forEach(x => {
-    c[x] = (c[x] || 0) + 1;
-  });
-
-  if (c["7"]) {
-    return ["7"];
-  }
-
-  for (const k in c) {
-    if (c[k] >= 2) {
-      return [k];
+      send({
+        type:"join",
+        name:$("joinName").value||"Joueur",
+        code:$("joinCode").value.trim()
+      });
     }
+  },30);
+}
+
+function createSolo(){
+  toast("Mode solo à venir.");
+}
+
+function startGame(){
+  send({type:"start"});
+}
+
+function forced(hand){
+  const c={};
+
+  hand.forEach(x=>{
+    const k=String(x);
+    c[k]=(c[k]||0)+1;
+  });
+
+  if(c["7"]) return ["7"];
+
+  for(const k in c){
+    if(c[k]>=2) return [k];
   }
 
   return [];
 }
 
-function render() {
-  if (!state) return;
+function render(){
+  $("lobby").classList.toggle("hidden",!!state);
+  $("game").classList.toggle("hidden",!state);
 
-  const lobby = $("lobby");
-  const game = $("game");
+  if(!state) return;
 
-  if (lobby) {
-    lobby.classList.toggle(
-      "hidden",
-      !!state
-    );
-  }
+  $("target").textContent=`Objectif : ${state.target}`;
 
-  if (game) {
-    game.classList.toggle(
-      "hidden",
-      !state
-    );
-  }
-
-  $("target").textContent =
-    `Objectif : ${state.target}`;
-
-  const me =
-    state.players.find(
-      p => p.id === getPid()
-    );
+  const me=state.players.find(p=>p.id===getPid());
 
   $("startBtn").classList.toggle(
     "hidden",
-    state.started ||
-    !isHost()
+    state.started || !isHost()
   );
 
-  $("status").textContent =
+  $("status").textContent=
     state.winner
       ? (
-        state.winner.reason === "draw"
-          ? "Partie nulle"
-          : `${state.winner.name} gagne !`
-      )
+          state.winner.reason==="draw"
+            ? "Partie nulle"
+            : `${state.winner.name} gagne !`
+        )
       : state.started
-        ? `Tour de ${state.players[state.turn]?.name || ""}`
-        : "En attente des joueurs";
+        ? `Tour de ${state.players[state.turn]?.name||""}`
+        : `En attente des joueurs`;
 
-  $("players").innerHTML =
-    state.players
-      .map(p => `
-        <div class="player ${
-          p.id === state.players[state.turn]?.id
-            ? "active"
-            : ""
-        } ${
-          p.id === getPid()
-            ? "me"
-            : ""
-        }">
-          <b>${escapeHtml(p.name)}</b>
-          <div class="score">${p.points}</div>
-          <div>${p.handCount} carte(s) en main</div>
-          <div class="pile">
-            ${p.pile.map(x => `
-              <div class="mini" title="${x.value}">
-                ${escapeHtml(x.card)}
-              </div>
-            `).join("")}
+  $("players").innerHTML=state.players.map(p=>`
+    <div class="player
+      ${p.id===state.players[state.turn]?.id?"active":""}
+      ${p.id===getPid()?"me":""}">
+      
+      <b>${escapeHtml(p.name)}</b>
+
+      <div class="score">${p.points}</div>
+
+      <div>${p.handCount} carte(s) en main</div>
+
+      <div class="pile">
+        ${(p.pile||[]).map(x=>`
+          <div class="mini" title="${x.value}">
+            ${escapeHtml(x.card)}
           </div>
-        </div>
-      `)
-      .join("");
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
 
-  $("discardCards").innerHTML =
-    state.discard
+  $("discardCards").innerHTML=
+    (state.discard||[])
       .slice(-3)
-      .map(c => `<span>${escapeHtml(c)}</span>`)
+      .map(c=>`<span>${escapeHtml(c)}</span>`)
       .join(" ");
 
-  $("deck").innerHTML =
+  $("deck").innerHTML=
     `🂠<small>${state.deckCount} cartes</small>`;
 
-  $("handCount").textContent =
-    me
-      ? `(${me.hand.length})`
-      : "";
+  /*
+   * IMPORTANT :
+   * La main personnelle est dans state.hand.
+   * Elle n'est PAS dans me.hand.
+   */
+  const myHand=Array.isArray(state.hand)?state.hand:[];
 
-  const hand = state.hand || [];
-  const f = forced(hand);
+  $("handCount").textContent=`(${myHand.length})`;
 
-  $("hand").innerHTML =
-    hand
-      .map(c => {
-        const isF =
-          f.includes(String(c));
+  const f=forced(myHand);
 
-        return `
-          <button
-            type="button"
-            class="card ${isF ? "forced" : ""}"
-            onclick="chooseCard('${escapeHtml(c)}')"
-          >
-            ${art(c)}
-            ${
-              isF
-                ? '<span class="badge">OBLIGATOIRE</span>'
-                : ""
-            }
-          </button>
-        `;
-      })
-      .join("");
+  $("hand").innerHTML=myHand.map((c,i)=>{
+    const isF=f.includes(String(c));
+
+    return `
+      <button
+        type="button"
+        class="card ${isF?"forced":""}"
+        onclick="chooseCard('${escapeHtml(c)}')"
+      >
+        ${art(c)}
+        ${isF?'<span class="badge">OBLIGATOIRE</span>':""}
+      </button>
+    `;
+  }).join("");
+
+  /*
+   * Si aucune carte n'est reçue, on affiche une information
+   * plutôt que de laisser une zone vide incompréhensible.
+   */
+  if(myHand.length===0 && state.started){
+    $("hand").innerHTML=
+      `<div class="emptyHand">Aucune carte reçue.</div>`;
+  }
 }
 
-function chooseCard(card) {
-  if (!state?.started) {
+let pendingAction=null;
+
+function chooseCard(card){
+  if(!state?.started){
+    toast("La partie n'est pas commencée.");
     return;
   }
 
-  const me =
-    state.players.find(
-      p => p.id === getPid()
-    );
+  const me=state.players.find(p=>p.id===getPid());
 
-  if (!me) {
+  if(!me){
     toast("Joueur introuvable.");
     return;
   }
 
-  if (
-    state.players[state.turn]?.id !==
-    getPid()
-  ) {
+  /*
+   * Vérification locale : est-ce bien notre tour ?
+   */
+  if(state.players[state.turn]?.id!==getPid()){
     toast("Ce n'est pas ton tour.");
     return;
   }
 
-  const f = forced(
-    state.hand || []
-  );
+  const myHand=Array.isArray(state.hand)?state.hand:[];
 
-  if (
+  const f=forced(myHand);
+
+  if(
     f.length &&
     !f.includes(String(card))
-  ) {
-    toast(
-      "Tu dois jouer la carte obligatoire."
-    );
+  ){
+    toast("Tu dois jouer la carte obligatoire.");
     return;
   }
 
-  const n = Number(card);
+  const n=Number(card);
 
-  pendingAction = {
+  pendingAction={
     card,
-    targetId: null,
-    extra: {}
+    targetId:null,
+    extra:{}
   };
 
-  if (
-    [1, 3, 9, 13, 17, 19].includes(n)
-  ) {
-    const eligible =
-      state.players.filter(
-        p => p.id !== getPid()
-      );
-
-    return showTargets(
-      card,
-      eligible
+  /*
+   * Cartes nécessitant une cible.
+   */
+  if([1,3,9,13,17,19].includes(n)){
+    const eligible=state.players.filter(
+      p=>p.id!==getPid()
     );
+
+    return showTargets(card,eligible);
   }
 
-  if ([11, 21].includes(n)) {
-    const vals =
-      n === 11
-        ? ["+10 pour toi", "−10 pour toi"]
-        : ["+20 pour toi", "−20 pour toi"];
+  /*
+   * Cartes nécessitant un choix + ou -.
+   */
+  if([11,21].includes(n)){
+    const vals=
+      n===11
+        ?["+10 pour toi","−10 pour toi"]
+        :["+20 pour toi","−20 pour toi"];
 
     return showOptions(
       `Carte ${card}`,
       `Choisis l'effet de la carte ${card}.`,
       [
         {
-          label: vals[0],
-          action: () =>
-            submitPending({
-              choice: "plus"
-            })
+          label:vals[0],
+          action:()=>submitPending({choice:"plus"})
         },
         {
-          label: vals[1],
-          action: () =>
-            submitPending({
-              choice: "minus"
-            })
+          label:vals[1],
+          action:()=>submitPending({choice:"minus"})
         }
       ]
     );
   }
 
-  if (card === "J") {
+  /*
+   * Joker.
+   */
+  if(String(card)==="J"){
     return showOptions(
       "Joker",
       "Choisis une des trois possibilités.",
       [
         {
-          label: "+10 points",
-          action: () =>
-            submitPending({
-              choice: "10"
-            })
+          label:"+10 points",
+          action:()=>submitPending({choice:"10"})
         },
         {
-          label: "+22 points",
-          action: () =>
-            submitPending({
-              choice: "22"
-            })
+          label:"+22 points",
+          action:()=>submitPending({choice:"22"})
         },
         {
-          label:
-            "Échanger tous tes points",
-          action: () =>
-            showTargets(
-              card,
-              state.players.filter(
-                p => p.id !== getPid()
-              ),
-              "swap"
-            )
+          label:"Échanger tous tes points",
+          action:()=>showTargets(
+            card,
+            state.players.filter(
+              p=>p.id!==getPid()
+            ),
+            "swap"
+          )
         }
       ]
     );
   }
 
-  if (n === 15) {
-    if (!me.pile.length) {
-      toast(
-        "Tu n'as aucune carte de points à doubler."
-      );
-      pendingAction = null;
+  /*
+   * Carte 15 : choix d'une carte de points.
+   */
+  if(n===15){
+    if(!me.pile?.length){
+      toast("Tu n'as aucune carte de points à doubler.");
       return;
     }
 
     return showPileChoice(
       me,
-      "Choisis la carte de points à doubler."
+      "Choisis la carte de points à doubler.",
+      false
     );
   }
 
+  /*
+   * Carte simple : envoi immédiat.
+   */
   submitPending({});
 }
 
-function showTargets(
-  card,
-  players,
-  mode = "target"
-) {
-  if (!players.length) {
+function showTargets(card,players,mode="target"){
+  if(!players.length){
     toast("Aucune cible disponible.");
-    pendingAction = null;
     return;
   }
 
   showOptions(
     `Carte ${card}`,
     "Choisis un adversaire.",
-    players.map(p => ({
+    players.map(p=>({
       label:
         `${p.name} — ${p.points} points • ${p.handCount} cartes`,
-      action: () => {
-        pendingAction.targetId = p.id;
 
-        if (Number(card) === 13) {
-          const target =
-            state.players.find(
-              x => x.id === p.id
-            );
+      action:()=>{
+        pendingAction.targetId=p.id;
 
-          if (!target?.pile.length) {
+        /*
+         * Carte 13 :
+         * après avoir choisi le joueur,
+         * on choisit sa carte de points.
+         */
+        if(Number(card)===13){
+
+          const t=state.players.find(
+            x=>x.id===p.id
+          );
+
+          if(!t?.pile?.length){
             toast(
               "Cet adversaire n'a aucune carte de points."
             );
@@ -446,14 +376,15 @@ function showTargets(
           }
 
           return showPileChoice(
-            target,
-            "Choisis la carte de points à voler."
+            t,
+            "Choisis la carte de points à voler.",
+            true
           );
         }
 
         submitPending(
-          mode === "swap"
-            ? { choice: "swap" }
+          mode==="swap"
+            ? {choice:"swap"}
             : {}
         );
       }
@@ -461,111 +392,95 @@ function showTargets(
   );
 }
 
-function showPileChoice(
-  player,
-  text
-) {
-  const pile =
-    player.pile || [];
+function showPileChoice(player,text,forSteal){
+  const pile=player.pile||[];
 
-  if (!pile.length) {
-    toast(
-      "Aucune carte de points disponible."
-    );
+  if(!pile.length){
+    toast("Aucune carte de points disponible.");
     return;
   }
 
   showOptions(
     "Choix de carte",
     text,
-    pile.map((item, i) => ({
+    pile.map((item,i)=>({
       label:
-        `${i + 1}. ${item.card} — ${item.value} points`,
-      action: () => {
-        pendingAction.extra.index = i;
+        `${i+1}. ${item.card} — ${item.value} points`,
+
+      action:()=>{
+        pendingAction.extra.index=i;
         submitPending({});
       }
     }))
   );
 }
 
-function showOptions(
-  title,
-  text,
-  options
-) {
-  $("choiceTitle").textContent =
-    title;
+function showOptions(title,text,options){
+  $("choiceTitle").textContent=title;
+  $("choiceText").textContent=text;
 
-  $("choiceText").textContent =
-    text;
+  $("choiceOptions").innerHTML=
+    options.map((o,i)=>`
+      <button
+        type="button"
+        class="choiceBtn"
+        onclick="choicePick(${i})"
+      >
+        ${escapeHtml(o.label)}
+      </button>
+    `).join("");
 
-  $("choiceOptions").innerHTML =
-    options
-      .map(
-        (o, i) =>
-          `<button type="button" class="choiceBtn" onclick="choicePick(${i})">${escapeHtml(o.label)}</button>`
-      )
-      .join("");
+  window._choiceOptions=options;
 
-  window._choiceOptions =
-    options;
-
-  $("choiceModal")
-    .classList.remove("hidden");
+  $("choiceModal").classList.remove("hidden");
 }
 
-function choicePick(i) {
-  const option =
-    window._choiceOptions?.[i];
+function choicePick(i){
+  const o=window._choiceOptions?.[i];
 
-  if (option?.action) {
-    option.action();
+  if(o?.action){
+    o.action();
   }
 }
 
-function closeChoice() {
-  $("choiceModal")
-    .classList.add("hidden");
+function closeChoice(){
+  $("choiceModal").classList.add("hidden");
 
-  window._choiceOptions = null;
-  pendingAction = null;
+  window._choiceOptions=null;
+  pendingAction=null;
 }
 
-function submitPending(extra) {
-  if (!pendingAction) {
+function submitPending(extra){
+  if(!pendingAction){
     return;
   }
 
-  pendingAction.extra = {
+  pendingAction.extra={
     ...pendingAction.extra,
     ...extra
   };
 
-  const payload = {
-    type: "play",
-    card: pendingAction.card,
-    targetId:
-      pendingAction.targetId,
-    extra: pendingAction.extra
+  const payload={
+    type:"play",
+    card:pendingAction.card,
+    targetId:pendingAction.targetId,
+    extra:pendingAction.extra
   };
 
   closeChoice();
+
   send(payload);
 }
 
-function isHost() {
-  return (
-    state?.players?.[0]?.id ===
-    getPid()
-  );
+function isHost(){
+  return state?.players?.[0]?.id===getPid();
 }
 
-function getPid() {
-  return ws?.pid || "";
+function getPid(){
+  return ws?.pid||"";
 }
 
-function art(c) {
+function art(c){
   return `
     <img
       class="cardart"
@@ -575,28 +490,31 @@ function art(c) {
   `;
 }
 
-function toast(t) {
-  const x = $("toast");
+function toast(t){
+  const x=$("toast");
 
-  if (!x) return;
+  if(!x) return;
 
-  x.textContent = t;
-  x.style.opacity = 1;
+  x.textContent=t;
+  x.style.opacity=1;
 
-  setTimeout(() => {
-    x.style.opacity = 0;
-  }, 2200);
+  clearTimeout(window._toastTimer);
+
+  window._toastTimer=setTimeout(()=>{
+    x.style.opacity=0;
+  },2200);
 }
 
-function escapeHtml(s) {
+function escapeHtml(s){
   return String(s).replace(
     /[&<>"']/g,
-    m => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
+    m=>({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      "\"":"&quot;",
+      "'":"&#39;"
     }[m])
   );
 }
+```
