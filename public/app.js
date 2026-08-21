@@ -1,520 +1,1434 @@
 ```javascript
-let ws=null, state=null;
+import express from "express";
+import http from "http";
+import { WebSocketServer } from "ws";
+import crypto from "crypto";
 
-const $=id=>document.getElementById(id);
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
-const powers={
-  1:"Vole la dernière carte de points",
-  3:"−20 à un adversaire",
-  5:"Pioche 2",
-  7:"+20, ne pioche pas",
-  9:"Échange les mains",
-  11:"+10 ou −10",
-  13:"Vole une carte de points",
-  15:"Double une carte de points",
-  17:"Vole et joue une carte",
-  19:"Échange la dernière carte",
-  21:"+20 ou −20",
-  J:"10 / 22 / échange les points"
+app.use(express.static("public"));
+
+const PORT = process.env.PORT || 3000;
+const rooms = new Map();
+
+const TARGETS = {
+  2:120,
+  3:120,
+  4:180,
+  5:240,
+  6:300,
+  7:360,
+  8:420
 };
 
-function connect(){
-  ws=new WebSocket(
-    (location.protocol==="https:"?"wss://":"ws://")+location.host
-  );
+const CARD_IDS = [
+  ...Array.from({length:21},(_,i)=>i+1),
+  "J"
+];
 
-  ws.onopen=()=>{
-    toast("Connecté");
-  };
+/* =========================
+   OUTILS
+========================= */
 
-  ws.onmessage=e=>{
-    const m=JSON.parse(e.data);
+function cardKey(c){
+  return String(c);
+}
 
-    if(m.type==="state"){
-      state=m.state;
-      render();
+function shuffle(array){
+  const a=[...array];
+
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+
+  return a;
+}
+
+function makeDeck(players){
+  const copies=
+    players===2 ? 2 :
+    players===3 ? 2 :
+    players;
+
+  const deck=[];
+
+  for(let c=0;c<copies;c++){
+    for(const id of CARD_IDS){
+      deck.push(id);
     }
+  }
 
-    if(m.type==="room"){
-      ws.pid=m.pid;
-      $("roomBadge").textContent="Salon "+m.code;
-    }
+  return shuffle(deck);
+}
 
-    if(m.type==="error"){
-      toast(m.message);
-    }
-  };
+function isPointCard(card){
+  return [
+    2,4,6,8,10,
+    12,14,16,18,20
+  ].includes(Number(card));
+}
 
-  ws.onclose=()=>{
-    toast("Connexion fermée");
-  };
+function pointValue(card){
+  return Number(card);
+}
 
-  ws.onerror=()=>{
-    toast("Erreur de connexion");
+/* =========================
+   SALONS
+========================= */
+
+function newRoom(hostName,maxPlayers,rounds){
+
+  const code=crypto
+    .randomBytes(3)
+    .toString("hex")
+    .toUpperCase();
+
+  return {
+    code,
+    maxPlayers,
+    rounds,
+
+    round:1,
+    started:false,
+    winner:null,
+
+    players:[
+      {
+        id:crypto.randomUUID(),
+        name:hostName,
+        ws:null,
+        hand:[],
+        points:0,
+        pile:[],
+        skip:0
+      }
+    ],
+
+    deck:[],
+    discard:[],
+    turn:0,
+
+    target:TARGETS[maxPlayers] || 120,
+
+    log:[]
   };
 }
 
-function send(o){
-  if(ws?.readyState===1){
-    ws.send(JSON.stringify(o));
+/* =========================
+   ETAT PUBLIC
+========================= */
+
+function publicState(room){
+
+  return {
+    code:room.code,
+
+    started:room.started,
+    winner:room.winner,
+
+    round:room.round,
+    rounds:room.rounds,
+
+    target:room.target,
+    turn:room.turn,
+
+    deckCount:room.deck.length,
+
+    discard:room.discard.slice(-12),
+
+    players:room.players.map(p=>({
+      id:p.id,
+      name:p.name,
+      handCount:p.hand.length,
+      points:p.points,
+      pile:p.pile.slice(-12),
+      skip:p.skip
+    }))
+  };
+}
+
+/* =========================
+   COMMUNICATION
+========================= */
+
+function send(ws,type,payload={}){
+
+  if(
+    ws &&
+    ws.readyState===1
+  ){
+    ws.send(
+      JSON.stringify({
+        type,
+        ...payload
+      })
+    );
   }
 }
 
-function createRoom(){
-  connect();
+function broadcast(room){
 
-  const wait=setInterval(()=>{
-    if(ws?.readyState===1){
-      clearInterval(wait);
+  const base=publicState(room);
 
-      send({
-        type:"create",
-        name:$("createName").value||"Joueur",
-        maxPlayers:+$("maxPlayers").value,
-        rounds:+$("rounds").value
-      });
+  for(const p of room.players){
+
+    send(
+      p.ws,
+      "state",
+      {
+        state:{
+          ...base,
+
+          /*
+           * IMPORTANT :
+           * Chaque joueur reçoit uniquement
+           * sa propre main.
+           */
+          hand:[...p.hand]
+        }
+      }
+    );
+  }
+}
+
+function log(room,text){
+
+  room.log.push(text);
+
+  room.log=
+    room.log.slice(-40);
+}
+
+/* =========================
+   FIN DE PARTIE
+========================= */
+
+function exactWinner(room){
+
+  return room.players.find(
+    p=>p.points===room.target
+  ) || null;
+}
+
+function allHandsEmpty(room){
+
+  return room.players.every(
+    p=>p.hand.length===0
+  );
+}
+
+function finishIfNeeded(room){
+
+  const exact=exactWinner(room);
+
+  if(exact){
+
+    room.winner={
+      id:exact.id,
+      name:exact.name,
+      reason:"exact"
+    };
+
+    room.started=false;
+
+    log(
+      room,
+      `${exact.name} atteint exactement ${room.target} points et gagne !`
+    );
+
+    return true;
+  }
+
+  if(
+    room.deck.length===0 &&
+    allHandsEmpty(room)
+  ){
+
+    const best=Math.min(
+      ...room.players.map(
+        p=>Math.abs(p.points-room.target)
+      )
+    );
+
+    const winners=room.players.filter(
+      p=>Math.abs(p.points-room.target)===best
+    );
+
+    if(winners.length===1){
+
+      room.winner={
+        id:winners[0].id,
+        name:winners[0].name,
+        reason:"closest"
+      };
+
+      log(
+        room,
+        `${winners[0].name} est le plus proche de ${room.target}.`
+      );
+
+    }else{
+
+      room.winner={
+        id:null,
+        name:null,
+        reason:"draw"
+      };
+
+      log(
+        room,
+        "Partie nulle : plusieurs joueurs sont à égale distance."
+      );
     }
-  },30);
+
+    room.started=false;
+
+    return true;
+  }
+
+  return false;
 }
 
-function joinRoom(){
-  connect();
+/* =========================
+   MANCHE
+========================= */
 
-  const wait=setInterval(()=>{
-    if(ws?.readyState===1){
-      clearInterval(wait);
+function startRound(room){
 
-      send({
-        type:"join",
-        name:$("joinName").value||"Joueur",
-        code:$("joinCode").value.trim()
-      });
+  room.deck=makeDeck(room.players.length);
+
+  room.discard=[];
+
+  room.turn=0;
+
+  room.winner=null;
+
+  room.target=
+    TARGETS[room.players.length] ||
+    TARGETS[room.maxPlayers] ||
+    120;
+
+  for(const p of room.players){
+
+    p.hand=[];
+    p.points=0;
+    p.pile=[];
+    p.skip=0;
+  }
+
+  /*
+   * 4 cartes à chaque joueur.
+   */
+  for(let i=0;i<4;i++){
+
+    for(const p of room.players){
+
+      if(room.deck.length){
+        p.hand.push(
+          room.deck.pop()
+        );
+      }
     }
-  },30);
+  }
+
+  room.started=true;
+
+  log(
+    room,
+    `Manche ${room.round} commencée. Objectif : ${room.target} points.`
+  );
+
+  broadcast(room);
 }
 
-function createSolo(){
-  toast("Mode solo à venir.");
+/* =========================
+   TOURS
+========================= */
+
+function nextTurn(room){
+
+  const n=room.players.length;
+
+  for(let i=1;i<=n;i++){
+
+    const idx=
+      (room.turn+i)%n;
+
+    const p=
+      room.players[idx];
+
+    if(p.hand.length===0){
+      continue;
+    }
+
+    room.turn=idx;
+
+    if(p.skip>0){
+
+      p.skip--;
+
+      log(
+        room,
+        `${p.name} passe son tour.`
+      );
+
+      return nextTurn(room);
+    }
+
+    return;
+  }
 }
 
-function startGame(){
-  send({type:"start"});
+/* =========================
+   CARTES
+========================= */
+
+function counts(hand){
+
+  const map=new Map();
+
+  for(const card of hand){
+
+    const key=cardKey(card);
+
+    map.set(
+      key,
+      (map.get(key)||0)+1
+    );
+  }
+
+  return map;
 }
 
-function forced(hand){
-  const c={};
+function forcedSet(player){
 
-  hand.forEach(x=>{
-    const k=String(x);
-    c[k]=(c[k]||0)+1;
-  });
+  const c=counts(player.hand);
 
-  if(c["7"]) return ["7"];
+  /*
+   * Le 7 est prioritaire.
+   */
+  if(c.has("7")){
+    return ["7"];
+  }
 
-  for(const k in c){
-    if(c[k]>=2) return [k];
+  /*
+   * Une paire est obligatoire.
+   */
+  for(const [key,count] of c){
+
+    if(count>=2){
+      return [key];
+    }
   }
 
   return [];
 }
 
-function render(){
-  $("lobby").classList.toggle("hidden",!!state);
-  $("game").classList.toggle("hidden",!state);
+function removeOne(hand,id){
 
-  if(!state) return;
+  const index=
+    hand.findIndex(
+      c=>cardKey(c)===cardKey(id)
+    );
 
-  $("target").textContent=`Objectif : ${state.target}`;
-
-  const me=state.players.find(p=>p.id===getPid());
-
-  $("startBtn").classList.toggle(
-    "hidden",
-    state.started || !isHost()
-  );
-
-  $("status").textContent=
-    state.winner
-      ? (
-          state.winner.reason==="draw"
-            ? "Partie nulle"
-            : `${state.winner.name} gagne !`
-        )
-      : state.started
-        ? `Tour de ${state.players[state.turn]?.name||""}`
-        : `En attente des joueurs`;
-
-  $("players").innerHTML=state.players.map(p=>`
-    <div class="player
-      ${p.id===state.players[state.turn]?.id?"active":""}
-      ${p.id===getPid()?"me":""}">
-      
-      <b>${escapeHtml(p.name)}</b>
-
-      <div class="score">${p.points}</div>
-
-      <div>${p.handCount} carte(s) en main</div>
-
-      <div class="pile">
-        ${(p.pile||[]).map(x=>`
-          <div class="mini" title="${x.value}">
-            ${escapeHtml(x.card)}
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `).join("");
-
-  $("discardCards").innerHTML=
-    (state.discard||[])
-      .slice(-3)
-      .map(c=>`<span>${escapeHtml(c)}</span>`)
-      .join(" ");
-
-  $("deck").innerHTML=
-    `🂠<small>${state.deckCount} cartes</small>`;
-
-  /*
-   * IMPORTANT :
-   * La main personnelle est dans state.hand.
-   * Elle n'est PAS dans me.hand.
-   */
-  const myHand=Array.isArray(state.hand)?state.hand:[];
-
-  $("handCount").textContent=`(${myHand.length})`;
-
-  const f=forced(myHand);
-
-  $("hand").innerHTML=myHand.map((c,i)=>{
-    const isF=f.includes(String(c));
-
-    return `
-      <button
-        type="button"
-        class="card ${isF?"forced":""}"
-        onclick="chooseCard('${escapeHtml(c)}')"
-      >
-        ${art(c)}
-        ${isF?'<span class="badge">OBLIGATOIRE</span>':""}
-      </button>
-    `;
-  }).join("");
-
-  /*
-   * Si aucune carte n'est reçue, on affiche une information
-   * plutôt que de laisser une zone vide incompréhensible.
-   */
-  if(myHand.length===0 && state.started){
-    $("hand").innerHTML=
-      `<div class="emptyHand">Aucune carte reçue.</div>`;
+  if(index<0){
+    return false;
   }
+
+  hand.splice(index,1);
+
+  return true;
 }
 
-let pendingAction=null;
+function removeDouble(hand,id){
 
-function chooseCard(card){
-  if(!state?.started){
-    toast("La partie n'est pas commencée.");
-    return;
+  const first=removeOne(hand,id);
+
+  if(!first){
+    return false;
   }
 
-  const me=state.players.find(p=>p.id===getPid());
+  const second=removeOne(hand,id);
 
-  if(!me){
-    toast("Joueur introuvable.");
-    return;
+  if(!second){
+
+    /*
+     * Sécurité :
+     * on remet la première carte.
+     */
+    hand.push(id);
+
+    return false;
   }
 
-  /*
-   * Vérification locale : est-ce bien notre tour ?
-   */
-  if(state.players[state.turn]?.id!==getPid()){
-    toast("Ce n'est pas ton tour.");
-    return;
+  return true;
+}
+
+/* =========================
+   PILES DE POINTS
+========================= */
+
+function addPileCard(
+  player,
+  card,
+  value=null,
+  attachments=[]
+){
+
+  const item={
+    card,
+    value:
+      value===null
+        ? pointValue(card)
+        : value,
+
+    attachments:[
+      ...attachments
+    ]
+  };
+
+  player.pile.push(item);
+
+  player.points+=item.value;
+
+  return item;
+}
+
+function stealPoint(
+  from,
+  to,
+  index=-1
+){
+
+  if(!from.pile.length){
+    return null;
   }
 
-  const myHand=Array.isArray(state.hand)?state.hand:[];
+  let idx=index;
 
-  const f=forced(myHand);
+  if(idx<0){
+    idx=
+      from.pile.length-1;
+  }
 
   if(
-    f.length &&
-    !f.includes(String(card))
+    idx<0 ||
+    idx>=from.pile.length
   ){
-    toast("Tu dois jouer la carte obligatoire.");
-    return;
+    return null;
   }
+
+  const item=
+    from.pile.splice(idx,1)[0];
+
+  from.points-=item.value;
+
+  to.pile.push(item);
+
+  to.points+=item.value;
+
+  return item;
+}
+
+/* =========================
+   APPLICATION DES CARTES
+========================= */
+
+function applyCard(
+  room,
+  actor,
+  card,
+  targetId=null,
+  extra={}
+){
+
+  const target=
+    room.players.find(
+      p=>p.id===targetId
+    );
 
   const n=Number(card);
 
-  pendingAction={
-    card,
-    targetId:null,
-    extra:{}
-  };
-
   /*
-   * Cartes nécessitant une cible.
+   * CARTES DE POINTS
    */
-  if([1,3,9,13,17,19].includes(n)){
-    const eligible=state.players.filter(
-      p=>p.id!==getPid()
+  if(isPointCard(card)){
+
+    const item=
+      addPileCard(actor,card);
+
+    log(
+      room,
+      `${actor.name} joue ${card} et marque ${item.value} points.`
     );
 
-    return showTargets(card,eligible);
+    return;
   }
 
   /*
-   * Cartes nécessitant un choix + ou -.
+   * 1 — voler la dernière carte
    */
-  if([11,21].includes(n)){
-    const vals=
-      n===11
-        ?["+10 pour toi","−10 pour toi"]
-        :["+20 pour toi","−20 pour toi"];
+  if(n===1){
 
-    return showOptions(
-      `Carte ${card}`,
-      `Choisis l'effet de la carte ${card}.`,
+    room.discard.push(1);
+
+    if(target){
+
+      const item=
+        stealPoint(
+          target,
+          actor
+        );
+
+      log(
+        room,
+        item
+          ? `${actor.name} vole la dernière carte de points de ${target.name}.`
+          : `${actor.name} joue 1 mais ${target.name} n'a aucune carte de points.`
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 3 — -20
+   */
+  if(n===3){
+
+    room.discard.push(3);
+
+    if(target){
+
+      target.points-=20;
+
+      /*
+       * On évite de descendre
+       * sous zéro.
+       */
+      if(target.points<0){
+        target.points=0;
+      }
+
+      log(
+        room,
+        `${actor.name} retire 20 points à ${target.name}.`
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 5 — pioche
+   */
+  if(n===5){
+
+    room.discard.push(5);
+
+    const draws=
+      extra.double
+        ? 4
+        : 2;
+
+    let drawn=0;
+
+    for(
+      let i=0;
+      i<draws && room.deck.length;
+      i++
+    ){
+
+      actor.hand.push(
+        room.deck.pop()
+      );
+
+      drawn++;
+    }
+
+    log(
+      room,
+      `${actor.name} joue ${extra.double?"double ":""}5 et pioche ${drawn} cartes.`
+    );
+
+    return;
+  }
+
+  /*
+   * 7 — +20 / +40
+   */
+  if(n===7){
+
+    room.discard.push(7);
+
+    const value=
+      extra.double
+        ? 40
+        : 20;
+
+    actor.points+=value;
+
+    log(
+      room,
+      `${actor.name} joue ${extra.double?"double ":""}7 et gagne ${value} points sans piocher.`
+    );
+
+    return;
+  }
+
+  /*
+   * 9 — échange des mains
+   */
+  if(n===9){
+
+    room.discard.push(9);
+
+    if(target){
+
       [
-        {
-          label:vals[0],
-          action:()=>submitPending({choice:"plus"})
-        },
-        {
-          label:vals[1],
-          action:()=>submitPending({choice:"minus"})
-        }
-      ]
-    );
+        actor.hand,
+        target.hand
+      ]=[
+        target.hand,
+        actor.hand
+      ];
+
+      log(
+        room,
+        `${actor.name} échange sa main avec ${target.name}.`
+      );
+    }
+
+    return;
   }
 
   /*
-   * Joker.
+   * 11 — +10 / -10
    */
-  if(String(card)==="J"){
-    return showOptions(
-      "Joker",
-      "Choisis une des trois possibilités.",
-      [
-        {
-          label:"+10 points",
-          action:()=>submitPending({choice:"10"})
-        },
-        {
-          label:"+22 points",
-          action:()=>submitPending({choice:"22"})
-        },
-        {
-          label:"Échanger tous tes points",
-          action:()=>showTargets(
-            card,
-            state.players.filter(
-              p=>p.id!==getPid()
-            ),
-            "swap"
-          )
-        }
-      ]
+  if(n===11){
+
+    room.discard.push(11);
+
+    const value=
+      extra.choice==="minus"
+        ? -(extra.double?20:10)
+        : (extra.double?20:10);
+
+    actor.points+=value;
+
+    if(actor.points<0){
+      actor.points=0;
+    }
+
+    log(
+      room,
+      `${actor.name} applique ${value>0?"+":""}${value} avec ${extra.double?"double ":""}11.`
     );
+
+    return;
   }
 
   /*
-   * Carte 15 : choix d'une carte de points.
+   * 13 — voler une carte précise
+   */
+  if(n===13){
+
+    room.discard.push(13);
+
+    if(target){
+
+      const item=
+        stealPoint(
+          target,
+          actor,
+          Number.isInteger(extra.index)
+            ? extra.index
+            : -1
+        );
+
+      log(
+        room,
+        item
+          ? `${actor.name} vole une carte de points à ${target.name}.`
+          : `${actor.name} joue 13 mais aucune carte n'a pu être volée.`
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 15 — double une carte
    */
   if(n===15){
-    if(!me.pile?.length){
-      toast("Tu n'as aucune carte de points à doubler.");
+
+    room.discard.push(15);
+
+    const idx=
+      Number.isInteger(extra.index)
+        ? extra.index
+        : actor.pile.length-1;
+
+    const item=
+      actor.pile[idx];
+
+    if(item){
+
+      const oldValue=item.value;
+
+      item.value*=
+        extra.double
+          ? 4
+          : 2;
+
+      actor.points+=
+        item.value-oldValue;
+
+      item.attachments.push(
+        ...(extra.double
+          ? ["15","15"]
+          : ["15"])
+      );
+
+      log(
+        room,
+        `${actor.name} double une carte de points.`
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 17 — voler et jouer
+   */
+  if(n===17){
+
+    room.discard.push(17);
+
+    const count=
+      extra.double
+        ? 2
+        : 1;
+
+    for(let i=0;i<count;i++){
+
+      if(
+        !target ||
+        !target.hand.length
+      ){
+        break;
+      }
+
+      const index=
+        Math.floor(
+          Math.random()*
+          target.hand.length
+        );
+
+      const stolen=
+        target.hand.splice(index,1)[0];
+
+      /*
+       * La carte volée est jouée.
+       * Elle ne consomme pas une carte
+       * de la main de l'acteur.
+       */
+      applyCard(
+        room,
+        actor,
+        stolen,
+        null,
+        {}
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 19 — échange de cartes de points
+   */
+  if(n===19){
+
+    room.discard.push(19);
+
+    if(target){
+
+      const amount=
+        extra.double
+          ? 2
+          : 1;
+
+      for(let k=0;k<amount;k++){
+
+        const ai=
+          actor.pile.length-1-k;
+
+        const bi=
+          target.pile.length-1-k;
+
+        if(
+          ai>=0 &&
+          bi>=0
+        ){
+
+          [
+            actor.pile[ai],
+            target.pile[bi]
+          ]=[
+            target.pile[bi],
+            actor.pile[ai]
+          ];
+        }
+      }
+
+      actor.points=
+        actor.pile.reduce(
+          (sum,item)=>sum+item.value,
+          0
+        );
+
+      target.points=
+        target.pile.reduce(
+          (sum,item)=>sum+item.value,
+          0
+        );
+
+      log(
+        room,
+        `${actor.name} échange ${amount} carte(s) de points avec ${target.name}.`
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 21 — +20 / -20
+   */
+  if(n===21){
+
+    room.discard.push(21);
+
+    const value=
+      extra.choice==="minus"
+        ? -(extra.double?40:20)
+        : (extra.double?40:20);
+
+    actor.points+=value;
+
+    if(actor.points<0){
+      actor.points=0;
+    }
+
+    log(
+      room,
+      `${actor.name} applique ${value>0?"+":""}${value} avec ${extra.double?"double ":""}21.`
+    );
+
+    return;
+  }
+
+  /*
+   * JOKER
+   */
+  if(String(card)==="J"){
+
+    room.discard.push("J");
+
+    if(extra.choice==="swap"){
+
+      if(target){
+
+        const temp=
+          actor.points;
+
+        actor.points=
+          target.points;
+
+        target.points=
+          temp;
+
+        log(
+          room,
+          `${actor.name} échange tous ses points avec ${target.name}.`
+        );
+      }
+
+    }else{
+
+      const value=
+        extra.choice==="22"
+          ? 22
+          : 10;
+
+      actor.points+=value;
+
+      log(
+        room,
+        `${actor.name} choisit +${value} avec le Joker.`
+      );
+    }
+
+    return;
+  }
+}
+
+/* =========================
+   JOUER UNE CARTE
+========================= */
+
+function play(
+  room,
+  player,
+  card,
+  targetId,
+  extra={}
+){
+
+  const forced=
+    forcedSet(player);
+
+  if(
+    forced.length &&
+    !forced.includes(cardKey(card))
+  ){
+
+    throw new Error(
+      "Une carte obligatoire doit être jouée en priorité."
+    );
+  }
+
+  const count=
+    player.hand.filter(
+      c=>cardKey(c)===cardKey(card)
+    ).length;
+
+  /*
+   * Une paire est automatiquement
+   * jouée en double.
+   */
+  const isDouble=
+    count>=2 &&
+    extra.forceDouble!==false;
+
+  if(isDouble){
+
+    if(!removeDouble(player.hand,card)){
+      throw new Error(
+        "Impossible de retirer la paire."
+      );
+    }
+
+  }else{
+
+    if(!removeOne(player.hand,card)){
+      throw new Error(
+        "Carte absente de la main."
+      );
+    }
+  }
+
+  applyCard(
+    room,
+    player,
+    card,
+    targetId,
+    {
+      ...extra,
+      double:isDouble
+    }
+  );
+
+  /*
+   * Pioche normale.
+   *
+   * 7 : aucune pioche
+   * 5 : sa propre pioche
+   * Joker double : aucune pioche
+   */
+  if(
+    Number(card)!==7 &&
+    Number(card)!==5 &&
+    !(String(card)==="J" && isDouble) &&
+    room.deck.length>0
+  ){
+
+    player.hand.push(
+      room.deck.pop()
+    );
+  }
+
+  /*
+   * Double Joker :
+   * le joueur saute deux tours.
+   */
+  if(
+    String(card)==="J" &&
+    isDouble
+  ){
+
+    player.skip+=2;
+  }
+
+  if(finishIfNeeded(room)){
+    broadcast(room);
+    return;
+  }
+
+  nextTurn(room);
+
+  broadcast(room);
+}
+
+/* =========================
+   WEBSOCKET
+========================= */
+
+wss.on("connection",ws=>{
+
+  ws.on("message",raw=>{
+
+    try{
+
+      const msg=
+        JSON.parse(raw.toString());
+
+      /* =====================
+         CREER
+      ===================== */
+
+      if(msg.type==="create"){
+
+        const maxPlayers=
+          Math.min(
+            8,
+            Math.max(
+              2,
+              Number(msg.maxPlayers)||2
+            )
+          );
+
+        const rounds=
+          Number(msg.rounds)||1;
+
+        const name=
+          String(
+            msg.name||"Joueur"
+          ).slice(0,18);
+
+        const room=
+          newRoom(
+            name,
+            maxPlayers,
+            rounds
+          );
+
+        const host=
+          room.players[0];
+
+        host.ws=ws;
+
+        ws.room=
+          room.code;
+
+        ws.pid=
+          host.id;
+
+        rooms.set(
+          room.code,
+          room
+        );
+
+        /*
+         * IMPORTANT :
+         * le client reçoit son pid.
+         */
+        send(
+          ws,
+          "room",
+          {
+            code:room.code,
+            pid:ws.pid
+          }
+        );
+
+        broadcast(room);
+
+        return;
+      }
+
+      /* =====================
+         REJOINDRE
+      ===================== */
+
+      if(msg.type==="join"){
+
+        const code=
+          String(
+            msg.code||""
+          )
+          .trim()
+          .toUpperCase();
+
+        const room=
+          rooms.get(code);
+
+        if(!room){
+          throw new Error(
+            "Salon introuvable."
+          );
+        }
+
+        if(room.started){
+          throw new Error(
+            "La partie a déjà commencé."
+          );
+        }
+
+        if(
+          room.players.length>=
+          room.maxPlayers
+        ){
+
+          throw new Error(
+            "Salon complet."
+          );
+        }
+
+        const player={
+          id:crypto.randomUUID(),
+
+          name:String(
+            msg.name||"Joueur"
+          ).slice(0,18),
+
+          ws,
+
+          hand:[],
+          points:0,
+          pile:[],
+          skip:0
+        };
+
+        room.players.push(player);
+
+        ws.room=
+          room.code;
+
+        ws.pid=
+          player.id;
+
+        /*
+         * Le joueur reçoit également
+         * son identifiant.
+         */
+        send(
+          ws,
+          "room",
+          {
+            code:room.code,
+            pid:ws.pid
+          }
+        );
+
+        broadcast(room);
+
+        return;
+      }
+
+      /* =====================
+         LANCER
+      ===================== */
+
+      if(msg.type==="start"){
+
+        const room=
+          rooms.get(ws.room);
+
+        if(!room){
+          throw new Error(
+            "Salon introuvable."
+          );
+        }
+
+        if(
+          room.players[0]?.id!==ws.pid
+        ){
+
+          throw new Error(
+            "Seul l'hôte peut lancer la partie."
+          );
+        }
+
+        if(room.started){
+          throw new Error(
+            "La partie est déjà commencée."
+          );
+        }
+
+        if(room.players.length<2){
+
+          throw new Error(
+            "Il faut au moins 2 joueurs."
+          );
+        }
+
+        startRound(room);
+
+        return;
+      }
+
+      /* =====================
+         JOUER
+      ===================== */
+
+      if(msg.type==="play"){
+
+        const room=
+          rooms.get(ws.room);
+
+        if(
+          !room ||
+          !room.started
+        ){
+
+          throw new Error(
+            "Partie inactive."
+          );
+        }
+
+        const player=
+          room.players.find(
+            p=>p.id===ws.pid
+          );
+
+        if(!player){
+
+          throw new Error(
+            "Joueur introuvable."
+          );
+        }
+
+        const current=
+          room.players[room.turn];
+
+        if(
+          !current ||
+          current.id!==player.id
+        ){
+
+          throw new Error(
+            "Ce n'est pas votre tour."
+          );
+        }
+
+        if(player.hand.length===0){
+
+          throw new Error(
+            "Vous n'avez plus de cartes."
+          );
+        }
+
+        play(
+          room,
+          player,
+          msg.card,
+          msg.targetId||null,
+          msg.extra||{}
+        );
+
+        return;
+      }
+
+      /* =====================
+         LOG
+      ===================== */
+
+      if(msg.type==="log"){
+
+        const room=
+          rooms.get(ws.room);
+
+        send(
+          ws,
+          "log",
+          {
+            log:room?.log||[]
+          }
+        );
+
+        return;
+      }
+
+    }catch(error){
+
+      console.error(error);
+
+      send(
+        ws,
+        "error",
+        {
+          message:
+            error?.message||
+            "Erreur serveur."
+        }
+      );
+    }
+  });
+
+  /* =======================
+     DECONNEXION
+  ======================= */
+
+  ws.on("close",()=>{
+
+    /*
+     * On ne supprime pas le joueur.
+     * Cela évite de casser le salon
+     * lors d'un simple rechargement.
+     */
+
+    const room=
+      rooms.get(ws.room);
+
+    if(!room){
       return;
     }
 
-    return showPileChoice(
-      me,
-      "Choisis la carte de points à doubler.",
-      false
+    const player=
+      room.players.find(
+        p=>p.id===ws.pid
+      );
+
+    if(player){
+
+      /*
+       * On conserve ses données,
+       * mais on retire l'ancienne
+       * connexion.
+       */
+      player.ws=null;
+    }
+
+    broadcast(room);
+  });
+});
+
+/* =========================
+   SERVEUR
+========================= */
+
+server.listen(
+  PORT,
+  ()=>{
+    console.log(
+      `Atoumoulin listening on http://localhost:${PORT}`
     );
   }
-
-  /*
-   * Carte simple : envoi immédiat.
-   */
-  submitPending({});
-}
-
-function showTargets(card,players,mode="target"){
-  if(!players.length){
-    toast("Aucune cible disponible.");
-    return;
-  }
-
-  showOptions(
-    `Carte ${card}`,
-    "Choisis un adversaire.",
-    players.map(p=>({
-      label:
-        `${p.name} — ${p.points} points • ${p.handCount} cartes`,
-
-      action:()=>{
-        pendingAction.targetId=p.id;
-
-        /*
-         * Carte 13 :
-         * après avoir choisi le joueur,
-         * on choisit sa carte de points.
-         */
-        if(Number(card)===13){
-
-          const t=state.players.find(
-            x=>x.id===p.id
-          );
-
-          if(!t?.pile?.length){
-            toast(
-              "Cet adversaire n'a aucune carte de points."
-            );
-            return;
-          }
-
-          return showPileChoice(
-            t,
-            "Choisis la carte de points à voler.",
-            true
-          );
-        }
-
-        submitPending(
-          mode==="swap"
-            ? {choice:"swap"}
-            : {}
-        );
-      }
-    }))
-  );
-}
-
-function showPileChoice(player,text,forSteal){
-  const pile=player.pile||[];
-
-  if(!pile.length){
-    toast("Aucune carte de points disponible.");
-    return;
-  }
-
-  showOptions(
-    "Choix de carte",
-    text,
-    pile.map((item,i)=>({
-      label:
-        `${i+1}. ${item.card} — ${item.value} points`,
-
-      action:()=>{
-        pendingAction.extra.index=i;
-        submitPending({});
-      }
-    }))
-  );
-}
-
-function showOptions(title,text,options){
-  $("choiceTitle").textContent=title;
-  $("choiceText").textContent=text;
-
-  $("choiceOptions").innerHTML=
-    options.map((o,i)=>`
-      <button
-        type="button"
-        class="choiceBtn"
-        onclick="choicePick(${i})"
-      >
-        ${escapeHtml(o.label)}
-      </button>
-    `).join("");
-
-  window._choiceOptions=options;
-
-  $("choiceModal").classList.remove("hidden");
-}
-
-function choicePick(i){
-  const o=window._choiceOptions?.[i];
-
-  if(o?.action){
-    o.action();
-  }
-}
-
-function closeChoice(){
-  $("choiceModal").classList.add("hidden");
-
-  window._choiceOptions=null;
-  pendingAction=null;
-}
-
-function submitPending(extra){
-  if(!pendingAction){
-    return;
-  }
-
-  pendingAction.extra={
-    ...pendingAction.extra,
-    ...extra
-  };
-
-  const payload={
-    type:"play",
-    card:pendingAction.card,
-    targetId:pendingAction.targetId,
-    extra:pendingAction.extra
-  };
-
-  closeChoice();
-
-  send(payload);
-}
-
-function isHost(){
-  return state?.players?.[0]?.id===getPid();
-}
-
-function getPid(){
-  return ws?.pid||"";
-}
-
-function art(c){
-  return `
-    <img
-      class="cardart"
-      src="/cards/${encodeURIComponent(c)}.svg"
-      alt="Carte ${escapeHtml(c)}"
-    >
-  `;
-}
-
-function toast(t){
-  const x=$("toast");
-
-  if(!x) return;
-
-  x.textContent=t;
-  x.style.opacity=1;
-
-  clearTimeout(window._toastTimer);
-
-  window._toastTimer=setTimeout(()=>{
-    x.style.opacity=0;
-  },2200);
-}
-
-function escapeHtml(s){
-  return String(s).replace(
-    /[&<>"']/g,
-    m=>({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      "\"":"&quot;",
-      "'":"&#39;"
-    }[m])
-  );
-}
+);
 ```
