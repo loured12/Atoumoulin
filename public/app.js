@@ -9,6 +9,18 @@ function connect(){ ws=new WebSocket((location.protocol==="https:"?"wss://":"ws:
 }
 function send(o){if(ws?.readyState===1)ws.send(JSON.stringify(o))}
 function createRoom(){connect(); const wait=setInterval(()=>{if(ws.readyState===1){clearInterval(wait);send({type:"create",name:$("createName").value||"Joueur",maxPlayers:+$("maxPlayers").value,rounds:+$("rounds").value})}},30)}
+function createSolo(){
+  connect();
+  const wait=setInterval(()=>{
+    if(ws.readyState===1){
+      clearInterval(wait);
+      send({
+        type:"createSolo",
+        name:$("createName").value||"Joueur"
+      });
+    }
+  },30);
+}
 function joinRoom(){connect(); const wait=setInterval(()=>{if(ws.readyState===1){clearInterval(wait);send({type:"join",name:$("joinName").value||"Joueur",code:$("joinCode").value.trim()})}},30)}
 function startGame(){send({type:"start"})}
 function forced(hand){const c={};hand.forEach(x=>c[x]=(c[x]||0)+1);if(c["7"])return ["7"];for(const k in c)if(c[k]>=2)return [k];return []}
