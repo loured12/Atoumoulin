@@ -90,6 +90,7 @@ function startRound(room) {
   room.started=true;
   log(room, `Manche ${room.round} commencée. Objectif : ${room.target} points.`);
   broadcast(room);
+  scheduleBotTurn(room);
 }
 function nextTurn(room) {
   const n=room.players.length;
