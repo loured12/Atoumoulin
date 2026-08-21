@@ -193,6 +193,29 @@ wss.on("connection", ws=>{
         room.players[0].ws=ws; ws.room=room.code; ws.pid=room.players[0].id; rooms.set(room.code,room);
         send(ws,"room",{code:room.code});
         broadcast(room);
+        } else if(msg.type==="createSolo"){
+  const room=newRoom((msg.name||"Joueur").slice(0,18),2,1);
+
+  room.players[0].ws=ws;
+  ws.room=room.code;
+  ws.pid=room.players[0].id;
+
+  const bot={
+    id:crypto.randomUUID(),
+    name:"Bot",
+    ws:null,
+    hand:[],
+    points:0,
+    pile:[],
+    skip:0,
+    bot:true
+  };
+
+  room.players.push(bot);
+  rooms.set(room.code,room);
+
+  send(ws,"room",{code:room.code});
+  startRound(room);
       } else if(msg.type==="join"){
         const room=rooms.get(String(msg.code||"").toUpperCase());
         if(!room) throw new Error("Salon introuvable.");
