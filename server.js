@@ -90,7 +90,6 @@ function startRound(room) {
   room.started=true;
   log(room, `Manche ${room.round} commencée. Objectif : ${room.target} points.`);
   broadcast(room);
-  scheduleBotTurn(room);
 }
 function nextTurn(room) {
   const n=room.players.length;
@@ -169,66 +168,7 @@ function applyCard(room, actor, card, targetId=null, extra=null, source="normal"
   if(n===21){ room.discard.push(21); const delta=extra?.choice==="minus"?-(extra.double?40:20):(extra?.double?40:20); actor.points+=delta; log(room,`${actor.name} applique ${delta>0?"+":""}${delta} avec ${extra?.double?"double ":""}21.`); return; }
   if(card==="J"){ room.discard.push("J"); if(extra?.choice==="swap"){ if(target){ const a=actor.points,b=target.points; actor.points=b;target.points=a; log(room,`${actor.name} échange tous ses points avec ${target.name}.`); } } else { const v=extra?.choice==="22"?22:10; actor.points+=v; log(room,`${actor.name} choisit +${v} avec le Joker.`); } return; }
 }
-function botTurn(room){
-  if(!room.started) return;
 
-  const bot=room.players[room.turn];
-  if(!bot?.bot || !bot.hand.length) return;
-
-  const forced=forcedSet(bot.hand);
-  let card;
-
-  if(forced?.length){
-    card=bot.hand.find(c=>cardKey(c)===cardKey(forced[0]));
-  }else{
-    card=bot.hand.find(c=>isPointCard(c));
-    if(card===undefined) card=bot.hand[0];
-  }
-
-  const opponents=room.players.filter(p=>p.id!==bot.id);
-  const target=opponents.length
-    ? opponents.reduce((best,p)=>p.points>best.points?p:best,opponents[0])
-    : null;
-
-  const n=Number(card);
-  let extra={};
-
-  if(n===11) extra.choice=bot.points>room.target/2?"minus":"plus";
-  if(n===21) extra.choice=bot.points>room.target/2?"minus":"plus";
-
-  if(card==="J") extra.choice=bot.points>room.target/2?"10":"22";
-
-  if(n===13 && target?.pile.length){
-    extra.index=target.pile.length-1;
-  }
-
-  if(n===15 && bot.pile.length){
-    extra.index=bot.pile.length-1;
-  }
-
-  const targetId=[1,3,9,13,17,19].includes(n)
-    ? target?.id
-    : null;
-
-  try{
-    play(room,bot,card,targetId,extra);
-    broadcast(room);
-  }catch(e){
-    log(room,`Le bot n'a pas pu jouer : ${e.message}`);
-    nextTurn(room);
-    broadcast(room);
-  }
-}
-
-function scheduleBotTurn(room){
-  if(!room.started) return;
-
-  const p=room.players[room.turn];
-
-  if(p?.bot){
-    setTimeout(()=>botTurn(room),700);
-  }
-}
 function play(room,p,card,targetId,extra){
   const forced=forcedSet(p);
   if(forced && !(forced.length===2 && cardKey(card)===forced[0]) && !(forced.length===1 && cardKey(card)===forced[0])) throw new Error("Une carte obligatoire doit être jouée en priorité.");
@@ -242,7 +182,6 @@ function play(room,p,card,targetId,extra){
   if(card==="J" && isDouble){ p.skip += 2; }
   if(finishIfNeeded(room)) return;
   nextTurn(room);
-  scheduleBotTurn(room);
 }
 
 wss.on("connection", ws=>{
@@ -252,31 +191,8 @@ wss.on("connection", ws=>{
       if(msg.type==="create"){
         const room=newRoom((msg.name||"Joueur").slice(0,18),Number(msg.maxPlayers)||2,Number(msg.rounds)||1);
         room.players[0].ws=ws; ws.room=room.code; ws.pid=room.players[0].id; rooms.set(room.code,room);
-        send(ws,"room",{code:room.code,pid:ws.pid});
+        send(ws,"room",{code:room.code});
         broadcast(room);
-        } else if(msg.type==="createSolo"){
-  const room=newRoom((msg.name||"Joueur").slice(0,18),2,1);
-
-  room.players[0].ws=ws;
-  ws.room=room.code;
-  ws.pid=room.players[0].id;
-
-  const bot={
-    id:crypto.randomUUID(),
-    name:"Bot",
-    ws:null,
-    hand:[],
-    points:0,
-    pile:[],
-    skip:0,
-    bot:true
-  };
-
-  room.players.push(bot);
-  rooms.set(room.code,room);
-
-  send(ws,"room",{code:room.code,pid:ws.pid});
-  startRound(room);
       } else if(msg.type==="join"){
         const room=rooms.get(String(msg.code||"").toUpperCase());
         if(!room) throw new Error("Salon introuvable.");
