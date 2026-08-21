@@ -1270,6 +1270,7 @@ function scheduleBot(room) {
 ========================================================= */
 
 wss.on("connection", ws => {
+  console.log("Nouveau joueur connecté");
   ws.on("message", raw => {
     try {
       const msg =
