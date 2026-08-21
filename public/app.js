@@ -37,14 +37,9 @@ function connect() {
     return;
   }
 
-  const protocol =
-    location.protocol === "https:"
-      ? "wss://"
-      : "ws://";
-
   ws = new WebSocket(
-    protocol + location.host
-  );
+  "wss://" + location.host
+);
 
   ws.onopen = () => {
     reconnecting = false;
