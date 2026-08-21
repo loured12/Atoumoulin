@@ -48,6 +48,7 @@ function render(){
 let pendingAction=null;
 
 function chooseCard(card){
+ toast("Clic détecté : "+card);
  if(!state.started)return;
  const me=state.players.find(p=>p.id===getPid()); if(!me)return;
  const f=forced(state.hand||[]);
