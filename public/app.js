@@ -133,6 +133,6 @@ function submitPending(extra){
 }
 function isHost(){return state?.players?.[0]?.id===getPid()}
 function getPid(){return ws?.pid||""}
-function art(c){return `<img class="cardart" src="/cards/${encodeURIComponent(c)}.svg" alt="Carte ${c}">`}
+function art(c){return `<div style="background:white;color:black;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:bold;border-radius:15px">${c}</div>`}
 function toast(t){const x=$("toast");x.textContent=t;x.style.opacity=1;setTimeout(()=>x.style.opacity=0,2200)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
