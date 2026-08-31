@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atoumoulin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h1>Atoumoulin</h1>
+
+<button onclick="afficherRegles()">
+  📖 Règles du jeu
+</button>
+
+<br><br>
+
+<label for="nombreJoueurs">Nombre de joueurs :</label>
+<select id="nombreJoueurs">
+  <option value="2">2 joueurs</option>
+  <option value="3">3 joueurs</option>
+  <option value="4">4 joueurs</option>
+  <option value="5">5 joueurs</option>
+  <option value="6">6 joueurs</option>
+  <option value="7">7 joueurs</option>
+  <option value="8">8 joueurs</option>
+</select>
+
+<br>
+
+<label for="nombreBots">Nombre de bots :</label>
+<select id="nombreBots">
+</select>
+
+<br>
+
+<label>Mode de jeu :</label>
+<select id="modeJeu">
+    <option value="1">1 partie</option>
+    <option value="2">Premier à 2 victoires</option>
+    <option value="3">Premier à 3 victoires</option>
+    <option value="5">Premier à 5 victoires</option>
+    <option value="10">Premier à 10 victoires</option>
+</select>
+
+<br>
+<hr>
+
+<button id="nouvellePartie">Nouvelle partie</button>
+
+<div id="jeu"></div>
+
+<script src="script.js"></script>
+
+<div id="fenetreRegles" class="fenetre-regles" onclick="fermerRegles(event)">
+    <div class="contenu-regles" onclick="event.stopPropagation()">
+        <button onclick="fermerRegles()">✕</button>
+        <h2>📖 Règles du jeu</h2>
+
+        <h3>Présentation</h3>
+        <p>L'Atoumoulin est un jeu de cartes original, dans lequel il y a énormément de retournements de situation.</p>
+        <p>Un jeu à la fois stratégique, fun et imprévisible. Vous n'êtes jamais assuré d'avoir gagné jusqu'à la dernière carte !</p>
+        <p>Le jeu est composé de 22 cartes uniques, mais plusieurs jeux de 22 cartes sont nécessaires pour jouer. Le nombre de jeux dépend du nombre de joueurs.</p>
+
+        <h3>But du jeu</h3>
+        <p>Atteindre le score requis. Il varie en fonction du nombre de joueurs.</p>
+        <p>Si personne n'atteint exactement le score requis, le joueur qui en est le plus proche remporte la manche.</p>
+
+        <table>
+            <tr><th>Joueurs</th><th>Jeux de cartes</th><th>Total de cartes</th><th>Score à atteindre</th></tr>
+            <tr><td>2 ou 3</td><td>2 jeux</td><td>44</td><td>120 points</td></tr>
+            <tr><td>4</td><td>3 jeux</td><td>66</td><td>160 points</td></tr>
+            <tr><td>5</td><td>4 jeux</td><td>88</td><td>200 points</td></tr>
+            <tr><td>6</td><td>5 jeux</td><td>110</td><td>220 points</td></tr>
+            <tr><td>7</td><td>6 jeux</td><td>132</td><td>240 points</td></tr>
+            <tr><td>8</td><td>7 jeux</td><td>154</td><td>260 points</td></tr>
+        </table>
+
+        <h3>Déroulement du jeu</h3>
+        <p>Chaque joueur démarre avec 4 cartes.</p>
+        <p>Certaines cartes marquent des points, tandis que d'autres possèdent des pouvoirs.</p>
+        <p>Chaque joueur joue à tour de rôle jusqu'à atteindre le score nécessaire ou l'épuisement total des cartes, y compris les cartes en main.</p>
+
+        <h3>Règles spéciales</h3>
+        <h4>Priorité du 7</h4>
+        <p>Le 7 est toujours prioritaire dès lors qu'il est dans votre main. Il doit être joué.</p>
+        <h4>Les doubles</h4>
+        <p>Les doubles, c'est-à-dire deux cartes identiques, doivent également être joués immédiatement.</p>
+        <p>L'ordre de priorité est : 7 → Double → Carte unique</p>
+        <p>Les deux cartes qui composent un double restent liées jusqu'à la fin de la partie. Elles deviennent en quelque sorte une seule carte.</p>
+        <h4>Nombre de cartes en main</h4>
+        <p>On commence avec 4 cartes en main, mais ce nombre peut varier au cours du jeu. Vous pouvez vous retrouver avec plus de cartes en main, comme avec une main vide.</p>
+        <h4>Aucun joueur n'est éliminé</h4>
+        <p>Aucun joueur n'est éliminé, même s'il n'a plus de cartes en main. Un joueur peut par exemple échanger sa main stratégiquement avec un joueur qui n'a plus de cartes en main grâce au 9.</p>
+        <h4>Plus de deux cartes identiques</h4>
+        <p>Si vous jouez avec 3 jeux ou plus, il est possible d'avoir plus de deux cartes identiques en main. Dans ce cas, un seul double est joué. Les autres cartes identiques restent dans votre main pour le tour suivant.</p>
+        <h4>Pouvoir impossible à appliquer</h4>
+        <p>Il est possible qu'une carte soit jouée alors que son pouvoir ne peut pas s'appliquer. Dans ce cas, la carte va simplement dans la défausse.</p>
+        <h4>Les scores</h4>
+        <p>Le score peut être négatif. Il est également possible de dépasser le score requis.</p>
+
+        <h3>Les cartes</h3>
+        <p class="intro-cartes">Tous les nombres pairs de <strong>2</strong> à <strong>20</strong> marquent leur nombre de points respectifs.</p>
+        <p><strong>1 :</strong> Vole la dernière carte marquant des points d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 1 :</strong> Vole les deux dernières cartes marquant des points d'un adversaire.</p>
+        <p><strong>3 :</strong> -20 points à un adversaire.</p>
+        <p class="double-carte"><strong>Double 3 :</strong> -40 points à un adversaire.</p>
+        <p><strong>5 :</strong> 0 point, pioche 2 cartes.</p>
+        <p class="double-carte"><strong>Double 5 :</strong> 0 point, pioche 4 cartes.</p>
+        <p><strong>7 :</strong> 20 points, est joué instantanément. Pas de pioche.</p>
+        <p class="double-carte"><strong>Double 7 :</strong> 40 points. Pas de pioche.</p>
+        <p><strong>9 :</strong> Échange sa main avec celle d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 9 :</strong> Voit toutes les mains et échange avec le joueur de son choix.</p>
+        <p><strong>11 :</strong> +10 points pour soi ou -10 points pour soi.</p>
+        <p class="double-carte"><strong>Double 11 :</strong> +20 points pour soi ou -20 points pour soi.</p>
+        <p><strong>13 :</strong> Vole une carte marquant des points à un adversaire.</p>
+        <p class="double-carte"><strong>Double 13 :</strong> Vole deux cartes marquant des points à un adversaire.</p>
+        <p><strong>15 :</strong> Double les points d'une carte marquant des points. Les deux cartes seront liées.</p>
+        <p class="double-carte"><strong>Double 15 :</strong> Triple les points d'une carte marquant des points. Les deux cartes seront liées.</p>
+        <p><strong>17 :</strong> Vole une carte au hasard dans la main d'un adversaire et la joue instantanément. L'adversaire ne pioche pas.</p>
+        <p class="double-carte"><strong>Double 17 :</strong> Vole deux cartes au hasard dans la main d'un adversaire et les joue instantanément. L'adversaire ne pioche pas.</p>
+        <p><strong>19 :</strong> Échange votre dernière carte posée avec la dernière carte posée d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 19 :</strong> Échange vos deux dernières cartes posées avec les deux dernières cartes posées d'un adversaire. L'échange est équivalent en nombre de cartes.</p>
+        <p><strong>21 :</strong> +20 points pour soi ou -20 points pour un adversaire.</p>
+        <p class="double-carte"><strong>Double 21 :</strong> +40 points pour soi ou -40 points pour un adversaire.</p>
+        <p><strong>Joker :</strong> 10 points, 22 points ou échange les scores avec un adversaire.</p>
+        <p><strong>Double Joker :</strong> Passe deux tours.</p>
+    </div>
+</div>
+
+<div id="fenetreRolesCartes" class="fenetre-regles" onclick="fermerRolesCartes(event)">
+    <div class="contenu-regles" onclick="event.stopPropagation()">
+        <button onclick="fermerRolesCartes()">✕</button>
+        <h2>✨ Rôle des cartes</h2>
+        <p class="intro-cartes">Tous les nombres pairs de <strong>2</strong> à <strong>20</strong> marquent leur nombre de points respectifs.</p>
+        <p><strong>1 :</strong> Vole la dernière carte marquant des points d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 1 :</strong> Vole les deux dernières cartes marquant des points d'un adversaire.</p>
+        <p><strong>3 :</strong> -20 points à un adversaire.</p>
+        <p class="double-carte"><strong>Double 3 :</strong> -40 points à un adversaire.</p>
+        <p><strong>5 :</strong> 0 point, pioche 2 cartes.</p>
+        <p class="double-carte"><strong>Double 5 :</strong> 0 point, pioche 4 cartes.</p>
+        <p><strong>7 :</strong> 20 points, est joué instantanément. Pas de pioche.</p>
+        <p class="double-carte"><strong>Double 7 :</strong> 40 points. Pas de pioche.</p>
+        <p><strong>9 :</strong> Échange sa main avec celle d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 9 :</strong> Voit toutes les mains et échange avec le joueur de son choix.</p>
+        <p><strong>11 :</strong> +10 points pour soi ou -10 points pour soi.</p>
+        <p class="double-carte"><strong>Double 11 :</strong> +20 points pour soi ou -20 points pour soi.</p>
+        <p><strong>13 :</strong> Vole une carte marquant des points à un adversaire.</p>
+        <p class="double-carte"><strong>Double 13 :</strong> Vole deux cartes marquant des points à un adversaire.</p>
+        <p><strong>15 :</strong> Double les points d'une carte marquant des points. Les deux cartes seront liées.</p>
+        <p class="double-carte"><strong>Double 15 :</strong> Triple les points d'une carte marquant des points. Les deux cartes seront liées.</p>
+        <p><strong>17 :</strong> Vole une carte au hasard dans la main d'un adversaire et la joue instantanément. L'adversaire ne pioche pas.</p>
+        <p class="double-carte"><strong>Double 17 :</strong> Vole deux cartes au hasard dans la main d'un adversaire et les joue instantanément. L'adversaire ne pioche pas.</p>
+        <p><strong>19 :</strong> Échange votre dernière carte posée avec la dernière carte posée d'un adversaire.</p>
+        <p class="double-carte"><strong>Double 19 :</strong> Échange vos deux dernières cartes posées avec les deux dernières cartes posées d'un adversaire. L'échange est équivalent en nombre de cartes.</p>
+        <p><strong>21 :</strong> +20 points pour soi ou -20 points pour un adversaire.</p>
+        <p class="double-carte"><strong>Double 21 :</strong> +40 points pour soi ou -40 points pour un adversaire.</p>
+        <p><strong>Joker :</strong> 10 points, 22 points ou échange les scores avec un adversaire.</p>
+        <p class="double-carte"><strong>Double Joker :</strong> Passe deux tours.</p>
+    </div>
+</div>
+
+</body>
+</html>
