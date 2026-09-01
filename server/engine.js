@@ -38,6 +38,15 @@ export class AtoumoulinEngine {
 
   stateFor(viewIndex, selection=null) {
     const s = this.sandbox;
+
+    if (selection === null && typeof s.__atoumoulinGetSelection === "function") {
+        selection = s.__atoumoulinGetSelection();
+    }
+
+    const raw = typeof s.__atoumoulinGetState === "function"
+        ? s.__atoumoulinGetState()
+        : null;
+    const s = this.sandbox;
     const raw = typeof s.__atoumoulinGetState === "function"
       ? s.__atoumoulinGetState()
       : null;
