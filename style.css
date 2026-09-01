@@ -63,6 +63,7 @@ button:active {
 .selectionnee {
   transform: translateY(-12px) scale(1.05);
   transition: 0.2s;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.3);
 }
 
 .fenetre-regles {
