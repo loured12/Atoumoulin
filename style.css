@@ -46,6 +46,7 @@ button:active {
   height: 82px;
   margin: 3px;
   background: white;
+  color: #222;
   border: 2px solid #333;
   border-radius: 8px;
   font-size: 28px;
