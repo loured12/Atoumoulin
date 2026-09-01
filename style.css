@@ -8,8 +8,10 @@ body {
 }
 
 h1 {
-  font-size: 34px;
-  margin: 10px 0;
+  font-size: 38px;
+  margin: 12px 0 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
 h2, h3 {
