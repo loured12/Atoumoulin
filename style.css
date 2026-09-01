@@ -125,3 +125,9 @@ hr {
     width: 35%;
     margin: 20px auto;
 }
+
+button.carte {
+  background: white;
+  color: black;
+  border: 2px solid #333;
+}
