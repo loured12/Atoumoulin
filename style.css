@@ -134,3 +134,12 @@ button.carte {
   color: black;
   border: 2px solid #333;
 }
+
+select {
+  padding: 9px 12px;
+  font-size: 16px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
