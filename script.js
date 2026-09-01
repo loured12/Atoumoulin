@@ -5587,7 +5587,7 @@ globalThis.__atoumoulinApplyState = function(state){
     globalThis.__atoumoulinRemote = true;
     joueurs = (state.players || []).map(p => ({
         nom: p.name,
-        main: Array.isArray(p.main) ? p.main.slice() : Array(Number(p.cardCount)||0).fill(null),
+        main: Array.isArray(p.main) ? p.main.slice() : [],
         score: Number(p.score)||0,
         bot: !!p.bot
     }));
