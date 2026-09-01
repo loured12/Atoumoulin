@@ -146,6 +146,7 @@ wss.on("connection",ws=>{
 
       if(m.type==="game:select"){
         if(!room.started)throw Error("La partie n'a pas commencé.");
+        console.log("SELECTION RECUE :", m.selection, "joueur :", player.index);
         if(player.index!==room.engine.currentIndex())throw Error("Ce n'est pas votre tour.");
         const idx=Number(m.selection);
         if(!Number.isInteger(idx) || idx < 0)throw Error("Sélection invalide.");
