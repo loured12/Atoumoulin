@@ -1292,8 +1292,8 @@ let historiqueInverse = historique
     .join("<br>");
 
 zoneJeu.innerHTML +=
-`
 
+`
 <button onclick="afficherRolesCartes()">
 ✨ Rôle des cartes
 </button>
