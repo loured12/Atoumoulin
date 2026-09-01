@@ -35,7 +35,16 @@ function publicState(r, p){
 }
 function sendState(r){
   const seq=++r.seq;
-  for(const p of r.players) if(p.ws) send(p.ws,{type:"game:state",seq,state:publicState(r,p)});
+  for(const p of r.players) {
+    if(p.ws) {
+      send(p.ws,{
+        type:"game:state",
+        seq,
+        playerIndex:p.index,
+        state:publicState(r,p)
+      });
+    }
+  }
 }
 function lobby(r){broadcast(r,{type:"lobby:update",room:view(r)});}
 
