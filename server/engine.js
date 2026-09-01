@@ -139,9 +139,7 @@ export class AtoumoulinEngine {
         score: p.score,
         bot: !!p.bot,
         cardCount: p.main.length,
-        main: own || reveal
-        ? p.main.slice()
-        : Array(p.main.length).fill(null)
+        main: own || reveal ? p.main.slice() : Array(p.cardCount).fill(null)
       };
     });
 
