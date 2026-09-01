@@ -166,3 +166,12 @@ button.carte {
   margin-bottom: 12px;
   font-size: 24px;
 }
+
+#multiBox button {
+  background: #4b6478;
+  color: white;
+}
+
+#multiBox button:hover {
+  background: #394f60;
+}
