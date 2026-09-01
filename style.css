@@ -177,3 +177,9 @@ button.carte {
 #multiBox button:hover {
   background: #e6ebef;
 }
+
+#nouvellePartie {
+  font-size: 17px;
+  padding: 10px 20px;
+  font-weight: bold;
+}
