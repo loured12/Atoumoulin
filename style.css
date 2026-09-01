@@ -182,11 +182,11 @@ button.carte {
   font-size: 17px;
   padding: 10px 20px;
   font-weight: bold;
-  background: #dcebdd;
-  color: #24452a;
-  border: 1px solid #a9c2ac;
+  background: #4f8f5b;
+  color: white;
+  border: 1px solid #3f7549;
 }
 
 #nouvellePartie:hover {
-  background: #c9dfcc;
+  background: #3f7549;
 }
