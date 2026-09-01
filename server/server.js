@@ -157,8 +157,13 @@ wss.on("connection",ws=>{
           room.engine.selectCard(idx);
           player.selection = room.engine.stateFor(player.index).selection;
         }
-        return send(ws,{type:"game:state",seq:room.seq,state:publicState(room,player)});
-      }
+        room.seq++;
+        return send(ws,{
+        type:"game:state",
+        seq:room.seq,
+        state:publicState(room,player)
+        });
+        }
 
       if(m.type==="game:action"){
         if(!room.started)throw Error("La partie n'a pas commencé.");
