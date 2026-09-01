@@ -2,63 +2,147 @@ import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
 
-const gameSource = fs.readFileSync(path.join(process.cwd(), "..", "script.js"), "utf8");
+const gameSource = fs.readFileSync(
+  path.join(process.cwd(), "..", "script.js"),
+  "utf8"
+);
 
 function element(id) {
   return {
-    id, value: id === "nombreJoueurs" ? "2" : id === "nombreBots" ? "0" : id === "modeJeu" ? "1" : "",
-    innerHTML: "", style: {display:""}, children: [], classList: {add(){}, remove(){}, toggle(){}},
-    appendChild(x){this.children.push(x)}, removeChild(){}, addEventListener(){}, querySelector(){return null}, querySelectorAll(){return []},
-    onclick: null, textContent: ""
+    id,
+    value:
+      id === "nombreJoueurs"
+        ? "2"
+        : id === "nombreBots"
+        ? "0"
+        : id === "modeJeu"
+        ? "1"
+        : "",
+    innerHTML: "",
+    style: { display: "" },
+    children: [],
+    classList: {
+      add() {},
+      remove() {},
+      toggle() {}
+    },
+    appendChild(x) {
+      this.children.push(x);
+    },
+    removeChild() {},
+    addEventListener() {},
+    querySelector() {
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+    onclick: null,
+    textContent: ""
   };
 }
 
 function makeSandbox() {
-  const els = new Map(["nouvellePartie","jeu","nombreJoueurs","nombreBots","modeJeu","fenetreRegles","fenetreRolesCartes"].map(id=>[id,element(id)]));
+  const els = new Map(
+    [
+      "nouvellePartie",
+      "jeu",
+      "nombreJoueurs",
+      "nombreBots",
+      "modeJeu",
+      "fenetreRegles",
+      "fenetreRolesCartes"
+    ].map(id => [id, element(id)])
+  );
+
   const document = {
-    getElementById(id){ if(!els.has(id)) els.set(id, element(id)); return els.get(id); },
-    createElement(){ return element("created"); }
+    getElementById(id) {
+      if (!els.has(id)) els.set(id, element(id));
+      return els.get(id);
+    },
+    createElement() {
+      return element("created");
+    }
   };
+
   return {
-    console, document, globalThis: null, window: null,
-    setTimeout, clearTimeout, Math, JSON, Array, Object, Number, String, Boolean,
-    Date, RegExp, parseInt, parseFloat, isNaN
+    console,
+    document,
+    globalThis: null,
+    window: null,
+    setTimeout,
+    clearTimeout,
+    Math,
+    JSON,
+    Array,
+    Object,
+    Number,
+    String,
+    Boolean,
+    Date,
+    RegExp,
+    parseInt,
+    parseFloat,
+    isNaN
   };
 }
 
 export class AtoumoulinEngine {
   constructor(names) {
     this.sandbox = makeSandbox();
+
     this.sandbox.globalThis = this.sandbox;
     this.sandbox.window = this.sandbox;
+
     vm.createContext(this.sandbox);
-    vm.runInContext(gameSource, this.sandbox, {filename:"script.js"});
-    this.sandbox.__atoumoulinInitMultiplayer(names, names.map(()=>false), 1);
+
+    vm.runInContext(gameSource, this.sandbox, {
+      filename: "script.js"
+    });
+
+    this.sandbox.__atoumoulinInitMultiplayer(
+      names,
+      names.map(() => false),
+      1
+    );
   }
 
-  stateFor(viewIndex, selection=null) {
+  stateFor(viewIndex, selection = null) {
     const s = this.sandbox;
 
-    if (selection === null && typeof s.__atoumoulinGetSelection === "function") {
-        selection = s.__atoumoulinGetSelection();
+    if (
+      selection === null &&
+      typeof s.__atoumoulinGetSelection === "function"
+    ) {
+      selection = s.__atoumoulinGetSelection();
     }
 
-    const raw = typeof s.__atoumoulinGetState === "function"
+    const raw =
+      typeof s.__atoumoulinGetState === "function"
         ? s.__atoumoulinGetState()
         : null;
-    const s = this.sandbox;
-    const raw = typeof s.__atoumoulinGetState === "function"
-      ? s.__atoumoulinGetState()
-      : null;
-    if (!raw) throw new Error("Le moteur Atoumoulin n'a pas été initialisé.");
 
-    const players = raw.joueurs.map((p,i) => {
+    if (!raw) {
+      throw new Error(
+        "Le moteur Atoumoulin n'a pas été initialisé."
+      );
+    }
+
+    const players = raw.joueurs.map((p, i) => {
       const own = i === viewIndex;
-      const reveal = own && raw.actionEnCours === "double9";
+      const reveal =
+        own && raw.actionEnCours === "double9";
+
       return {
-        id: i, name: p.nom, score: p.score, bot: !!p.bot,
+        id: i,
+        name: p.nom,
+        score: p.score,
+        bot: !!p.bot,
         cardCount: p.main.length,
-        main: own || reveal ? p.main.slice() : Array(p.main.length).fill(null)
+        main:
+          own || reveal
+            ? p.main.slice()
+            : Array(p.main.length).fill(null)
       };
     });
 
@@ -73,8 +157,14 @@ export class AtoumoulinEngine {
       target: raw.cibleChoisie,
       selection,
       toursJoker: raw.toursJoker,
-      winner: raw.gagnantPartie == null ? null : raw.joueurs[raw.gagnantPartie]?.nom ?? null,
-      roundWinner: raw.gagnantManche == null ? null : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+      winner:
+        raw.gagnantPartie == null
+          ? null
+          : raw.joueurs[raw.gagnantPartie]?.nom ?? null,
+      roundWinner:
+        raw.gagnantManche == null
+          ? null
+          : raw.joueurs[raw.gagnantManche]?.nom ?? null,
       roundEnded: !!raw.mancheTerminee,
       player17: raw.joueur17,
       card17Pending: raw.carte17EnAttente,
@@ -86,21 +176,38 @@ export class AtoumoulinEngine {
   }
 
   currentIndex() {
-    return Number(this.sandbox.__atoumoulinGetState().joueurActuel);
+    return Number(
+      this.sandbox.__atoumoulinGetState().joueurActuel
+    );
   }
 
-  setBot(index, value=true) {
+  setBot(index, value = true) {
     this.sandbox.__atoumoulinSetBot(index, value);
   }
 
   runBotTurn(index) {
     const s = this.sandbox;
+
     const state = s.__atoumoulinGetState();
-    if (!state || !state.joueurs[index] || !state.joueurs[index].bot) return false;
-    if (Number(state.joueurActuel) !== Number(index)) return false;
+
+    if (
+      !state ||
+      !state.joueurs[index] ||
+      !state.joueurs[index].bot
+    ) {
+      return false;
+    }
+
+    if (
+      Number(state.joueurActuel) !== Number(index)
+    ) {
+      return false;
+    }
 
     const previousRemote = !!s.__atoumoulinRemote;
+
     s.__atoumoulinRemote = false;
+
     try {
       if (state.actionEnCours === null) {
         s.jouerTourBot();
@@ -110,34 +217,69 @@ export class AtoumoulinEngine {
     } finally {
       s.__atoumoulinRemote = previousRemote;
     }
+
     return true;
   }
 
   setSelection(value) {
     this.sandbox.__atoumoulinSetSelection(value);
   }
+
   selectCard(index) {
     this.sandbox.__atoumoulinSelectCard(index);
   }
+
   selectDouble13(index) {
     this.sandbox.__atoumoulinSelectDouble13(index);
   }
 
-  apply(fn, args=[]) {
+  apply(fn, args = []) {
     const allowed = new Set([
-      "jouerCarte","effetCarte11","effetCarte21","effetDouble11","effetDouble21","effetJoker",
-      "choisirAdversaireVol1","choisirAdversaireCarte3","choisirAdversaireCarte9",
-      "choisirAdversaireCarte13","volerCarte13","doublerCarte15","choisirAdversaireCarte17",
-      "continuerCarte17","choisirAdversaireCarte19","cibleCarte21","echangeJoker",
-      "choisirAdversaireDouble1","choisirAdversaireDouble3","choisirAdversaireDouble9",
-      "choisirAdversaireDouble13","volerCartesDouble13","terminerDouble13","triplerCarte15",
-      "terminerDouble15","choisirAdversaireDouble17","choisirCarteDouble17","continuerDouble17",
-      "choisirAdversaireDouble19","effectuerEchangeDouble19","cibleDouble21",
-      "terminer17SansCarte","preparerNouvelleManche"
+      "jouerCarte",
+      "effetCarte11",
+      "effetCarte21",
+      "effetDouble11",
+      "effetDouble21",
+      "effetJoker",
+      "choisirAdversaireVol1",
+      "choisirAdversaireCarte3",
+      "choisirAdversaireCarte9",
+      "choisirAdversaireCarte13",
+      "volerCarte13",
+      "doublerCarte15",
+      "choisirAdversaireCarte17",
+      "continuerCarte17",
+      "choisirAdversaireCarte19",
+      "cibleCarte21",
+      "echangeJoker",
+      "choisirAdversaireDouble1",
+      "choisirAdversaireDouble3",
+      "choisirAdversaireDouble9",
+      "choisirAdversaireDouble13",
+      "volerCartesDouble13",
+      "terminerDouble13",
+      "triplerCarte15",
+      "terminerDouble15",
+      "choisirAdversaireDouble17",
+      "choisirCarteDouble17",
+      "continuerDouble17",
+      "choisirAdversaireDouble19",
+      "effectuerEchangeDouble19",
+      "cibleDouble21",
+      "terminer17SansCarte",
+      "preparerNouvelleManche"
     ]);
-    if (!allowed.has(fn)) throw new Error("Action non autorisée.");
+
+    if (!allowed.has(fn)) {
+      throw new Error("Action non autorisée.");
+    }
+
     const f = this.sandbox[fn];
-    if (typeof f !== "function") throw new Error("Action introuvable.");
+
+    if (typeof f !== "function") {
+      throw new Error("Action introuvable.");
+    }
+
     f(...args);
   }
 }
