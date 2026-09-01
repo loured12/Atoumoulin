@@ -146,7 +146,7 @@ button.carte {
 }
 
 #multiBox {
-  background: #e8edf2;
+  background: #e8edf2 !important;
   border: 1px solid #b8c2cc;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
