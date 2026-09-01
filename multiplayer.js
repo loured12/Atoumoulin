@@ -4,7 +4,7 @@
     window.ATOUMOULIN_SERVER_URL ||
     params.get("server") ||
     localStorage.getItem("atoumoulin_server_url") ||
-    "wss://atoumoulin1.onrender.com";
+    "wss://atoumoulin.onrender.com";
 
   const SAVED_NAME = localStorage.getItem("atoumoulin_name") || "Joueur";
   let ws = null, myId = localStorage.getItem("atoumoulin_player_id") || null, sessionToken = localStorage.getItem("atoumoulin_player_token") || null, room = null, started = false, lastSeq = 0, reconnectTimer = null;
