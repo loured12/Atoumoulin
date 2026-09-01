@@ -151,3 +151,12 @@ button.carte {
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
+
+#multiBox input,
+#multiBox select {
+  border: 1px solid #aab4be;
+  border-radius: 6px;
+  background: white;
+  padding: 6px 8px;
+  font-size: 14px;
+}
