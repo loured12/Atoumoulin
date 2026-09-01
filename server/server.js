@@ -158,6 +158,7 @@ wss.on("connection",ws=>{
           player.selection = room.engine.stateFor(player.index).selection;
         }
         room.seq++;
+        console.log("ETAT APRES SELECTION :", JSON.stringify(publicState(room,player)));
         return send(ws,{
         type:"game:state",
         seq:room.seq,
