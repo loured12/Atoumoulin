@@ -129,32 +129,23 @@ hr {
     margin: 20px auto;
 }
 
-button.carte {
-  background: white;
-  color: black;
-  border: 2px solid #333;
-}
-
 select {
-  padding: 9px 12px;
-  font-size: 16px;
+  padding: 5px 8px;
+  font-size: 14px;
   border: 1px solid #aaa;
-  border-radius: 8px;
+  border-radius: 6px;
   background: white;
   cursor: pointer;
+  margin: 2px;
 }
 
 label {
   font-weight: bold;
-  margin-right: 6px;
+  margin-right: 3px;
 }
 
-select {
-  padding: 9px 12px;
-  font-size: 16px;
-  border: 1px solid #aaa;
-  border-radius: 8px;
+button.carte {
   background: white;
-  cursor: pointer;
-  margin: 4px;
+  color: black;
+  border: 2px solid #333;
 }
