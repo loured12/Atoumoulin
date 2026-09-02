@@ -786,6 +786,10 @@ label {
   font-weight: bold;
 }
 
+.cartes-marquees.vide {
+  height: 4px;
+}
+
 /* =========================
    MOBILE
    ========================= */
