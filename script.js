@@ -433,9 +433,6 @@ zoneJeu.innerHTML +=
 
 if(defaussePouvoirs.length === 0){
 
-    zoneJeu.innerHTML +=
-    "Vide<br>";
-
 }else{
 
     zoneJeu.innerHTML +=
