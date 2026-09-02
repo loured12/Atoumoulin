@@ -1112,7 +1112,7 @@ if(actionEnCours === "double17revelee"){
 
 zoneJeu.innerHTML +=
 `
-<h3>🃏 Cartes volées :</h3>
+<h3> Cartes volées :</h3>
 
 <button onclick="choisirCarteDouble17(0)">
 ${cartesDouble17[0]}
@@ -1143,7 +1143,7 @@ if(actionEnCours === "double17jouer"){
 
 zoneJeu.innerHTML +=
 `
-<h3>🃏 Carte choisie : ${carte17EnAttente}</h3>
+<h3> Carte choisie : ${carte17EnAttente}</h3>
 
 <button onclick="continuerDouble17()">
 Jouer cette carte
@@ -1197,7 +1197,7 @@ if(actionEnCours === "carte17revelee"){
 
 zoneJeu.innerHTML +=
 `
-<h3>🃏 Carte tirée : ${carte17EnAttente}</h3>
+<h3> Carte tirée : ${carte17EnAttente}</h3>
 
 <button onclick="continuerCarte17()">
 Continuer
