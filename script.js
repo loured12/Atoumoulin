@@ -4033,11 +4033,17 @@ if(modeJeu === 1){
 
     zoneJeu.innerHTML =
     `
+    <div class="fin-partie">
+
     <h2>⚖️ PARTIE TERMINÉE !</h2>
 
+     <div class="fin-egalite">
     <h3>Égalité : aucun joueur ne remporte la partie.</h3>
+    </div>
 
-    <h3>Scores</h3>
+    <div class="fin-scores">
+
+    <h3>📊 Scores</h3>
 
     ${[...joueurs]
     .map((joueur, index) => ({
@@ -4058,6 +4064,9 @@ if(modeJeu === 1){
         `;
 
     }).join("")}
+
+    </div>
+    </div>
     `;
 
     return true;
@@ -4101,15 +4110,19 @@ if(modeJeu === 1){
 
     zoneJeu.innerHTML =
     `
-    <h2> PARTIE TERMINÉE ! </h2>
+    <div class="fin-partie">
 
-    <h3>
-        🏆 ${couleurJoueur(indexGagnant)}
-         ${gagnant.nom} 
-        ${couleurJoueur(indexGagnant)} 🏆
+    <h2> PARTIE TERMINÉE !</h2>
+
+    <h3 class="fin-gagnant">
+    🏆 ${couleurJoueur(indexGagnant)}
+    ${gagnantPartie.nom}
+    ${couleurJoueur(indexGagnant)} 🏆
     </h3>
 
-    <h3>Scores :</h3>
+    <div class="fin-scores">
+
+    <h3>📊 Scores</h3>
 
     ${[...joueurs]
     .map((joueur, index) => ({
@@ -4142,7 +4155,10 @@ if(modeJeu === 1){
         </p>
     `;
 
-    }).join("")}
+        }).join("")}
+
+    </div>
+    </div>
     `;
 
     return true;
@@ -4161,13 +4177,20 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
 
     zoneJeu.innerHTML =
     `
-    <h2> PARTIE TERMINÉE ! </h2>
+    <div class="fin-partie">
 
-    <h3>
+    <h2> PARTIE TERMINÉE !</h2>
+
+    <h3 class="fin-gagnant">
+    🏆 ${couleurJoueur(indexGagnant)}
+    ${gagnant.nom}
+    ${couleurJoueur(indexGagnant)} 🏆
     remporte la partie !
     </h3>
 
-    <h3>Score de la dernière manche :</h3>
+    <div class="fin-scores">
+
+    <h3>📊 Score de la dernière manche</h3>
 
     ${[...joueurs]
     .map((joueur, index) => ({
@@ -4213,8 +4236,10 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
             </p>
         `;
 
-    }).join("")}
+        }).join("")}
 
+    </div>
+    </div>
     `;
 
     return true;
@@ -5435,17 +5460,21 @@ function afficherFinManche(gagnant){
 
     zoneJeu.innerHTML = `
     
-        <h2> MANCHE TERMINÉE ! </h2>
+        <div class="fin-manche">
 
-        <h2>
-            ${titreGagnant}
-        </h2>
+     <h2> MANCHE TERMINÉE !</h2>
 
-        <h3>
-            ${messageGagnant}
-        </h3>
+     <h2 class="fin-gagnant">
+     ${titreGagnant}
+     </h2>
 
-        <h3>Score de la manche :</h3>
+     <h3 class="fin-egalite">
+     ${messageGagnant}
+     </h3>
+
+     <div class="fin-scores">
+
+     <h3>📊 Score de la manche</h3>
 
         ${joueurs
         .map((joueur, index) => ({
@@ -5495,10 +5524,13 @@ function afficherFinManche(gagnant){
 
         <br>
 
-        <button onclick="preparerNouvelleManche()">
+                <button onclick="preparerNouvelleManche()">
             🎴 Distribuer les nouvelles cartes
         </button>
-    `;
+
+        </div>
+        </div>
+        `;
 }
 
 function afficherRegles(){
