@@ -9,14 +9,14 @@
 body {
   font-family: Arial, sans-serif;
   text-align: center;
-  color: #f5f2e9;
+  color: #eaf2ff;
   padding: 15px;
   margin: 0;
   min-height: 100vh;
 
   background:
-    radial-gradient(circle at 50% -10%, #31583d 0%, transparent 45%),
-    linear-gradient(135deg, #0e2118, #07130e);
+    radial-gradient(circle at 50% 0%, #173b63 0%, transparent 45%),
+    linear-gradient(135deg, #07111f, #03070d);
 
   overflow-x: hidden;
 }
@@ -31,16 +31,16 @@ h1 {
   margin: 12px 0 20px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #f4df9b;
+  color: #72c8ff;
 
   text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.5);
+    0 0 10px rgba(72, 185, 255, 0.35);
 }
 
 h2,
 h3 {
   margin: 8px 0;
-  color: #f5f2e9;
+  color: #dcecff;
 }
 
 
@@ -54,20 +54,20 @@ button {
   cursor: pointer;
   margin: 5px;
 
-  border: 1px solid #a98a42;
+  border: 1px solid #3189c7;
   border-radius: 10px;
 
   background: linear-gradient(
     145deg,
-    #3b3422,
-    #211d14
+    #16456b,
+    #0b263f
   );
 
-  color: #f5e7b5;
+  color: #e8f6ff;
 
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px rgba(255, 255, 255, 0.08);
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    0 0 6px rgba(45, 170, 255, 0.08);
 
   transition:
     transform 0.15s ease,
@@ -78,22 +78,22 @@ button {
 button:hover {
   background: linear-gradient(
     145deg,
-    #52472d,
-    #2d2719
+    #1d5b89,
+    #103653
   );
 
   transform: translateY(-2px);
 
   box-shadow:
-    0 7px 14px rgba(0, 0, 0, 0.4),
-    0 0 8px rgba(212, 174, 76, 0.12);
+    0 7px 15px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(45, 170, 255, 0.2);
 }
 
 button:active {
   transform: translateY(0);
 
   box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.35);
+    0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
 
@@ -109,20 +109,23 @@ button:active {
 
   margin: 4px;
 
-  background:
-    linear-gradient(145deg, #ffffff, #eeeeeb);
+  background: linear-gradient(
+    145deg,
+    #ffffff,
+    #e8eef5
+  );
 
-  color: #171717;
+  color: #151a20;
 
-  border: 2px solid #c6b36e;
+  border: 2px solid #82cfff;
   border-radius: 9px;
 
   font-size: 31px;
   line-height: 92px;
 
   box-shadow:
-    0 5px 10px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.4);
+    0 5px 12px rgba(0, 0, 0, 0.5),
+    0 0 7px rgba(76, 190, 255, 0.12);
 
   transition:
     transform 0.2s ease,
@@ -133,18 +136,18 @@ button:active {
   transform: translateY(-5px);
 
   box-shadow:
-    0 9px 16px rgba(0, 0, 0, 0.45),
-    0 0 8px rgba(212, 174, 76, 0.2);
+    0 9px 18px rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(76, 190, 255, 0.25);
 }
 
 .selectionnee {
   transform: translateY(-13px) scale(1.07);
 
-  border-color: #e5c765;
+  border-color: #55c7ff;
 
   box-shadow:
-    0 12px 20px rgba(0, 0, 0, 0.5),
-    0 0 12px rgba(229, 199, 101, 0.3);
+    0 12px 22px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(76, 200, 255, 0.4);
 
   transition: 0.2s ease;
 }
@@ -158,12 +161,12 @@ button.carte {
   background: linear-gradient(
     145deg,
     #ffffff,
-    #eeeeeb
+    #e8eef5
   );
 
-  color: #111;
+  color: #111820;
 
-  border: 2px solid #c6b36e;
+  border: 2px solid #82cfff;
 }
 
 
@@ -180,9 +183,9 @@ button.carte {
   width: 100%;
   height: 100%;
 
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 5, 12, 0.78);
 
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
 
   justify-content: center;
   align-items: center;
@@ -193,14 +196,13 @@ button.carte {
 }
 
 .contenu-regles {
-  background:
-    linear-gradient(
-      145deg,
-      #1d2b23,
-      #111b16
-    );
+  background: linear-gradient(
+    145deg,
+    #10243a,
+    #071521
+  );
 
-  color: #eee;
+  color: #eaf3ff;
 
   padding: 25px;
 
@@ -215,11 +217,11 @@ button.carte {
 
   position: relative;
 
-  border: 1px solid #9e833e;
+  border: 1px solid #358dca;
 
   box-shadow:
-    0 18px 45px rgba(0, 0, 0, 0.6),
-    0 0 15px rgba(212, 174, 76, 0.08);
+    0 18px 45px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(43, 173, 255, 0.12);
 
   animation: apparition 0.2s ease;
 }
@@ -238,7 +240,7 @@ button.carte {
 
 .contenu-regles h2,
 .contenu-regles h3 {
-  color: #f1d98d;
+  color: #70caff;
 }
 
 .contenu-regles button {
@@ -259,7 +261,7 @@ button.carte {
 
   background: transparent;
 
-  color: #e8dcae;
+  color: #a9dfff;
 
   font-size: 22px;
 
@@ -269,7 +271,7 @@ button.carte {
 }
 
 .contenu-regles button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(100, 190, 255, 0.1);
 
   transform: none;
 
@@ -289,7 +291,7 @@ button.carte {
 }
 
 .contenu-regles th {
-  color: #e5c765;
+  color: #6dc9ff;
 }
 
 .contenu-regles .double-carte {
@@ -310,12 +312,12 @@ select {
 
   font-size: 14px;
 
-  border: 1px solid #8e7941;
+  border: 1px solid #4389b8;
   border-radius: 8px;
 
-  background: #f8f7f1;
+  background: #edf5fc;
 
-  color: #222;
+  color: #111c27;
 
   cursor: pointer;
 
@@ -329,16 +331,16 @@ select {
 select:focus {
   outline: none;
 
-  border-color: #d6b75c;
+  border-color: #55c7ff;
 
   box-shadow:
-    0 0 0 3px rgba(214, 183, 92, 0.15);
+    0 0 0 3px rgba(60, 190, 255, 0.15);
 }
 
 label {
   font-weight: bold;
   margin-right: 3px;
-  color: #e7d99e;
+  color: #b9dcf5;
 }
 
 
@@ -347,19 +349,18 @@ label {
    ========================= */
 
 #multiBox {
-  background:
-    linear-gradient(
-      145deg,
-      rgba(32, 51, 41, 0.96),
-      rgba(18, 31, 24, 0.96)
-    ) !important;
+  background: linear-gradient(
+    145deg,
+    rgba(18, 43, 66, 0.96),
+    rgba(8, 22, 35, 0.96)
+  ) !important;
 
-  border: 1px solid #92783b;
+  border: 1px solid #317eae;
 
   border-radius: 15px;
 
   box-shadow:
-    0 7px 18px rgba(0, 0, 0, 0.35),
+    0 7px 20px rgba(0, 0, 0, 0.45),
     inset 0 1px rgba(255, 255, 255, 0.05);
 
   padding: 15px;
@@ -367,13 +368,13 @@ label {
 
 #multiBox input,
 #multiBox select {
-  border: 1px solid #8e7941;
+  border: 1px solid #4389b8;
 
   border-radius: 8px;
 
-  background: #f8f7f1;
+  background: #edf5fc;
 
-  color: #222;
+  color: #172330;
 
   padding: 7px 9px;
 
@@ -388,42 +389,40 @@ label {
 #multiBox select:focus {
   outline: none;
 
-  border-color: #d6b75c;
+  border-color: #55c7ff;
 
   box-shadow:
-    0 0 0 3px rgba(214, 183, 92, 0.15);
+    0 0 0 3px rgba(60, 190, 255, 0.15);
 }
 
 #multiBox h2 {
   margin-top: 0;
   margin-bottom: 14px;
   font-size: 24px;
-  color: #f1d98d;
+  color: #70caff;
 }
 
 #multiBox button {
-  background:
-    linear-gradient(
-      145deg,
-      #3a443d,
-      #222b26
-    );
+  background: linear-gradient(
+    145deg,
+    #173e5d,
+    #0d283f
+  );
 
-  color: #eadca8;
+  color: #cdeeff;
 
-  border: 1px solid #8e7941;
+  border: 1px solid #4389b8;
 
   box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.3);
+    0 3px 7px rgba(0, 0, 0, 0.35);
 }
 
 #multiBox button:hover {
-  background:
-    linear-gradient(
-      145deg,
-      #4a574e,
-      #2c3730
-    );
+  background: linear-gradient(
+    145deg,
+    #20577f,
+    #123651
+  );
 }
 
 
@@ -438,37 +437,35 @@ label {
 
   font-weight: bold;
 
-  background:
-    linear-gradient(
-      145deg,
-      #b5964b,
-      #80672e
-    );
+  background: linear-gradient(
+    145deg,
+    #168bd0,
+    #07578b
+  );
 
-  color: #fff8dc;
+  color: white;
 
-  border: 1px solid #d7bb6c;
+  border: 1px solid #5bc8ff;
 
   border-radius: 10px;
 
   box-shadow:
-    0 5px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px rgba(255, 255, 255, 0.2);
+    0 5px 12px rgba(0, 0, 0, 0.45),
+    0 0 10px rgba(45, 177, 255, 0.15);
 }
 
 #nouvellePartie:hover {
-  background:
-    linear-gradient(
-      145deg,
-      #c4a85b,
-      #92763a
-    );
+  background: linear-gradient(
+    145deg,
+    #24a3ed,
+    #086ca8
+  );
 
   transform: translateY(-2px);
 
   box-shadow:
-    0 8px 15px rgba(0, 0, 0, 0.4),
-    0 0 10px rgba(214, 183, 92, 0.2);
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(45, 177, 255, 0.3);
 }
 
 
