@@ -616,43 +616,45 @@ zoneJeu.innerHTML +=
 
 joueurs.forEach((adversaire,index)=>{
 
-if(index !== joueurActuel){
+    if(index !== joueurActuel){
 
-zoneJeu.innerHTML +=
-`
-<h4>${adversaire.nom}</h4>
-`;
+        zoneJeu.innerHTML +=
+        `
+        <h4>${adversaire.nom}</h4>
+        `;
 
-if(adversaire.main.length === 0){
+        if(adversaire.main.length === 0){
 
-zoneJeu.innerHTML +=
-"Aucune carte<br>";
+            zoneJeu.innerHTML +=
+            "Aucune carte<br>";
 
-}else{
+        }else{
 
-zoneJeu.innerHTML +=
-`
-${adversaire.main.map(carte =>
-`<span style="display:inline-block; padding:8px; margin:3px; border:1px solid black; border-radius:5px; background:white;">${carte}</span>`
-).join("")}
-<br>
-`;
+            zoneJeu.innerHTML +=
+            `
+            ${adversaire.main.map(carte =>
+            `
+            <span class="carte-adversaire-double9">
+                ${carte}
+            </span>
+            `
+            ).join("")}
+            <br>
+            `;
 
-}
+        }
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireDouble9(${index})">
-Échanger ma main avec ${adversaire.nom}
-</button>
-<br>
-`;
+        zoneJeu.innerHTML +=
+        `
+        <button onclick="choisirAdversaireDouble9(${index})">
+            Échanger ma main avec ${adversaire.nom}
+        </button>
+        <br>
+        `;
 
-}
+    }
 
 });
-
-}
 
 if(actionEnCours === "carte9"){
 
