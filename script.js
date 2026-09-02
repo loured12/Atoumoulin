@@ -347,7 +347,12 @@ zoneJeu.innerHTML +=
 
 // Table
 
-zoneJeu.innerHTML += "<h2>🎴 Points marqués :</h2>";
+zoneJeu.innerHTML +=
+`
+<div class="titre-section">
+    🎴 Points marqués
+</div>
+`;
 
 if(cartesTable.length === 0){
 
