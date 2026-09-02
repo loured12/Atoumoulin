@@ -434,6 +434,27 @@ label {
     0 0 12px rgba(255, 60, 60, 0.25);
 }
 
+/* =========================
+   SÉLECTION DOUBLE 13
+   ========================= */
+
+.double13-selectionnee {
+  transform: translateY(-2px);
+
+  border-color: #ffe066;
+
+  background: linear-gradient(
+    145deg,
+    #347a42,
+    #1a4825
+  );
+
+  color: #fff4b0;
+
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.45),
+    0 0 8px rgba(255, 216, 77, 0.35);
+}
 
 /* =========================
    MOBILE
