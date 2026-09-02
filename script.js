@@ -4202,6 +4202,7 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
     ${gagnant.nom}
     ${couleurJoueur(indexGagnant)} 🏆
     remporte la partie !
+    <br>
     </h3>
 
     <div class="fin-scores">
