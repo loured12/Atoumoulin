@@ -3056,7 +3056,7 @@ function volerCarte13(carteIndex){
     cartesTable.push(carte);
 
     historique +=
-    `${joueur.nom} vole la carte ${carte.valeur} à ${cible.nom} avec le 13<br>`;
+    `${joueur.nom} vole ${carte.valeur} à ${cible.nom} avec le 13<br>`;
 
     // FIN DE PARTIE
 
