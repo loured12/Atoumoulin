@@ -526,3 +526,13 @@ label {
     padding: 12px 8px;
   }
 }
+
+.info-joueur {
+  color: #d7b72f;
+  font-weight: bold;
+}
+
+.historique-carte {
+  color: #d7b72f;
+  font-weight: bold;
+}
