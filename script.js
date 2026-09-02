@@ -411,7 +411,6 @@ if(cartesTable.length === 0){
         }
 
         </div>
-        <br>
         `;
 
         }
