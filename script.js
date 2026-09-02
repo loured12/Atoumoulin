@@ -280,7 +280,13 @@ zoneJeu.innerHTML = "";
 let scoreVictoire = obtenirScoreVictoire();
 
 zoneJeu.innerHTML +=
-`<h3>🎯 Score à atteindre : ${scoreVictoire} points</h3>`;
+`
+<div class="score-cible">
+    <span class="score-cible-titre">🎯 Score à atteindre</span>
+    <strong>${scoreVictoire}</strong>
+    <span class="score-cible-points">points</span>
+</div>
+`;
 
 // Scores
 
