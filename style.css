@@ -609,6 +609,107 @@ label {
   font-weight: 900;
 }
 
+.scores-fixes {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  width: 100%;
+  box-sizing: border-box;
+
+  margin: 0 auto 12px;
+  padding: 7px;
+
+  border: 2px solid #d7b72f;
+  border-radius: 12px;
+
+  background: #183d22;
+
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.scores-titre {
+  margin-bottom: 6px;
+
+  color: #ffe066;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.scores-joueurs {
+  display: grid;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 5px;
+}
+
+.score-joueur {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  padding: 5px 6px;
+
+  border-radius: 7px;
+
+  background: rgba(0, 0, 0, 0.18);
+
+  white-space: nowrap;
+
+  font-size: 0.88em;
+}
+
+.score-joueur-nom {
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  color: #d7b72f;
+  font-weight: bold;
+}
+
+.score-joueur-points {
+  color: #ff4a4a;
+  font-weight: bold;
+}
+
+.score-joueur-cartes {
+  color: #f5f5f5;
+}
+
+.score-joueur-victoires {
+  color: #f5f5f5;
+  font-weight: bold;
+}
+
+/* Tablette / petit écran */
+
+@media (max-width: 800px) {
+
+  .scores-joueurs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+/* Téléphone */
+
+@media (max-width: 500px) {
+
+  .score-joueur {
+    gap: 3px;
+    padding: 4px;
+
+    font-size: 0.78em;
+  }
+
+}
+
 /* =========================
    MOBILE
    ========================= */
