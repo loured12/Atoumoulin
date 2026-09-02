@@ -9,14 +9,18 @@
 body {
   font-family: Arial, sans-serif;
   text-align: center;
-  background:
-    radial-gradient(circle at top, #fffdf8 0%, transparent 45%),
-    linear-gradient(135deg, #eee9df, #dcd4c6);
-  color: #222;
+  color: #f5f2e9;
   padding: 15px;
   margin: 0;
   min-height: 100vh;
+
+  background:
+    radial-gradient(circle at 50% -10%, #31583d 0%, transparent 45%),
+    linear-gradient(135deg, #0e2118, #07130e);
+
+  overflow-x: hidden;
 }
+
 
 /* =========================
    TITRES
@@ -27,14 +31,18 @@ h1 {
   margin: 12px 0 20px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #252525;
-  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.08);
+  color: #f4df9b;
+
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 h2,
 h3 {
   margin: 8px 0;
+  color: #f5f2e9;
 }
+
 
 /* =========================
    BOUTONS
@@ -45,13 +53,20 @@ button {
   font-size: 16px;
   cursor: pointer;
   margin: 5px;
-  border: none;
+
+  border: 1px solid #a98a42;
   border-radius: 10px;
-  background: linear-gradient(145deg, #3d4248, #292d31);
-  color: white;
+
+  background: linear-gradient(
+    145deg,
+    #3b3422,
+    #211d14
+  );
+
+  color: #f5e7b5;
 
   box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.18),
+    0 4px 8px rgba(0, 0, 0, 0.35),
     inset 0 1px rgba(255, 255, 255, 0.08);
 
   transition:
@@ -61,18 +76,26 @@ button {
 }
 
 button:hover {
-  background: linear-gradient(145deg, #50565d, #363b40);
+  background: linear-gradient(
+    145deg,
+    #52472d,
+    #2d2719
+  );
+
   transform: translateY(-2px);
 
   box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.22),
-    inset 0 1px rgba(255, 255, 255, 0.1);
+    0 7px 14px rgba(0, 0, 0, 0.4),
+    0 0 8px rgba(212, 174, 76, 0.12);
 }
 
 button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.35);
 }
+
 
 /* =========================
    CARTES
@@ -80,22 +103,26 @@ button:active {
 
 .carte {
   display: inline-block;
-  width: 55px;
-  height: 82px;
+
+  width: 62px;
+  height: 92px;
+
   margin: 4px;
 
-  background: linear-gradient(145deg, #ffffff, #f4f4f4);
-  color: #222;
+  background:
+    linear-gradient(145deg, #ffffff, #eeeeeb);
 
-  border: 2px solid #333;
+  color: #171717;
+
+  border: 2px solid #c6b36e;
   border-radius: 9px;
 
-  font-size: 28px;
-  line-height: 82px;
+  font-size: 31px;
+  line-height: 92px;
 
   box-shadow:
-    0 3px 7px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    0 5px 10px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.4);
 
   transition:
     transform 0.2s ease,
@@ -104,24 +131,41 @@ button:active {
 
 .carte:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.24);
+
+  box-shadow:
+    0 9px 16px rgba(0, 0, 0, 0.45),
+    0 0 8px rgba(212, 174, 76, 0.2);
 }
 
 .selectionnee {
   transform: translateY(-13px) scale(1.07);
 
+  border-color: #e5c765;
+
   box-shadow:
-    0 10px 18px rgba(0, 0, 0, 0.28),
-    0 0 0 2px rgba(50, 50, 50, 0.12);
+    0 12px 20px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(229, 199, 101, 0.3);
 
   transition: 0.2s ease;
 }
 
+
+/* =========================
+   BOUTONS-CARTES
+   ========================= */
+
 button.carte {
-  background: linear-gradient(145deg, #ffffff, #f2f2f2);
+  background: linear-gradient(
+    145deg,
+    #ffffff,
+    #eeeeeb
+  );
+
   color: #111;
-  border: 2px solid #333;
+
+  border: 2px solid #c6b36e;
 }
+
 
 /* =========================
    FENÊTRE DES RÈGLES
@@ -136,9 +180,9 @@ button.carte {
   width: 100%;
   height: 100%;
 
-  background: rgba(20, 20, 20, 0.68);
+  background: rgba(0, 0, 0, 0.72);
 
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(5px);
 
   justify-content: center;
   align-items: center;
@@ -149,7 +193,14 @@ button.carte {
 }
 
 .contenu-regles {
-  background: linear-gradient(145deg, #ffffff, #f5f5f5);
+  background:
+    linear-gradient(
+      145deg,
+      #1d2b23,
+      #111b16
+    );
+
+  color: #eee;
 
   padding: 25px;
 
@@ -164,9 +215,11 @@ button.carte {
 
   position: relative;
 
+  border: 1px solid #9e833e;
+
   box-shadow:
-    0 15px 40px rgba(0, 0, 0, 0.3),
-    0 2px 8px rgba(0, 0, 0, 0.15);
+    0 18px 45px rgba(0, 0, 0, 0.6),
+    0 0 15px rgba(212, 174, 76, 0.08);
 
   animation: apparition 0.2s ease;
 }
@@ -174,13 +227,18 @@ button.carte {
 @keyframes apparition {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.96) translateY(10px);
   }
 
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+.contenu-regles h2,
+.contenu-regles h3 {
+  color: #f1d98d;
 }
 
 .contenu-regles button {
@@ -201,7 +259,7 @@ button.carte {
 
   background: transparent;
 
-  color: #333;
+  color: #e8dcae;
 
   font-size: 22px;
 
@@ -211,8 +269,10 @@ button.carte {
 }
 
 .contenu-regles button:hover {
-  background: #e9e9e9;
+  background: rgba(255, 255, 255, 0.08);
+
   transform: none;
+
   box-shadow: none;
 }
 
@@ -228,6 +288,10 @@ button.carte {
   text-align: center;
 }
 
+.contenu-regles th {
+  color: #e5c765;
+}
+
 .contenu-regles .double-carte {
   margin-bottom: 30px;
 }
@@ -238,7 +302,7 @@ button.carte {
 
 
 /* =========================
-   SELECT / FORMULAIRES
+   SELECT
    ========================= */
 
 select {
@@ -246,93 +310,122 @@ select {
 
   font-size: 14px;
 
-  border: 1px solid #aaa;
+  border: 1px solid #8e7941;
   border-radius: 8px;
 
-  background: white;
+  background: #f8f7f1;
+
+  color: #222;
 
   cursor: pointer;
 
   margin: 3px;
 
-  transition: border 0.15s, box-shadow 0.15s;
+  transition:
+    border 0.15s,
+    box-shadow 0.15s;
 }
 
 select:focus {
   outline: none;
 
-  border-color: #555;
+  border-color: #d6b75c;
 
   box-shadow:
-    0 0 0 3px rgba(80, 80, 80, 0.12);
+    0 0 0 3px rgba(214, 183, 92, 0.15);
 }
 
 label {
   font-weight: bold;
   margin-right: 3px;
+  color: #e7d99e;
 }
+
 
 /* =========================
    MULTIJOUEUR
    ========================= */
 
 #multiBox {
-  background: rgba(232, 237, 242, 0.9) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(32, 51, 41, 0.96),
+      rgba(18, 31, 24, 0.96)
+    ) !important;
 
-  border: 1px solid #c1c9d0;
+  border: 1px solid #92783b;
 
   border-radius: 15px;
 
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.12),
-    inset 0 1px rgba(255, 255, 255, 0.7);
+    0 7px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px rgba(255, 255, 255, 0.05);
 
   padding: 15px;
 }
 
 #multiBox input,
 #multiBox select {
-  border: 1px solid #aab4be;
+  border: 1px solid #8e7941;
 
   border-radius: 8px;
 
-  background: white;
+  background: #f8f7f1;
+
+  color: #222;
 
   padding: 7px 9px;
 
   font-size: 14px;
 
-  transition: border 0.15s, box-shadow 0.15s;
+  transition:
+    border 0.15s,
+    box-shadow 0.15s;
 }
 
 #multiBox input:focus,
 #multiBox select:focus {
   outline: none;
 
-  border-color: #6d7780;
+  border-color: #d6b75c;
 
-  box-shadow: 0 0 0 3px rgba(80, 90, 100, 0.12);
+  box-shadow:
+    0 0 0 3px rgba(214, 183, 92, 0.15);
 }
 
 #multiBox h2 {
   margin-top: 0;
   margin-bottom: 14px;
   font-size: 24px;
+  color: #f1d98d;
 }
 
 #multiBox button {
-  background: linear-gradient(145deg, #ffffff, #e9edf0);
+  background:
+    linear-gradient(
+      145deg,
+      #3a443d,
+      #222b26
+    );
 
-  color: #333;
+  color: #eadca8;
 
-  border: 1px solid #aab4be;
+  border: 1px solid #8e7941;
 
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 #multiBox button:hover {
-  background: linear-gradient(145deg, #f3f5f6, #dde3e7);
+  background:
+    linear-gradient(
+      145deg,
+      #4a574e,
+      #2c3730
+    );
 }
+
 
 /* =========================
    NOUVELLE PARTIE
@@ -345,23 +438,39 @@ label {
 
   font-weight: bold;
 
-  background: linear-gradient(145deg, #3d444b, #292e33);
+  background:
+    linear-gradient(
+      145deg,
+      #b5964b,
+      #80672e
+    );
 
-  color: white;
+  color: #fff8dc;
 
-  border: 1px solid #292d32;
+  border: 1px solid #d7bb6c;
 
   border-radius: 10px;
 
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.2);
+    0 5px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1px rgba(255, 255, 255, 0.2);
 }
 
 #nouvellePartie:hover {
-  background: linear-gradient(145deg, #505860, #383e44);
+  background:
+    linear-gradient(
+      145deg,
+      #c4a85b,
+      #92763a
+    );
 
   transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 15px rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(214, 183, 92, 0.2);
 }
+
 
 /* =========================
    MOBILE
