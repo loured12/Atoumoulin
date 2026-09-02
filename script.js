@@ -436,8 +436,33 @@ if(defaussePouvoirs.length === 0){
 
 }
 
+let nombreCartesVisibles = Math.min(paquet.length, 3);
+
 zoneJeu.innerHTML +=
-`<h3>🃏 Pioche : ${paquet.length}</h3>`;
+`
+<div class="pioche-container">
+
+    ${
+        Array.from({length: nombreCartesVisibles}, (_, index) => `
+            <div class="carte-dos-pioche carte-pioche-${index + 1}">
+                ${
+                    index === nombreCartesVisibles - 1
+                    ? `
+                    <div class="pioche-nombre">
+                        ${paquet.length}
+                    </div>
+                    <div class="pioche-cartes">
+                        cartes
+                    </div>
+                    `
+                    : ""
+                }
+            </div>
+        `).join("")
+    }
+
+</div>
+`;
 
 let joueur = joueurs[joueurActuel];
 
