@@ -354,11 +354,7 @@ zoneJeu.innerHTML +=
 </div>
 `;
 
-if(cartesTable.length === 0){
-
-    zoneJeu.innerHTML += "Aucune carte<br>";
-
-}else{
+if(cartesTable.length > 0){
 
     joueurs.forEach(joueur => {
 
@@ -372,51 +368,46 @@ if(cartesTable.length === 0){
         zoneJeu.innerHTML +=
         `
         <div class="points-marques-joueur">
-        ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
+            ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
         </div>
         `;
 
-        if(cartesJoueur.length === 0){
+        if(cartesJoueur.length > 0){
 
-        zoneJeu.innerHTML +=
-        "Aucune carte jouée<br>";
+            zoneJeu.innerHTML +=
+            `
+            <div class="cartes-marquees">
 
-        }else{
+            ${
+            cartesJoueur.map(carte => {
 
-        zoneJeu.innerHTML +=
-        `
-        <div class="cartes-marquees">
+                if(carte.historiqueCarte){
 
-        ${
-        cartesJoueur.map(carte => {
+                    return `
+                    <span class="historique-carte">
+                        (${carte.historiqueCarte.join("/")})
+                    </span>
+                    <strong class="points-score">
+                        ${carte.valeur}
+                    </strong>
+                    `;
 
-        if(carte.historiqueCarte){
+                }
 
-        return `
-        <span class="historique-carte">
-            (${carte.historiqueCarte.join("/")})
-        </span>
-        <strong class="points-score">
-            ${carte.valeur}
-        </strong>
-        `;
+                return `
+                <strong class="points-score">
+                    ${carte.valeur}
+                </strong>
+                `;
 
-        }
+            }).join(
+                ' <span class="separateur-score">➜</span> '
+            )
 
-        return `
-        <strong class="points-score">
-        ${carte.valeur}
-        </strong>
-        `;
+            }
 
-        }).join(
-        ' <span class="separateur-score">➜</span> '
-        )
-
-        }
-
-        </div>
-        `;
+            </div>
+            `;
 
         }
 
