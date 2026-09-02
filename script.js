@@ -415,21 +415,22 @@ zoneJeu.innerHTML += "<h2>🪄 Défausse pouvoirs :</h2>";
 
 if(defaussePouvoirs.length === 0){
 
-    zoneJeu.innerHTML += "Vide<br>";
+    zoneJeu.innerHTML +=
+    "Vide<br>";
 
 }else{
 
     zoneJeu.innerHTML +=
     `
-    <span class="points-rouges">
     ${
-        defaussePouvoirs.map(carte =>
-            `<strong>${carte.valeur}</strong>`
-        ).join(
-            ' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.15em; text-shadow: 0.5px 0 0 currentColor;">→</span> '
+        defaussePouvoirs.map(carte => `
+            <strong class="points-score">
+                ${carte.valeur}
+            </strong>
+        `).join(
+            ' <span class="separateur-score">→</span> '
         )
     }
-    </span>
     <br>
     `;
 
