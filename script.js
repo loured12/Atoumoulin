@@ -294,60 +294,56 @@ zoneJeu.innerHTML +=
 
 // Scores
 
-zoneJeu.innerHTML += "<h2>Scores :</h2>";
+zoneJeu.innerHTML +=
+`
+<div class="scores-fixes">
 
-joueurs.forEach((joueur, index)=>{
+    <div class="scores-titre">
+        SCORES
+    </div>
 
-    let couleurScore = couleursJoueurs[index];
+    <div class="scores-joueurs">
 
-    if(modeJeu === 1){
+        ${
+            joueurs.map((joueur, index) => {
 
-        zoneJeu.innerHTML +=
-        `
-        <span class="info-joueur">
-            ${couleurScore.rond} ${joueur.nom}
-        </span>
-        <span class="separateur-score"> :</span>
+                let couleurScore = couleursJoueurs[index];
 
-        <strong class="points-score">
-            ${joueur.score} point${joueur.score === 1 ? "" : "s"}
-        </strong>
+                return `
+                <div class="score-joueur">
 
-        <span class="separateur-score"> — </span>
+                    <span class="score-joueur-nom">
+                        ${couleurScore.rond} ${joueur.nom}
+                    </span>
 
-        <span class="info-joueur">
-            ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
-        </span>
+                    <strong class="score-joueur-points">
+                        ${joueur.score} pts
+                    </strong>
 
-        <br>
-        `;
+                    <span class="score-joueur-cartes">
+                        ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+                    </span>
 
-    }else{
+                    ${
+                        modeJeu !== 1
+                        ? `
+                        <span class="score-joueur-victoires">
+                            🏆${victoires[index]}
+                        </span>
+                        `
+                        : ""
+                    }
 
-        zoneJeu.innerHTML +=
-        `
-        <span class="info-joueur">
-            ${couleurScore.rond} ${joueur.nom}
-        </span>
-        <span class="separateur-score"> :</span>
+                </div>
+                `;
 
-        <strong class="points-score">
-            ${joueur.score} point${joueur.score === 1 ? "" : "s"}
-        </strong>
+            }).join("")
+        }
 
-        <span class="separateur-score"> — </span>
+    </div>
 
-        <span class="info-joueur">
-            ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
-            — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}
-        </span>
-
-        <br>
-        `;
-
-    }
-
-});
+</div>
+`;
 
 // Table
 
