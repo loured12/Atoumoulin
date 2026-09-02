@@ -747,17 +747,21 @@ label {
 }
 
 .titre-section {
-  margin: 8px 0 6px;
-  padding: 4px 10px;
+  display: block;
+
+  width: fit-content;
+
+  margin: 8px 0 8px;
+  padding: 5px 14px;
 
   background: rgba(0, 0, 0, 0.25);
+
+  border: 1px solid #d7b72f;
   border-radius: 8px;
 
   color: #ffe066;
   font-size: 1.1em;
   font-weight: bold;
-
-  display: inline-block;
 }
 
 /* =========================
