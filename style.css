@@ -302,15 +302,15 @@ button.carte {
 
   background: linear-gradient(
     145deg,
-    #102a16,
-    #08180d
+    #28643a,
+    #214f2e
   );
 
   border: 1px solid #d4af37;
   border-radius: 12px;
 
   box-shadow:
-    0 6px 15px rgba(0, 0, 0, 0.45);
+    0 5px 12px rgba(0, 0, 0, 0.3);
 }
 
 .configuration-jeu > div {
