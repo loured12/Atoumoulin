@@ -167,11 +167,17 @@ if(actionEnCours === "partieTerminee"){
 
     zoneJeu.innerHTML =
     `
+    <div class="fin-partie">
+
     <h2>⚖️ PARTIE TERMINÉE !</h2>
 
+    <div class="fin-egalite">
     <h3>Égalité : aucun joueur ne remporte la partie.</h3>
+    </div>
 
-    <h3>Scores :</h3>
+    <div class="fin-scores">
+
+    <h3>📊 Scores</h3>
 
     ${[...joueurs]
     .map((joueur, index) => ({
@@ -191,7 +197,10 @@ if(actionEnCours === "partieTerminee"){
             </p>
         `;
 
-    }).join("")}
+        }).join("")}
+
+    </div>
+    </div>
     `;
 
     return;
@@ -203,15 +212,19 @@ if(actionEnCours === "partieTerminee"){
 
     zoneJeu.innerHTML =
     `
-    <h2> PARTIE TERMINÉE ! </h2>
+    <div class="fin-partie">
 
-    <h3>
-        🏆 ${couleurJoueur(indexGagnant)}
-        ${gagnantPartie.nom}
-        ${couleurJoueur(indexGagnant)} 🏆
+    <h2> PARTIE TERMINÉE !</h2>
+
+    <h3 class="fin-gagnant">
+    🏆 ${couleurJoueur(indexGagnant)}
+    ${gagnantPartie.nom}
+    ${couleurJoueur(indexGagnant)} 🏆
     </h3>
 
-    <h3>Scores :</h3>
+    <div class="fin-scores">
+
+    <h3>📊 Scores</h3>
 
 ${[...joueurs]
 .map((joueur, index) => ({
@@ -262,9 +275,12 @@ ${modeJeu > 1 ? `
             </p>
         `;
 
-    }).join("")}
-` : ""}
-`;
+        }).join("")}
+    ` : ""}
+
+    </div>
+    </div>
+    `;
 
     return;
 }
