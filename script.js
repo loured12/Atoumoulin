@@ -736,74 +736,78 @@ ${adversaire.nom}
 
 if(actionEnCours === "double13choix"){
 
-let cible = joueurs[cibleChoisie];
-let cartesDisponibles = cartesTable.filter(carte =>
-    carte.proprietaire === cible.nom &&
-    carte.valeur !== 0
-);
+    let cible = joueurs[cibleChoisie];
 
-let nombreASelectionner =
-Math.min(2, cartesDisponibles.length);
+    let cartesDisponibles = cartesTable.filter(carte =>
+        carte.proprietaire === cible.nom &&
+        carte.valeur !== 0
+    );
 
-if(nombreASelectionner === 0){
+    let nombreASelectionner =
+        Math.min(2, cartesDisponibles.length);
 
-zoneJeu.innerHTML +=
-`
-<h3>${cible.nom} n'a aucune carte à points à voler.</h3>
+    if(nombreASelectionner === 0){
 
-<button onclick="terminerDouble13()">
-Continuer
-</button>
-`;
+        zoneJeu.innerHTML +=
+        `
+        <h3>${cible.nom} n'a aucune carte à points à voler.</h3>
 
-return;
+        <button onclick="terminerDouble13()">
+            Continuer
+        </button>
+        `;
 
-}
+        return;
+    }
 
-zoneJeu.innerHTML +=
-`
-<h3>Choisir ${nombreASelectionner} carte${nombreASelectionner > 1 ? "s" : ""} à voler à ${cible.nom} :</h3>
-`;
+    zoneJeu.innerHTML +=
+    `
+    <h3>
+        Choisir ${nombreASelectionner} carte${nombreASelectionner > 1 ? "s" : ""}
+        à voler à ${cible.nom} :
+    </h3>
+    `;
 
-cartesTable.forEach((carte, carteIndex)=>{
+    cartesTable.forEach((carte, carteIndex)=>{
 
-if(carte.proprietaire === cible.nom &&
-   carte.valeur !== 0){
+        if(
+            carte.proprietaire === cible.nom &&
+            carte.valeur !== 0
+        ){
 
-let selectionnee =
-Array.isArray(carteChoisie) &&
-carteChoisie.includes(carteIndex);
+            let selectionnee =
+                Array.isArray(carteChoisie) &&
+                carteChoisie.includes(carteIndex);
 
-zoneJeu.innerHTML +=
-`
-<button
-class="carte ${selectionnee ? "selectionnee" : ""}"
-onclick="selectionnerCarteDouble13(${carteIndex})">
+            zoneJeu.innerHTML +=
+            `
+            <button
+                class="${selectionnee ? "double13-selectionnee" : ""}"
+                onclick="selectionnerCarteDouble13(${carteIndex})"
+            >
+                ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+            </button>
+            `;
 
-${carte.valeur > 0 ? "+" : ""}${carte.valeur}
+        }
 
-</button>
-`;
+    });
 
-}
+    if(
+        Array.isArray(carteChoisie) &&
+        carteChoisie.length === nombreASelectionner
+    ){
 
-});
+        zoneJeu.innerHTML +=
+        `
+        <br>
+        <button onclick="volerCartesDouble13()">
+            Voler les ${nombreASelectionner} cartes
+        </button>
+        `;
+    }
 
-if(Array.isArray(carteChoisie) &&
-   carteChoisie.length === nombreASelectionner){
-
-zoneJeu.innerHTML +=
-`
-<br>
-<button onclick="volerCartesDouble13()">
-Voler les ${nombreASelectionner} carte${nombreASelectionner > 1 ? "s" : ""}
-</button>
-`;
-
-}
-
-return;
-
+    return;
 }
 
 if(actionEnCours === "carte13"){
