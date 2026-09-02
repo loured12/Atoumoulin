@@ -361,34 +361,43 @@ if(cartesTable.length === 0){
 
         if(cartesJoueur.length === 0){
 
-            zoneJeu.innerHTML +=
-            "Aucune carte jouée<br>";
+        zoneJeu.innerHTML +=
+        "Aucune carte jouée<br>";
 
         }else{
 
-            zoneJeu.innerHTML +=
-            `
-            <span class="points-rouges">
-            ${
-                cartesJoueur.map(carte => {
+        zoneJeu.innerHTML +=
+        `
+        ${
+        cartesJoueur.map(carte => {
 
-                    if(carte.historiqueCarte){
+            if(carte.historiqueCarte){
 
-                    return `<span class="historique-carte">(${carte.historiqueCarte.join("/")})</span> <strong>${carte.valeur}</strong>`;
+                return `
+                <span class="historique-carte">
+                    (${carte.historiqueCarte.join("/")})
+                </span>
+                <strong class="points-score">
+                    ${carte.valeur}
+                </strong>
+                `;
 
-             }
-
-                    return `<strong>${carte.valeur}</strong>`;
-
-                }).join(
-                    ' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.20em; text-shadow: 0.5px 0 0 currentColor;">→</span> '
-                )
             }
-            </span>
+
+            return `
+            <strong class="points-score">
+                ${carte.valeur}
+            </strong>
+            `;
+
+            }).join(
+            ' <span class="separateur-score">→</span> '
+            )
+            }
             <br>
             `;
 
-        }
+         }
 
     });
 
