@@ -479,6 +479,11 @@ label {
     0 3px 7px rgba(0, 0, 0, 0.35);
 }
 
+.points-rouges strong {
+  color: #ff4a4a;
+  font-weight: bold;
+}
+
 /* =========================
    MOBILE
    ========================= */
@@ -520,12 +525,4 @@ label {
   #multiBox {
     padding: 12px 8px;
   }
-}
-
-/* =========================
-   POINTS EN ROUGE
-   ========================= */
-
-.points-rouges strong {
-  color: #ff4a4a;
 }
