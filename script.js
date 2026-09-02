@@ -5432,7 +5432,7 @@ cartesTable.push({
 });
 
 historique +=
-`${joueur.nom} -40 points à ${cible.nom} avec le double 21.<br>`;
+`${joueur.nom} inflige -40 points à ${cible.nom} avec le double 21.<br>`;
 
 // Vérifier la fin de partie
 
