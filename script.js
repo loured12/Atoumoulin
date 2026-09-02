@@ -295,15 +295,18 @@ joueurs.forEach((joueur, index)=>{
         zoneJeu.innerHTML +=
         `
         <span class="info-joueur">
-            ${couleurScore.rond} ${joueur.nom} :
+            ${couleurScore.rond} ${joueur.nom}
         </span>
+        <span class="separateur-score"> :</span>
 
-        <strong class="points-rouges">
+        <strong class="points-score">
             ${joueur.score} point${joueur.score === 1 ? "" : "s"}
         </strong>
 
+        <span class="separateur-score"> — </span>
+
         <span class="info-joueur">
-            — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+            ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
         </span>
 
         <br>
@@ -314,15 +317,18 @@ joueurs.forEach((joueur, index)=>{
         zoneJeu.innerHTML +=
         `
         <span class="info-joueur">
-            ${couleurScore.rond} ${joueur.nom} :
+            ${couleurScore.rond} ${joueur.nom}
         </span>
+        <span class="separateur-score"> :</span>
 
-        <strong class="points-rouges">
+        <strong class="points-score">
             ${joueur.score} point${joueur.score === 1 ? "" : "s"}
         </strong>
 
+        <span class="separateur-score"> — </span>
+
         <span class="info-joueur">
-            — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+            ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
             — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}
         </span>
 
