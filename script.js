@@ -294,9 +294,18 @@ joueurs.forEach((joueur, index)=>{
 
         zoneJeu.innerHTML +=
         `
-        <span class="points-rouges">
-        ${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+        <span class="info-joueur">
+            ${couleurScore.rond} ${joueur.nom} :
         </span>
+
+        <strong class="points-rouges">
+            ${joueur.score} point${joueur.score === 1 ? "" : "s"}
+        </strong>
+
+        <span class="info-joueur">
+            — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+        </span>
+
         <br>
         `;
 
@@ -304,9 +313,19 @@ joueurs.forEach((joueur, index)=>{
 
         zoneJeu.innerHTML +=
         `
-        <span class="points-rouges">
-        ${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"} — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}
+        <span class="info-joueur">
+            ${couleurScore.rond} ${joueur.nom} :
         </span>
+
+        <strong class="points-rouges">
+            ${joueur.score} point${joueur.score === 1 ? "" : "s"}
+        </strong>
+
+        <span class="info-joueur">
+            — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+            — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}
+        </span>
+
         <br>
         `;
 
@@ -355,9 +374,9 @@ if(cartesTable.length === 0){
 
                     if(carte.historiqueCarte){
 
-                        return `(${carte.historiqueCarte.join("/")}) <strong>${carte.valeur}</strong>`;
+                    return `<span class="historique-carte">(${carte.historiqueCarte.join("/")})</span> <strong>${carte.valeur}</strong>`;
 
-                    }
+             }
 
                     return `<strong>${carte.valeur}</strong>`;
 
