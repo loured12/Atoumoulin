@@ -762,6 +762,24 @@ label {
   font-weight: bold;
 }
 
+.titre-jeu {
+  margin: 10px auto 15px;
+
+  color: #ffe066;
+
+  font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+
+  font-size: 2.3em;
+  font-weight: bold;
+
+  letter-spacing: 4px;
+
+  text-align: center;
+
+  text-shadow:
+    2px 2px 4px rgba(0,0,0,0.7);
+}
+
 /* =========================
    MOBILE
    ========================= */
