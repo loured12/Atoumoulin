@@ -290,7 +290,6 @@ button.carte {
   margin-bottom: 30px;
 }
 
-
 /* =========================
    SELECT
    ========================= */
@@ -300,16 +299,42 @@ select {
 
   font-size: 14px;
 
-  border: 1px solid #c7a928;
+  border: 1px solid #b89418;
   border-radius: 8px;
 
-  background: #fffdf2;
+  background: linear-gradient(
+    145deg,
+    #f4d35e,
+    #d4a928
+  );
 
-  color: #222;
+  color: #332600;
+  font-weight: bold;
 
   cursor: pointer;
 
   margin: 3px;
+
+  box-shadow:
+    0 3px 7px rgba(0, 0, 0, 0.3);
+
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+select:hover {
+  background: linear-gradient(
+    145deg,
+    #ffe477,
+    #e0b52f
+  );
+
+  box-shadow:
+    0 4px 9px rgba(0, 0, 0, 0.4);
+
+  transform: translateY(-1px);
 }
 
 select:focus {
@@ -318,7 +343,8 @@ select:focus {
   border-color: #ffe066;
 
   box-shadow:
-    0 0 0 3px rgba(255, 216, 77, 0.15);
+    0 0 0 3px rgba(255, 216, 77, 0.2),
+    0 4px 9px rgba(0, 0, 0, 0.35);
 }
 
 label {
@@ -326,7 +352,6 @@ label {
   margin-right: 3px;
   color: #ffdf5a;
 }
-
 
 /* =========================
    MULTIJOUEUR
