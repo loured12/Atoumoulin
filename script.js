@@ -3747,7 +3747,7 @@ function cibleCarte21(index){
 
     // Historique AVANT de continuer le Double 17
     historique +=
-    `${joueur.nom} -20 à ${cible.nom} avec le 21<br>`;
+    `${joueur.nom} inflige -20 à ${cible.nom} avec le 21<br>`;
 
     // Vérifier la victoire
     if(verifierFinPartie()){
