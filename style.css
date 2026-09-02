@@ -500,26 +500,18 @@ label {
 }
 
 .tour-joueur {
-  display: inline-block;
+  display: block;
 
-  margin: 12px 0;
-  padding: 8px 18px;
-
-  border: 1px solid #d7b72f;
-  border-radius: 10px;
-
-  background: linear-gradient(
-    145deg,
-    #347a42,
-    #1a4825
-  );
+  margin: 18px 0 14px;
+  padding: 6px 0;
 
   color: #ffe066;
-  font-size: 1.25em;
+  font-size: 1.4em;
   font-weight: bold;
 
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.35);
+  text-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(255, 224, 102, 0.25);
 }
 
 /* =========================
