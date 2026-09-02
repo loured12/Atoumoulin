@@ -517,6 +517,71 @@ label {
   box-shadow: 0 0 10px rgba(215, 183, 47, 0.35);
 }
 
+.pioche-container {
+  position: relative;
+
+  width: 90px;
+  height: 105px;
+
+  margin: 18px auto 10px;
+}
+
+.carte-dos-pioche {
+  position: absolute;
+
+  width: 62px;
+  height: 92px;
+
+  border: 2px solid #d7b72f;
+  border-radius: 8px;
+
+  background: linear-gradient(
+    145deg,
+    #347a42,
+    #1a4825
+  );
+
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.35);
+}
+
+.carte-pioche-1 {
+  top: 0;
+  left: 5px;
+}
+
+.carte-pioche-2 {
+  top: 5px;
+  left: 12px;
+}
+
+.carte-pioche-3 {
+  top: 10px;
+  left: 19px;
+}
+
+.pioche-nombre {
+  margin-top: 25px;
+
+  color: #ffe066;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.pioche-cartes {
+  color: #ffe066;
+  font-size: 0.72em;
+  font-weight: bold;
+}
+
+.pioche-vide {
+  margin: 18px auto 10px;
+
+  color: #d7b72f;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
 /* =========================
    MOBILE
    ========================= */
