@@ -763,21 +763,22 @@ label {
 }
 
 .titre-jeu {
-  margin: 10px auto 15px;
+  margin: 10px auto;
 
   color: #ffe066;
 
-  font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-family: "Papyrus", "Palatino Linotype", serif;
 
-  font-size: 2.3em;
+  font-size: 2.5em;
   font-weight: bold;
 
-  letter-spacing: 4px;
+  letter-spacing: 3px;
 
   text-align: center;
 
   text-shadow:
-    2px 2px 4px rgba(0,0,0,0.7);
+    0 0 8px rgba(255,224,102,0.5),
+    2px 2px 4px rgba(0,0,0,0.8);
 }
 
 /* =========================
