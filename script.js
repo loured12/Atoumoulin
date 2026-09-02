@@ -2863,7 +2863,7 @@ if(verifierFinPartie()){
 }
 
 historique +=
-`${joueurs[joueurActuel].nom} inflige -20 points à ${cible.nom} avec le 3<br>`;
+`${joueurs[joueurActuel].nom} inflige -20 à ${cible.nom} avec le 3<br>`;
 
 // Si le 3 vient du double 17,
 // on revient à la deuxième carte
