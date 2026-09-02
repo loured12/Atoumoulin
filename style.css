@@ -747,10 +747,9 @@ label {
 }
 
 .titre-section {
-  display: block;
-  width: fit-content;
+  display: table;
 
-  margin: 8px 0;
+  margin: 8px auto;
   padding: 5px 14px;
 
   background: rgba(0, 0, 0, 0.35);
