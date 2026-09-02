@@ -585,34 +585,28 @@ label {
 .score-cible {
   display: inline-block;
 
-  margin: 10px 0 16px;
-  padding: 8px 20px;
+  margin: 12px auto 18px;
+  padding: 10px 22px;
 
-  border: 1px solid #d7b72f;
-  border-radius: 10px;
+  border: 2px solid #d7b72f;
+  border-radius: 12px;
 
-  background: rgba(20, 55, 27, 0.65);
+  background: #183d22;
 
-  color: #ffe066;
+  font-size: 1.15em;
   font-weight: bold;
 
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 8px rgba(215, 183, 47, 0.3);
 }
 
-.score-cible-titre {
-  font-size: 0.95em;
-}
-
-.score-cible strong {
-  margin-left: 8px;
-
+.score-cible-label {
   color: #ffe066;
-  font-size: 1.25em;
 }
 
 .score-cible-points {
-  margin-left: 3px;
-  font-size: 0.85em;
+  color: #ff4a4a;
+  font-size: 1.15em;
+  font-weight: 900;
 }
 
 /* =========================
