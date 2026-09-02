@@ -500,21 +500,20 @@ label {
 }
 
 .tour-joueur {
-  display: inline-block;
+  display: inline-block !important;
+  margin: 16px auto !important;
+  padding: 10px 25px !important;
 
-  margin: 16px 0;
-  padding: 9px 22px;
+  border: 3px solid #d7b72f !important;
+  border-radius: 14px !important;
 
-  border: 2px solid #d7b72f;
-  border-radius: 20px;
+  background: #183d22 !important;
 
-  background: rgba(20, 55, 27, 0.75);
+  color: #ffe066 !important;
+  font-size: 1.35em !important;
+  font-weight: bold !important;
 
-  color: #ffe066;
-  font-size: 1.35em;
-  font-weight: bold;
-
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(215, 183, 47, 0.35) !important;
 }
 
 /* =========================
