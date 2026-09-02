@@ -520,9 +520,9 @@ let couleurTour = couleursJoueurs[joueurActuel];
 
 zoneJeu.innerHTML +=
 `
-<h2>
-${couleurTour.rond} Tour de ${joueur.nom} ${couleurTour.rond}
-</h2>
+<div class="tour-joueur">
+    ${couleurTour.rond} Tour de ${joueur.nom} ${couleurTour.rond}
+</div>
 `;
 
 zoneJeu.innerHTML +=
