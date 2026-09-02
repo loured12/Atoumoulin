@@ -291,6 +291,33 @@ button.carte {
 }
 
 /* =========================
+   CONFIGURATION DE LA PARTIE
+   ========================= */
+
+.configuration-jeu {
+  display: inline-block;
+
+  margin: 10px auto;
+  padding: 14px 20px;
+
+  background: linear-gradient(
+    145deg,
+    #102a16,
+    #08180d
+  );
+
+  border: 1px solid #d4af37;
+  border-radius: 12px;
+
+  box-shadow:
+    0 6px 15px rgba(0, 0, 0, 0.45);
+}
+
+.configuration-jeu > div {
+  margin: 6px 0;
+}
+
+/* =========================
    SELECT
    ========================= */
 
