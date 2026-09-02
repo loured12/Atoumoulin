@@ -732,9 +732,12 @@ label {
 }
 
 .points-marques-joueur {
-  margin: 8px 0 2px;
+  margin: 2px 0 0;
+  padding: 0;
+
   color: #d7b72f;
   font-weight: bold;
+  line-height: 1.1;
 }
 
 /* =========================
