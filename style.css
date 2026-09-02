@@ -963,6 +963,30 @@ label {
   margin-top: 12px;
 }
 
+.fin-manche button {
+  display: block;
+  margin: 20px auto 5px;
+  padding: 13px 24px;
+  font-size: 17px;
+  font-weight: bold;
+  color: #332600;
+  background: linear-gradient(145deg, #ffe477, #d4a928);
+  border: 2px solid #c94a4a;
+  border-radius: 10px;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(255, 224, 102, 0.25);
+  cursor: pointer;
+}
+
+.fin-manche button:hover {
+  background: linear-gradient(145deg, #fff09a, #e0b52f);
+  transform: translateY(-2px);
+  box-shadow:
+    0 7px 15px rgba(0, 0, 0, 0.45),
+    0 0 14px rgba(255, 224, 102, 0.35);
+}
+
 /* =========================
    MOBILE
    ========================= */
