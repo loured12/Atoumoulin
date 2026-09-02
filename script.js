@@ -1422,8 +1422,14 @@ zoneJeu.innerHTML +=
 <br>
 `;
   
-zoneJeu.innerHTML += "<h3>Historique :</h3>";
-zoneJeu.innerHTML += historiqueInverse;
+zoneJeu.innerHTML += `
+<div class="historique-jeu">
+    <h3>Historique :</h3>
+    <div class="historique-contenu">
+        ${historiqueInverse}
+    </div>
+</div>
+`;
 
 }
 
