@@ -4108,13 +4108,21 @@ if(modeJeu === 1){
 })
     .map(({joueur, index}) => {
 
-        let couleurScore = couleursJoueurs[index];
+    let couleurScore = couleursJoueurs[index];
 
-        return `
-            <p>
-                ${couleurScore.rond} ${joueur.nom} : ${joueur.score} point${joueur.score === 1 ? "" : "s"}
-            </p>
-        `;
+    let ecart = joueur.score - scoreVictoire;
+
+    let affichageEcart = ecart === 0
+        ? ""
+        : ` | Écart ${ecart > 0 ? "+" : "−"}${Math.abs(ecart)}`;
+
+    return `
+        <p>
+            ${couleurScore.rond} ${joueur.nom} :
+            ${joueur.score} point${joueur.score === 1 ? "" : "s"}
+            ${affichageEcart}
+        </p>
+    `;
 
     }).join("")}
     `;
