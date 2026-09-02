@@ -711,6 +711,26 @@ label {
 
 }
 
+.cartes-marquees {
+  line-height: 1.7;
+  word-wrap: break-word;
+}
+
+.historique-carte {
+  color: #d7b72f;
+  font-weight: bold;
+}
+
+.points-score {
+  color: #ff4a4a;
+  font-weight: bold;
+}
+
+.separateur-score {
+  color: #f5f5f5;
+  font-weight: normal;
+}
+
 /* =========================
    MOBILE
    ========================= */
