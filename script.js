@@ -656,6 +656,8 @@ joueurs.forEach((adversaire,index)=>{
 
 });
 
+}
+
 if(actionEnCours === "carte9"){
 
 zoneJeu.innerHTML +=
