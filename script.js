@@ -426,7 +426,12 @@ if(cartesTable.length === 0){
 
 // Défausse
 
-zoneJeu.innerHTML += "<h2>🪄 Défausse pouvoirs :</h2>";
+zoneJeu.innerHTML +=
+`
+<div class="titre-section">
+    🪄 Défausse pouvoirs
+</div>
+`;
 
 if(defaussePouvoirs.length === 0){
 
