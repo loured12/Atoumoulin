@@ -293,12 +293,22 @@ joueurs.forEach((joueur, index)=>{
     if(modeJeu === 1){
 
         zoneJeu.innerHTML +=
-        `${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}<br>`;
+        `
+        <span class="points-rouges">
+        ${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+        </span>
+        <br>
+        `;
 
     }else{
 
         zoneJeu.innerHTML +=
-        `${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"} — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}<br>`;
+        `
+        <span class="points-rouges">
+        ${couleurScore.rond} ${joueur.nom} : <strong>${joueur.score} point${joueur.score === 1 ? "" : "s"}</strong> — ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"} — 🏆 ${victoires[index]} victoire${victoires[index] === 1 ? "" : "s"}
+        </span>
+        <br>
+        `;
 
     }
 
@@ -308,56 +318,60 @@ joueurs.forEach((joueur, index)=>{
 
 zoneJeu.innerHTML += "<h2>🎴 Points marqués :</h2>";
 
-if(cartesTable.length===0){
+if(cartesTable.length === 0){
 
-zoneJeu.innerHTML += "Aucune carte<br>";
-
-}else{
-
-joueurs.forEach(joueur => {
-
-let cartesJoueur = cartesTable.filter(carte =>
-    carte.proprietaire === joueur.nom
-);
-
-let couleurJoueur = couleursJoueurs[joueurs.indexOf(joueur)];
-
-zoneJeu.innerHTML +=
-`
-<h3>
-${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
-</h3>
-`;
-
-if(cartesJoueur.length === 0){
-
-zoneJeu.innerHTML +=
-"Aucune carte jouée<br>";
+    zoneJeu.innerHTML += "Aucune carte<br>";
 
 }else{
 
-zoneJeu.innerHTML +=
-cartesJoueur.map(carte => {
+    joueurs.forEach(joueur => {
 
-    if(carte.historiqueCarte){
+        let cartesJoueur = cartesTable.filter(carte =>
+            carte.proprietaire === joueur.nom
+        );
 
-    return `(${carte.historiqueCarte.join("/")}) <strong>${carte.valeur}</strong>`;
+        let couleurJoueur =
+            couleursJoueurs[joueurs.indexOf(joueur)];
 
-    }
+        zoneJeu.innerHTML +=
+        `
+        <h3>
+        ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
+        </h3>
+        `;
 
-if(carte.valeur < 0){
+        if(cartesJoueur.length === 0){
 
-    return `<strong>${carte.valeur}</strong>`;
+            zoneJeu.innerHTML +=
+            "Aucune carte jouée<br>";
 
-}
+        }else{
 
-return `<strong>${carte.valeur}</strong>`;
+            zoneJeu.innerHTML +=
+            `
+            <span class="points-rouges">
+            ${
+                cartesJoueur.map(carte => {
 
-}).join(' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.20em; text-shadow: 0.5px 0 0 currentColor;">→</span> ') + "<br>";
+                    if(carte.historiqueCarte){
 
-}
+                        return `(${carte.historiqueCarte.join("/")}) <strong>${carte.valeur}</strong>`;
 
-});
+                    }
+
+                    return `<strong>${carte.valeur}</strong>`;
+
+                }).join(
+                    ' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.20em; text-shadow: 0.5px 0 0 currentColor;">→</span> '
+                )
+            }
+            </span>
+            <br>
+            `;
+
+        }
+
+    });
 
 }
 
@@ -365,15 +379,25 @@ return `<strong>${carte.valeur}</strong>`;
 
 zoneJeu.innerHTML += "<h2>🪄 Défausse pouvoirs :</h2>";
 
-if(defaussePouvoirs.length===0){
+if(defaussePouvoirs.length === 0){
 
-zoneJeu.innerHTML += "Vide<br>";
+    zoneJeu.innerHTML += "Vide<br>";
 
 }else{
 
-zoneJeu.innerHTML +=
-defaussePouvoirs.map(carte => `<strong>${carte.valeur}</strong>`)
-.join(' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.15em; text-shadow: 0.5px 0 0 currentColor;">→</span> ') + "<br>";
+    zoneJeu.innerHTML +=
+    `
+    <span class="points-rouges">
+    ${
+        defaussePouvoirs.map(carte =>
+            `<strong>${carte.valeur}</strong>`
+        ).join(
+            ' <span style="font-weight: normal; font-size: 0.75em; vertical-align: 0.15em; text-shadow: 0.5px 0 0 currentColor;">→</span> '
+        )
+    }
+    </span>
+    <br>
+    `;
 
 }
 
