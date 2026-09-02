@@ -884,6 +884,85 @@ label {
   line-height: 1.6;
 }
 
+/* ================================
+   ÉCRANS DE FIN
+================================ */
+
+.fin-partie,
+.fin-manche {
+  max-width: 700px;
+  margin: 18px auto;
+  padding: 20px;
+  background: linear-gradient(145deg, #28613a, #17351f);
+  border: 1px solid #d4af37;
+  border-radius: 14px;
+  box-shadow:
+    0 7px 18px rgba(0, 0, 0, 0.45),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+.fin-partie > h2:first-child,
+.fin-manche > h2:first-child {
+  margin-top: 0;
+  color: #ffe066;
+  font-size: 25px;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.55);
+}
+
+.fin-gagnant {
+  margin: 14px auto 18px;
+  padding: 12px 18px;
+  background: linear-gradient(145deg, #d93434, #9e1717);
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  color: #ffe066;
+  font-size: 21px;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.35),
+    0 0 10px rgba(212, 175, 55, 0.18);
+}
+
+.fin-egalite {
+  margin: 14px auto;
+  padding: 11px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #d4af37;
+  border-radius: 9px;
+  color: #ffe066;
+}
+
+.fin-scores {
+  margin: 15px auto;
+  padding: 10px 14px;
+  max-width: 500px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  border-radius: 10px;
+}
+
+.fin-scores h3 {
+  margin-top: 4px;
+  color: #ffe066;
+}
+
+.fin-scores p {
+  margin: 7px 0;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 7px;
+}
+
+.fin-victoires {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(212, 175, 55, 0.45);
+}
+
+.fin-manche button {
+  margin-top: 12px;
+}
+
 /* =========================
    MOBILE
    ========================= */
