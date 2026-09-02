@@ -521,3 +521,11 @@ label {
     padding: 12px 8px;
   }
 }
+
+/* =========================
+   POINTS EN ROUGE
+   ========================= */
+
+.points-rouges strong {
+  color: #ff4a4a;
+}
