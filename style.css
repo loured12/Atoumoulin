@@ -479,14 +479,19 @@ label {
     0 3px 7px rgba(0, 0, 0, 0.35);
 }
 
-.points-rouges {
+.info-joueur {
+  color: #d7b72f;
+  font-weight: bold;
+}
+
+.points-score {
   color: #ff4a4a;
   font-weight: bold;
 }
 
-.info-joueur {
-  color: #d7b72f;
-  font-weight: bold;
+.separateur-score {
+  color: #f5f5f5;
+  font-weight: normal;
 }
 
 .historique-carte {
