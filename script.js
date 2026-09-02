@@ -2040,9 +2040,6 @@ joueur: joueur.nom
 
 actionEnCours = "carte13";
 
-historique +=
-`${joueur.nom} joue 13<br>`;
-
 afficherJeu();
 
 return;
