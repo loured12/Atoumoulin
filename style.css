@@ -520,20 +520,20 @@ label {
 .pioche-container {
   position: relative;
 
-  width: 90px;
-  height: 105px;
+  width: 65px;
+  height: 78px;
 
-  margin: 18px auto 10px;
+  margin: 14px auto 8px;
 }
 
 .carte-dos-pioche {
   position: absolute;
 
-  width: 62px;
-  height: 92px;
+  width: 46px;
+  height: 68px;
 
   border: 2px solid #d7b72f;
-  border-radius: 8px;
+  border-radius: 6px;
 
   background: linear-gradient(
     145deg,
@@ -542,43 +542,43 @@ label {
   );
 
   box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.35);
+    0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
 .carte-pioche-1 {
   top: 0;
-  left: 5px;
+  left: 4px;
 }
 
 .carte-pioche-2 {
-  top: 5px;
-  left: 12px;
+  top: 4px;
+  left: 9px;
 }
 
 .carte-pioche-3 {
-  top: 10px;
-  left: 19px;
+  top: 8px;
+  left: 14px;
 }
 
 .pioche-nombre {
-  margin-top: 25px;
+  margin-top: 17px;
 
   color: #ffe066;
-  font-size: 1.5em;
+  font-size: 1.15em;
   font-weight: bold;
 }
 
 .pioche-cartes {
   color: #ffe066;
-  font-size: 0.72em;
+  font-size: 0.6em;
   font-weight: bold;
 }
 
 .pioche-vide {
-  margin: 18px auto 10px;
+  margin: 14px auto 8px;
 
   color: #d7b72f;
-  font-size: 1.1em;
+  font-size: 1em;
   font-weight: bold;
 }
 
