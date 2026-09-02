@@ -877,53 +877,51 @@ ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
 
 if(actionEnCours === "double15"){
 
-let cartesDisponibles = cartesTable.filter(carte =>
-    carte.proprietaire === joueur.nom &&
-    carte.valeur !== 0
-);
+    let cartesDisponibles = cartesTable.filter(carte =>
+        carte.proprietaire === joueur.nom &&
+        carte.valeur !== 0
+    );
 
-if(cartesDisponibles.length === 0){
+    if(cartesDisponibles.length === 0){
 
-zoneJeu.innerHTML +=
-`
-<h3>${joueur.nom} n'a aucune carte à points à tripler.</h3>
+        zoneJeu.innerHTML +=
+        `
+        <h3>${joueur.nom} n'a aucune carte à points à tripler.</h3>
 
-<button onclick="terminerDouble15()">
-Continuer
-</button>
-`;
+        <button onclick="terminerDouble15()">
+            Continuer
+        </button>
+        `;
 
-return;
+        return;
+    }
 
-}
+    zoneJeu.innerHTML +=
+    `
+    <h3>Choisir une carte à points à tripler :</h3>
+    `;
 
-zoneJeu.innerHTML +=
-`
-<h3>Choisir une carte à points à tripler :</h3>
-`;
+    cartesTable.forEach((carte, carteIndex)=>{
 
-cartesTable.forEach((carte, carteIndex)=>{
+        if(
+            carte.proprietaire === joueur.nom &&
+            carte.valeur !== 0
+        ){
 
-if(carte.proprietaire === joueur.nom &&
-   carte.valeur !== 0){
+            zoneJeu.innerHTML +=
+            `
+            <button
+                onclick="triplerCarte15(${carteIndex})"
+            >
+                ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+            </button>
+            `;
 
-zoneJeu.innerHTML +=
-`
-<button
-class="carte"
-onclick="triplerCarte15(${carteIndex})">
+        }
 
-${carte.valeur > 0 ? "+" : ""}${carte.valeur}
+    });
 
-</button>
-`;
-
-}
-
-});
-
-return;
-
+    return;
 }
 
 if(actionEnCours === "carte15"){
