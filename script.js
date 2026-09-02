@@ -397,7 +397,7 @@ if(cartesTable.length === 0){
             `;
 
             }).join(
-            ' <span class="separateur-score">→</span> '
+            ' <span class="separateur-score">➜</span> '
             )
             }
             <br>
@@ -428,7 +428,7 @@ if(defaussePouvoirs.length === 0){
                 ${carte.valeur}
             </strong>
         `).join(
-            ' <span class="separateur-score">→</span> '
+            ' <span class="separateur-score">➜</span> '
         )
     }
     <br>
