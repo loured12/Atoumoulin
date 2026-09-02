@@ -299,7 +299,7 @@ select {
 
   font-size: 14px;
 
-  border: 1px solid #b89418;
+  border: 2px solid #c94a4a;
   border-radius: 8px;
 
   background: linear-gradient(
@@ -340,10 +340,10 @@ select:hover {
 select:focus {
   outline: none;
 
-  border-color: #ffe066;
+  border-color: #c94a4a;
 
   box-shadow:
-    0 0 0 3px rgba(255, 216, 77, 0.2),
+    0 0 0 3px rgba(201, 74, 74, 0.2),
     0 4px 9px rgba(0, 0, 0, 0.35);
 }
 
