@@ -499,6 +499,29 @@ label {
   font-weight: bold;
 }
 
+.tour-joueur {
+  display: inline-block;
+
+  margin: 12px 0;
+  padding: 8px 18px;
+
+  border: 1px solid #d7b72f;
+  border-radius: 10px;
+
+  background: linear-gradient(
+    145deg,
+    #347a42,
+    #1a4825
+  );
+
+  color: #ffe066;
+  font-size: 1.25em;
+  font-weight: bold;
+
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
 /* =========================
    MOBILE
    ========================= */
