@@ -380,36 +380,41 @@ if(cartesTable.length === 0){
 
         zoneJeu.innerHTML +=
         `
+        <div class="cartes-marquees">
+
         ${
         cartesJoueur.map(carte => {
 
-            if(carte.historiqueCarte){
+        if(carte.historiqueCarte){
 
-                return `
-                <span class="historique-carte">
-                    (${carte.historiqueCarte.join("/")})
-                </span>
-                <strong class="points-score">
-                    ${carte.valeur}
-                </strong>
-                `;
+        return `
+        <span class="historique-carte">
+            (${carte.historiqueCarte.join("/")})
+        </span>
+        <strong class="points-score">
+            ${carte.valeur}
+        </strong>
+        `;
 
-            }
+        }
 
-            return `
-            <strong class="points-score">
-                ${carte.valeur}
-            </strong>
-            `;
+        return `
+        <strong class="points-score">
+        ${carte.valeur}
+        </strong>
+        `;
 
-            }).join(
-            ' <span class="separateur-score">➜</span> '
-            )
-            }
-            <br>
-            `;
+        }).join(
+        ' <span class="separateur-score">➜</span> '
+        )
 
-         }
+        }
+
+        </div>
+        <br>
+        `;
+
+        }
 
     });
 
