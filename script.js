@@ -4963,7 +4963,7 @@ cartesDouble17.push(
 if(cartesDouble17.length === 2){
 
     historique +=
-    `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le 17<br>`;
+    `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le double 17<br>`;
 
 }
 else if(cartesDouble17.length === 1){
