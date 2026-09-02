@@ -366,9 +366,9 @@ if(cartesTable.length === 0){
 
         zoneJeu.innerHTML +=
         `
-        <h3>
+        <div class="points-marques-joueur">
         ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
-        </h3>
+        </div>
         `;
 
         if(cartesJoueur.length === 0){
