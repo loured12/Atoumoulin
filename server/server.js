@@ -189,6 +189,7 @@ wss.on("connection",ws=>{
           room.engine.setSelection(player.selection);
         }
 
+        room.engine.setPlayerIndex(player.index);
         room.engine.apply(fn,args);
         player.selection=null;
         runBots(room);
