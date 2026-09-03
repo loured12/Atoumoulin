@@ -247,15 +247,31 @@
     if (typeof original !== "function") return;
 
     window[name] = function(...args) {
-      if (!started)
-        return original.apply(this,args);
 
-      return send({
-        type:"game:action",
-        fn:name,
-        args
-      });
-    };
+  if (!started)
+    return original.apply(this,args);
+
+  if(name === "preparerNouvelleManche"){
+
+    if(!room || myId !== room.hostId){
+      return status("⚠️ Seul l'hôte peut lancer une nouvelle manche.");
+    }
+
+    const confirmer = confirm(
+      "La manche actuelle sera réinitialisée pour tous les joueurs.\n\nContinuer ?"
+    );
+
+    if(!confirmer)
+      return;
+
+  }
+
+  return send({
+    type:"game:action",
+    fn:name,
+    args
+  });
+  };
   }
 
   for (const fn of ACTIONS)
