@@ -51,7 +51,7 @@
   type:"game:action",
   fn:"preparerNouvelleManche",
   args:[
-    Number($("modeJeu").value)
+  Number(document.getElementById("modeJeu").value || 1)
   ]
 });
 
