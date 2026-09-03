@@ -48,10 +48,12 @@
       return;
 
     send({
-      type:"game:action",
-      fn:"preparerNouvelleManche",
-      args:[]
-    });
+  type:"game:action",
+  fn:"preparerNouvelleManche",
+  args:[
+    Number($("modeJeu").value)
+  ]
+});
 
   }, true);
   }
