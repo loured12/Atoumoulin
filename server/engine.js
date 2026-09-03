@@ -155,9 +155,11 @@ export class AtoumoulinEngine {
       selection,
       toursJoker: raw.toursJoker,
       winner:
-        raw.gagnantPartie == null
-          ? null
-          : raw.joueurs[raw.gagnantPartie]?.nom ?? null,
+      raw.gagnantPartie == null
+      ? null
+      : typeof raw.gagnantPartie === "number"
+      ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+      : raw.gagnantPartie.nom ?? null,
       roundWinner:
         raw.gagnantManche == null
           ? null
