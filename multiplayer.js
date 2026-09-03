@@ -80,13 +80,6 @@
       r.started;
   }
 
-  const boutonNouvellePartie = $("nouvellePartie");
-
-  if(boutonNouvellePartie){
-    boutonNouvellePartie.style.display =
-        myId === r.hostId ? "" : "none";
-  }
-
     function applyGameState(state, seq = 0, playerIndex) {
     if (seq && seq < lastSeq) return;
     if (seq) lastSeq = seq;
