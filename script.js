@@ -4197,13 +4197,19 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
 
     <h2> PARTIE TERMINÉE !</h2>
 
-    <h3 class="fin-gagnant">
-    🏆 ${couleurJoueur(indexGagnant)}
-    ${gagnant.nom}
-    ${couleurJoueur(indexGagnant)} 🏆
-    remporte la partie !
-    <br>
+    <div class="fin-gagnant">
+
+    <h3>
+        🏆 ${couleurJoueur(indexGagnant)}
+        ${gagnant.nom}
+        ${couleurJoueur(indexGagnant)} 🏆
     </h3>
+
+    <div>
+        remporte la partie !
+    </div>
+
+    </div>
 
     <div class="fin-scores">
 
