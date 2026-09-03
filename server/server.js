@@ -400,17 +400,33 @@ if(m.type==="game:action"){
   player.index
  );
 
- room.engine.apply(
-  fn,
-  args
- );
+ room.engine.setPlayerIndex(
+ player.index
+);
 
- player.selection=null;
+room.engine.apply(
+ fn,
+ args
+);
 
+player.selection=null;
 
- runBots(room);
+// La manche est terminée ou le mode victoire est atteint
+const state = room.engine.stateFor(player.index);
 
+if(state.roundEnded || state.winner){
+
+ sendState(room);
  return;
+
+}
+
+// Sinon on continue normalement
+runBots(room);
+
+sendState(room);
+
+return;
 
 }
 
