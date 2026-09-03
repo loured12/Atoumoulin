@@ -88,7 +88,7 @@ function makeSandbox() {
 }
 
 export class AtoumoulinEngine {
-  constructor(names) {
+  constructor(names, mode = 1) {
     this.sandbox = makeSandbox();
 
     this.sandbox.globalThis = this.sandbox;
@@ -101,9 +101,9 @@ export class AtoumoulinEngine {
     });
 
     this.sandbox.__atoumoulinInitMultiplayer(
-      names,
-      names.map(() => false),
-      1
+    names,
+    names.map(() => false),
+    mode
     );
   }
 
