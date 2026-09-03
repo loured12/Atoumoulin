@@ -594,7 +594,6 @@ if(joueurTour.main.length === 0 && actionEnCours === null){
     return;
 }
 
-let joueurTour = joueurs[joueurActuel];
 let couleurTour = couleursJoueurs[joueurActuel];
 
 zoneJeu.innerHTML +=
