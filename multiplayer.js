@@ -80,6 +80,11 @@
       myId !== r.hostId ||
       r.players.length < 2 ||
       r.started;
+
+    if(boutonNouvellePartie){
+    boutonNouvellePartie.style.display =
+        myId === r.hostId ? "" : "none";
+  }
   }
 
     function applyGameState(state, seq = 0, playerIndex) {
