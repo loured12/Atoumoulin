@@ -648,8 +648,8 @@ if(globalThis.__atoumoulinRemote){
 
     joueurs.forEach((adversaire, index) => {
 
-        if(index === joueurActuel){
-            return;
+        if(index === monIndex){
+        return;
         }
 
         zoneJeu.innerHTML += `
@@ -5798,8 +5798,9 @@ globalThis.__atoumoulinGetSelection = function(){
     return carteChoisie;
 };
 
-globalThis.__atoumoulinApplyState = function(state){
+globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
+    globalThis.__atoumoulinPlayerIndex = playerIndex;
     joueurs = (state.players || []).map(p => ({
         nom: p.name,
         main: Array.isArray(p.main) ? p.main.slice() : [],
