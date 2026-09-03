@@ -337,7 +337,7 @@ zoneJeu.innerHTML +=
                     </strong>
 
                     <span class="score-joueur-cartes">
-                        ${joueur.main.length} carte${joueur.main.length === 1 ? "" : "s"}
+                        ${joueur.cardCount ?? joueur.main.length} carte${(joueur.cardCount ?? joueur.main.length) === 1 ? "" : "s"}
                     </span>
 
                     ${
