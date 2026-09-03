@@ -511,7 +511,8 @@ if(paquet.length === 0){
 
 }
 
-let monIndex = globalThis.__atoumoulinRemote
+let monIndex = globalThis.__atoumoulinRemote &&
+               Number.isInteger(globalThis.__atoumoulinPlayerIndex)
     ? globalThis.__atoumoulinPlayerIndex
     : joueurActuel;
 
