@@ -672,7 +672,8 @@ label {
   top: 0;
   z-index: 100;
 
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
 
   margin: 0 auto 12px;
