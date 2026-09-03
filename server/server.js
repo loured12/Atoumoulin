@@ -169,6 +169,14 @@ wss.on("connection",ws=>{
       if(m.type==="game:action"){
         if(!room.started)throw Error("La partie n'a pas commencé.");
         if(player.bot)throw Error("Ce siège est contrôlé par un bot.");
+        if(m.fn === "preparerNouvelleManche"){
+        if(player.id !== room.hostId)
+        throw Error("Seul l'hôte peut lancer une nouvelle manche.");
+        room.engine.apply("preparerNouvelleManche", []);
+        sendState(room);
+        return;
+        }
+        
         if(player.index!==room.engine.currentIndex())throw Error("Ce n'est pas votre tour.");
 
         const fn=String(m.fn||"");
