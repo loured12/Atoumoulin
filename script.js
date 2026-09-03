@@ -610,7 +610,7 @@ if(monIndex !== joueurActuel){
     zoneJeu.innerHTML +=
     `<h3>Cartes de ${joueurTour.nom} :</h3>`;
 
-    joueurTour.main.forEach(()=>{
+    for(let i = 0; i < Number(joueurTour.cardCount || joueurTour.main.length); i++){
         zoneJeu.innerHTML +=
         `
         <div class="carte carte-dos-adversaire"></div>
@@ -5821,11 +5821,12 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
     joueurs = (state.players || []).map(p => ({
-        nom: p.name,
-        main: Array.isArray(p.main) ? p.main.slice() : [],
-        score: Number(p.score)||0,
-        bot: !!p.bot
-    }));
+    nom: p.name,
+    main: Array.isArray(p.main) ? p.main.slice() : [],
+    cardCount: Number(p.cardCount) || 0,
+    score: Number(p.score) || 0,
+    bot: !!p.bot
+}));
     paquet = Array(Math.max(0, Number(state.deckCount)||0)).fill(null);
     cartesTable = Array.isArray(state.table) ? state.table : [];
     defaussePouvoirs = Array.isArray(state.discard) ? state.discard : [];
