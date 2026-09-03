@@ -615,7 +615,7 @@ if(monIndex !== joueurActuel){
         `
         <div class="carte carte-dos-adversaire"></div>
         `;
-    });
+    }
 }
 
 // Ma propre main
