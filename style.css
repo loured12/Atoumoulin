@@ -987,6 +987,36 @@ label {
     0 0 14px rgba(255, 224, 102, 0.35);
 }
 
+.main-adversaire {
+  margin: 12px auto;
+  padding: 10px;
+  max-width: 700px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  border-radius: 10px;
+}
+
+.main-adversaire h3 {
+  margin: 4px 0 8px;
+  color: #ffe066;
+}
+
+.cartes-adversaire {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.carte-dos-adversaire {
+  width: 42px;
+  height: 60px;
+  border: 2px solid #d4af37;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #d93434, #8f1515);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
 /* =========================
    MOBILE
    ========================= */
