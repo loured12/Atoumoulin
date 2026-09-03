@@ -288,6 +288,8 @@
 
     window[name] = function(...args) {
 
+  console.log("HOOK :", name, "started =", started);
+
   if (!started)
     return original.apply(this,args);
 
