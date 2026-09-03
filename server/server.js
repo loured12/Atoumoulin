@@ -144,18 +144,27 @@ wss.on("connection",ws=>{
       }
 
       if(m.type==="room:start"){
-        if(player.id!==room.hostId)throw Error("Seul l'hôte peut lancer la partie.");
-        if(room.players.length<2)throw Error("Il faut au moins 2 joueurs.");
-        room.started=true;
-        room.engine=new AtoumoulinEngine(
+    if(player.id!==room.hostId)
+        throw Error("Seul l'hôte peut lancer la partie.");
+
+    if(room.players.length<2)
+        throw Error("Il faut au moins 2 joueurs.");
+
+    room.mode = Number(m.mode) || 1;
+
+    room.started=true;
+
+    room.engine=new AtoumoulinEngine(
         room.players.map(p=>p.name),
-        Number(m.mode) || 1
-       );
-        // All connected seats start human. If a future lobby option creates bots,
-        // runBots() will execute them server-side.
-        broadcast(room,{type:"game:start",room:view(room)});
-        sendState(room);lobby(room);return;
-      }
+        room.players.map(p=>p.bot),
+        room.mode
+    );
+
+    broadcast(room,{type:"game:start",room:view(room)});
+    sendState(room);
+    lobby(room);
+    return;
+}
 
       if(m.type==="room:reconnect"){
         const wanted=rooms.get(String(m.code||"").trim().toUpperCase());
