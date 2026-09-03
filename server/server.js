@@ -148,15 +148,32 @@ wss.on("connection",ws=>{
   if(!room.started)throw Error("La partie n'a pas commencé.");
   console.log("SELECTION RECUE :", m.selection, "joueur :", player.index);
   if(player.index!==room.engine.currentIndex())throw Error("Ce n'est pas votre tour.");
-  const idx=Number(m.selection);
-  if(!Number.isInteger(idx) || idx < 0)throw Error("Sélection invalide.");
+  if(Array.isArray(m.selection)){
+  const indices = m.selection.map(Number);
+
+  if(indices.length !== 2 || indices.some(i => !Number.isInteger(i) || i < 0)){
+    throw Error("Sélection invalide.");
+  }
+
+  room.engine.setPlayerIndex(player.index);
+  room.engine.setSelection(indices);
+  player.selection = indices;
+
+  } else {
+  const idx = Number(m.selection);
+
+  if(!Number.isInteger(idx) || idx < 0){
+    throw Error("Sélection invalide.");
+  }
+
   if(room.engine.stateFor(player.index).action === "double13choix"){
     room.engine.selectDouble13(idx, player.index);
-    player.selection = room.engine.stateFor(player.index).selection;
   } else {
     room.engine.selectCard(idx, player.index);
-    player.selection = room.engine.stateFor(player.index).selection;
   }
+
+  player.selection = room.engine.stateFor(player.index).selection;
+}
   room.seq++;
   console.log("ETAT APRES SELECTION :", JSON.stringify(publicState(room,player)));
   return send(ws,{
