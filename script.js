@@ -647,8 +647,6 @@ joueur.main.forEach((carte,index)=>{
 
 });
 
-}
-
 if(carteChoisie !== null && actionEnCours === null){
 
 zoneJeu.innerHTML +=
