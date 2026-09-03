@@ -267,17 +267,17 @@
     if (typeof original !== "function") return;
 
     window[name] = function(index) {
-      if (!started)
-        return original.call(this,index);
+        if (!started)
+            return original.call(this,index);
 
-      original.call(this,index);
+        original.call(this,index);
 
-      return send({
-        type:"game:select",
-        selection:Number(index)
-      });
+        return send({
+            type:"game:select",
+            selection: carteChoisie
+        });
     };
-  }
+}
   
   hookSelection("selectionnerCarte");
   hookSelection("selectionnerCarteDouble13");
