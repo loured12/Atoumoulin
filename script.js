@@ -4468,7 +4468,11 @@ function nouvelleManche(){
 
 }
 
-function preparerNouvelleManche(){
+function preparerNouvelleManche(nouveauMode){
+
+    if(nouveauMode !== undefined){
+        modeJeu = Number(nouveauMode) || 1;
+    }
 
     nouvelleManche();
 
