@@ -677,15 +677,6 @@ maMain.main.forEach((carte,index)=>{
     `;
 });
 
-    if(carteChoisie !== null && actionEnCours === null){
-
-    zoneJeu.innerHTML +=
-    `
-    <br><button onclick="jouerCarte()">Jouer</button>
-    `;
-
-}
-
 if(monIndex === joueurActuel &&
    carteChoisie !== null &&
    actionEnCours === null){
