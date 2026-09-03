@@ -80,7 +80,7 @@
       r.started;
   }
 
-  function applyGameState(state, seq = 0) {
+    function applyGameState(state, seq = 0, playerIndex) {
     if (seq && seq < lastSeq) return;
     if (seq) lastSeq = seq;
 
@@ -168,8 +168,8 @@
       }
 
       if (m.type === "game:state") {
-        started = true;
-        applyGameState(m.state, m.seq || 0);
+      started = true;
+      applyGameState(m.state, m.seq || 0, m.playerIndex);
       }
 
       if (m.type === "player:bot")
