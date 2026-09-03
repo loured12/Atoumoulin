@@ -511,7 +511,11 @@ if(paquet.length === 0){
 
 }
 
-let joueur = joueurs[joueurActuel];
+let monIndex = globalThis.__atoumoulinRemote
+    ? globalThis.__atoumoulinPlayerIndex
+    : joueurActuel;
+
+let joueur = joueurs[monIndex];
 
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
@@ -648,6 +652,8 @@ if(globalThis.__atoumoulinRemote){
 
     const monIndex = globalThis.__atoumoulinPlayerIndex;
 
+    if(joueurActuel !== monIndex){
+         
     joueurs.forEach((adversaire, index) => {
 
         if(index === monIndex){
