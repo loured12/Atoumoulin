@@ -286,6 +286,7 @@ ${modeJeu > 1 ? `
 }
 
 if(actionEnCours === "entreManches"){
+    afficherFinManche(gagnantManche);
     return;
 }
 
