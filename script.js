@@ -634,9 +634,9 @@ if(!maMain){
 <p>DEBUG : monIndex = ${monIndex} | cartes = ${maMain ? maMain.main.length : "INCONNU"}</p>
 `;
 
-let aUn7 = maMain.main.includes(7);
-let doubles = trouverDoubles(maMain.main);
-let doublesAffichables = cartesDoublesAffichables(maMain.main);
+let aUn7 = false;
+let doubles = [];
+let doublesAffichables = [];
 
 maMain.main.forEach((carte,index)=>{
 
