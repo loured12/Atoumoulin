@@ -4404,7 +4404,11 @@ function piocherCarte(joueur){
 
 }
 
-function nouvelleManche(){
+function nouvelleManche(nouveauMode){
+
+    if(nouveauMode !== undefined){
+        modeJeu = Number(nouveauMode) || 1;
+    }
 
     // Le joueur suivant commence
     passerJoueur();
@@ -4470,11 +4474,7 @@ function nouvelleManche(){
 
 function preparerNouvelleManche(nouveauMode){
 
-    if(nouveauMode !== undefined){
-        modeJeu = Number(nouveauMode) || 1;
-    }
-
-    nouvelleManche();
+    nouvelleManche(nouveauMode);
 
 }
 
