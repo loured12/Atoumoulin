@@ -349,6 +349,8 @@ if(m.type==="game:select"){
 
 if(m.type==="game:action"){
 
+ console.log("GAME ACTION RECUE :", m.fn, m.args);
+
  if(!room.started)
   throw Error("La partie n'a pas commencé.");
 
