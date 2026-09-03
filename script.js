@@ -655,13 +655,6 @@ maMain.main.forEach((carte,index)=>{
     }
 
     let selectionnable = monIndex === joueurActuel;
-    
-    console.log("DEBUG TOUR :", {
-    monIndex,
-    joueurActuel,
-    selectionnable,
-    carteChoisie
-});
 
     zoneJeu.innerHTML +=
     `
