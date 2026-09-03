@@ -593,60 +593,93 @@ if(joueur.main.length === 0 && actionEnCours === null){
     return;
 }
 
-let couleurTour = couleursJoueurs[monIndex];
+let joueurTour = joueurs[joueurActuel];
+let couleurTour = couleursJoueurs[joueurActuel];
 
 zoneJeu.innerHTML +=
 `
 <div class="tour-joueur">
-    ${couleurTour.rond} Tour de ${joueur.nom} ${couleurTour.rond}
+    ${couleurTour.rond} Tour de ${joueurTour.nom} ${couleurTour.rond}
 </div>
 `;
+
+// Cartes de l'adversaire si ce n'est pas mon tour
+
+if(monIndex !== joueurActuel){
+
+    zoneJeu.innerHTML +=
+    `<h3>Cartes de ${joueurTour.nom} :</h3>`;
+
+    joueurTour.main.forEach(()=>{
+        zoneJeu.innerHTML +=
+        `
+        <div class="carte carte-dos-adversaire"></div>
+        `;
+    });
+}
+
+// Ma propre main
 
 zoneJeu.innerHTML +=
 "<h3>Votre main :</h3>";
 
-let aUn7 = joueur.main.includes(7);
-let doubles = trouverDoubles(joueur.main);
-let doublesAffichables = cartesDoublesAffichables(joueur.main);
+let maMain = joueurs[monIndex];
 
-joueur.main.forEach((carte,index)=>{
+let aUn7 = maMain.main.includes(7);
+let doubles = trouverDoubles(maMain.main);
+let doublesAffichables = cartesDoublesAffichables(maMain.main);
 
-    // Priorité au 7
+maMain.main.forEach((carte,index)=>{
 
     if(aUn7 && carte !== 7){
-
         return;
-
     }
 
-    // Pas de 7 :
-    // seules les cartes faisant partie d'un double sont affichées
+    if(!aUn7 &&
+       doubles.length > 0 &&
+       !doublesAffichables.includes(carte)){
+        return;
+    }
 
-    if(!aUn7 && doubles.length > 0 && !doublesAffichables.includes(carte)){
-    return;
-}
-
-    // Ne jamais afficher plus de 2 cartes identiques
-
-    let nombreDejaAffichees = joueur.main
+    let nombreDejaAffichees = maMain.main
         .slice(0,index)
         .filter(c => c === carte)
         .length;
 
     if(nombreDejaAffichees >= 2){
-
         return;
-
     }
+
+    let selectionnable = monIndex === joueurActuel;
 
     zoneJeu.innerHTML +=
     `
-    <button class="carte ${(Array.isArray(carteChoisie) ? carteChoisie.includes(index) : carteChoisie === index) && actionEnCours === null ? "selectionnee" : ""}" onclick="selectionnerCarte(${index})">
+    <button
+        class="carte ${
+            selectionnable &&
+            (
+                Array.isArray(carteChoisie)
+                    ? carteChoisie.includes(index)
+                    : carteChoisie === index
+            ) &&
+            actionEnCours === null
+                ? "selectionnee"
+                : ""
+        }"
+        ${selectionnable ? `onclick="selectionnerCarte(${index})` : ""}
+    >
     ${carte}
     </button>
     `;
-
 });
+
+if(monIndex === joueurActuel &&
+   carteChoisie !== null &&
+   actionEnCours === null){
+
+    zoneJeu.innerHTML +=
+    `<br><button onclick="jouerCarte()">Jouer</button>`;
+}
 
 if(carteChoisie !== null && actionEnCours === null){
 
