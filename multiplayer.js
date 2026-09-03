@@ -211,9 +211,19 @@
       }
 
       if (m.type === "game:state") {
-      started = true;
-      applyGameState(m.state, m.seq || 0, m.playerIndex);
-      }
+
+  started = true;
+
+  console.log("STATE REÇU :", {
+    action: m.state?.action,
+    roundEnded: m.state?.roundEnded,
+    winner: m.state?.winner,
+    roundWinner: m.state?.roundWinner,
+    victories: m.state?.victories
+  });
+
+  applyGameState(m.state, m.seq || 0, m.playerIndex);
+}
 
       if (m.type === "player:bot")
         status(`${m.name} est maintenant contrôlé par un bot`);
