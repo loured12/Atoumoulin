@@ -28,6 +28,34 @@
 
   const boutonNouvellePartie = $("nouvellePartie");
 
+  if(boutonNouvellePartie){
+  boutonNouvellePartie.addEventListener("click", e => {
+
+    if(!started)
+      return;
+
+    e.stopImmediatePropagation();
+
+    if(!room || myId !== room.hostId){
+      return status("⚠️ Seul l'hôte peut lancer une nouvelle manche.");
+    }
+
+    const confirmer = confirm(
+      "La manche actuelle sera réinitialisée pour tous les joueurs.\n\nContinuer ?"
+    );
+
+    if(!confirmer)
+      return;
+
+    send({
+      type:"game:action",
+      fn:"preparerNouvelleManche",
+      args:[]
+    });
+
+  }, true);
+  }
+
   const send = m => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     ws.send(JSON.stringify(m));
