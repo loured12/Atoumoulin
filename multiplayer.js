@@ -270,13 +270,15 @@
       if (!started)
         return original.call(this,index);
 
+      original.call(this,index);
+
       return send({
         type:"game:select",
         selection:Number(index)
       });
     };
   }
-
+  
   hookSelection("selectionnerCarte");
   hookSelection("selectionnerCarteDouble13");
 
