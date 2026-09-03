@@ -258,7 +258,10 @@
     }
   };
 
-  $("mpStart").onclick = () => send({type:"room:start"});
+  $("mpStart").onclick = () => send({
+  type:"room:start",
+  mode: Number($("modeJeu").value)
+  });
 
   $("mpSend").onclick = () => {
     const i = $("mpText");
