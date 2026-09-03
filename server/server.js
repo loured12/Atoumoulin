@@ -405,8 +405,6 @@ room.engine.apply(
   args
 );
 
-console.log("APRES APPLY", fn);
-
 player.selection=null;
 
 const state = room.engine.stateFor(player.index);
