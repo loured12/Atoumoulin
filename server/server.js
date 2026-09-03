@@ -405,19 +405,9 @@ console.log("AVANT APPLY", fn);
 try{
 
  room.engine.apply(
-  fn,
-  args
- );
-
- console.log("APRES APPLY", fn);
-
-}catch(e){
-
- console.error("ERREUR DANS APPLY :", e);
-
- throw e;
-
-}
+ fn,
+ args
+);
 
 player.selection=null;
 
