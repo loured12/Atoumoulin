@@ -634,9 +634,9 @@ if(!maMain){
 <p>DEBUG : monIndex = ${monIndex} | cartes = ${maMain ? maMain.main.length : "INCONNU"}</p>
 `;
 
-let aUn7 = false;
-let doubles = [];
-let doublesAffichables = [];
+let aUn7 = maMain.main.includes(7);
+let doubles = trouverDoubles(maMain.main);
+let doublesAffichables = cartesDoublesAffichables(maMain.main);
 
 maMain.main.forEach((carte,index)=>{
 
@@ -675,7 +675,7 @@ maMain.main.forEach((carte,index)=>{
                 ? "selectionnee"
                 : ""
         }"
-        ${selectionnable ? `onclick="selectionnerCarte(${index})` : ""}
+        ${selectionnable ? `onclick="selectionnerCarte(${index})"` : ""}
     >
     ${carte}
     </button>
