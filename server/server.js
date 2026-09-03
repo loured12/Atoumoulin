@@ -225,6 +225,15 @@ wss.on("connection",ws=>{
           room.engine.setSelection(player.selection);
         }
 
+        console.log(
+  "AVANT ACTION :",
+  fn,
+  "selection =",
+  JSON.stringify(player.selection),
+  "currentPlayer =",
+  room.engine.currentIndex()
+);
+
         room.engine.apply(fn,args);
         player.selection=null;
         runBots(room);
