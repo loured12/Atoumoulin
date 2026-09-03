@@ -518,6 +518,7 @@ let monIndex = globalThis.__atoumoulinRemote &&
     : joueurActuel;
 
 let joueur = joueurs[monIndex];
+let joueurTour = joueurs[joueurActuel];
 
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
@@ -548,7 +549,7 @@ return;
 
 }
 
-if(joueur.main.length === 0 && actionEnCours === null){
+if(joueurTour.main.length === 0 && actionEnCours === null){
 
     let joueursAvecCartes = joueurs.filter(j => j.main.length > 0);
 
@@ -566,8 +567,7 @@ if(joueur.main.length === 0 && actionEnCours === null){
 
     // CE JOUEUR N'A PLUS DE CARTE
 
-    historique +=
-    `${joueur.nom} n'a plus de cartes et passe son tour.<br>`;
+    historique += `${joueurTour.nom} n'a plus de cartes et passe son tour.<br>`;
 
     // Chercher le prochain joueur possédant
     // encore au moins une carte
