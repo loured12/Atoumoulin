@@ -1488,8 +1488,12 @@ zoneJeu.innerHTML += `
 function selectionnerCarte(index){
 
     let monIndex = globalThis.__atoumoulinRemote
-        ? globalThis.__atoumoulinPlayerIndex
-        : joueurActuel;
+    ? Number(globalThis.__atoumoulinPlayerIndex)
+    : joueurActuel;
+
+    if(!Number.isInteger(monIndex) || !joueurs[monIndex]){
+    monIndex = joueurActuel;
+    }
 
     let joueur = joueurs[monIndex];
     let carte = joueur.main[index];
