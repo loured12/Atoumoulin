@@ -593,7 +593,7 @@ if(joueur.main.length === 0 && actionEnCours === null){
     return;
 }
 
-let couleurTour = couleursJoueurs[joueurActuel];
+let couleurTour = couleursJoueurs[monIndex];
 
 zoneJeu.innerHTML +=
 `
