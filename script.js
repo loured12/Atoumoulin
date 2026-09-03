@@ -5487,13 +5487,17 @@ function afficherFinManche(gagnant){
 
      <h2> MANCHE TERMINÉE !</h2>
 
-     <h2 class="fin-gagnant">
-     ${titreGagnant}
+     <div class="fin-gagnant">
+
+     <h2>
+        ${titreGagnant}
      </h2>
 
-     <h3 class="fin-egalite">
-     ${messageGagnant}
+     <h3>
+        ${messageGagnant}
      </h3>
+
+     </div>
 
      <div class="fin-scores">
 
