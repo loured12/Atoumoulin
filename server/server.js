@@ -145,64 +145,20 @@ wss.on("connection",ws=>{
       }
 
       if(m.type==="game:select"){
-  if(!room.started) throw Error("La partie n'a pas commencé.");
-
-  console.log(
-    "SELECTION RECUE :",
-    m.selection,
-    "joueur :",
-    player.index
-  );
-
-  if(player.index !== room.engine.currentIndex()){
-    throw Error("Ce n'est pas votre tour.");
+  if(!room.started)throw Error("La partie n'a pas commencé.");
+  console.log("SELECTION RECUE :", m.selection, "joueur :", player.index);
+  if(player.index!==room.engine.currentIndex())throw Error("Ce n'est pas votre tour.");
+  const idx=Number(m.selection);
+  if(!Number.isInteger(idx) || idx < 0)throw Error("Sélection invalide.");
+  if(room.engine.stateFor(player.index).action === "double13choix"){
+    room.engine.selectDouble13(idx);
+    player.selection = room.engine.stateFor(player.index).selection;
+  } else {
+    room.engine.selectCard(idx);
+    player.selection = room.engine.stateFor(player.index).selection;
   }
-
-  const selection = Array.isArray(m.selection)
-    ? m.selection.map(Number)
-    : Number(m.selection);
-
-  if(Array.isArray(selection)){
-
-    if(
-      selection.length === 0 ||
-      selection.length > 2 ||
-      selection.some(index =>
-        !Number.isInteger(index) || index < 0
-      )
-    ){
-      throw Error("Sélection invalide.");
-    }
-
-    room.engine.setSelection(selection);
-
-  }else{
-
-    if(!Number.isInteger(selection) || selection < 0){
-      throw Error("Sélection invalide.");
-    }
-
-    if(
-      room.engine.stateFor(player.index).action ===
-      "double13choix"
-    ){
-      room.engine.selectDouble13(selection);
-    }else{
-      room.engine.selectCard(selection);
-    }
-
-  }
-
-  player.selection =
-    room.engine.stateFor(player.index).selection;
-
   room.seq++;
-
-  console.log(
-    "ETAT APRES SELECTION :",
-    JSON.stringify(publicState(room,player))
-  );
-
+  console.log("ETAT APRES SELECTION :", JSON.stringify(publicState(room,player)));
   return send(ws,{
     type:"game:state",
     seq:room.seq,
@@ -224,15 +180,6 @@ wss.on("connection",ws=>{
         } else if(fn==="volerCartesDouble13"){
           room.engine.setSelection(player.selection);
         }
-
-        console.log(
-  "AVANT ACTION :",
-  fn,
-  "selection =",
-  JSON.stringify(player.selection),
-  "currentPlayer =",
-  room.engine.currentIndex()
-);
 
         room.engine.apply(fn,args);
         player.selection=null;
