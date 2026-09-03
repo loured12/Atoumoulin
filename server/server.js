@@ -125,7 +125,10 @@ wss.on("connection",ws=>{
         if(player.id!==room.hostId)throw Error("Seul l'hôte peut lancer la partie.");
         if(room.players.length<2)throw Error("Il faut au moins 2 joueurs.");
         room.started=true;
-        room.engine=new AtoumoulinEngine(room.players.map(p=>p.name));
+        room.engine=new AtoumoulinEngine(
+        room.players.map(p=>p.name),
+        Number(m.mode) || 1
+       );
         // All connected seats start human. If a future lobby option creates bots,
         // runBots() will execute them server-side.
         broadcast(room,{type:"game:start",room:view(room)});
