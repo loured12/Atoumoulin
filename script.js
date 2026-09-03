@@ -646,10 +646,12 @@ joueur.main.forEach((carte,index)=>{
 // Affichage des cartes des adversaires en multijoueur
 if(globalThis.__atoumoulinRemote){
 
+    const monIndex = globalThis.__atoumoulinPlayerIndex;
+
     joueurs.forEach((adversaire, index) => {
 
         if(index === monIndex){
-        return;
+            return;
         }
 
         zoneJeu.innerHTML += `
