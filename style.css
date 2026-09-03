@@ -695,10 +695,10 @@ label {
 }
 
 .scores-joueurs {
-  display: grid;
-
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 5px;
 }
 
@@ -744,16 +744,6 @@ label {
 .score-joueur-victoires {
   color: #d7b72f;
   font-weight: bold;
-}
-
-/* Tablette / petit écran */
-
-@media (max-width: 800px) {
-
-  .scores-joueurs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
 }
 
 /* Téléphone */
