@@ -629,11 +629,6 @@ if(!maMain){
     return;
 }
 
-    zoneJeu.innerHTML +=
-`
-<p>DEBUG : monIndex = ${monIndex} | cartes = ${maMain ? maMain.main.length : "INCONNU"}</p>
-`;
-
 let aUn7 = maMain.main.includes(7);
 let doubles = trouverDoubles(maMain.main);
 let doublesAffichables = cartesDoublesAffichables(maMain.main);
@@ -688,15 +683,6 @@ if(monIndex === joueurActuel &&
 
     zoneJeu.innerHTML +=
     `<br><button onclick="jouerCarte()">Jouer</button>`;
-}
-
-if(carteChoisie !== null && actionEnCours === null){
-
-zoneJeu.innerHTML +=
-`
-<br><button onclick="jouerCarte()">Jouer</button>
-`;
-
 }
 
 if(actionEnCours === "double1"){
