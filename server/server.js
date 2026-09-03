@@ -124,9 +124,6 @@ wss.on("connection",ws=>{
       if(m.type==="room:start"){
         if(player.id!==room.hostId)throw Error("Seul l'hôte peut lancer la partie.");
         if(room.players.length<2)throw Error("Il faut au moins 2 joueurs.");
-        
-        console.log("MODE REÇU :", m.mode);
-        
         room.started=true;
         room.engine=new AtoumoulinEngine(
         room.players.map(p=>p.name),
