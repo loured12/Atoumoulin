@@ -4898,18 +4898,6 @@ function triplerCarte15(carteIndex){
     historique +=
     `${joueur.nom} triple ${ancienneValeur} en ${nouvelleValeur} avec le double 15<br>`;
 
-    // Le double 15 reste dans la défausse des pouvoirs
-
-    defaussePouvoirs.push({
-    valeur: 15,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: 15,
-    joueur: joueur.nom
-});
-
     if(verifierFinPartie()){
         afficherJeu();
         return;
