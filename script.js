@@ -677,6 +677,14 @@ maMain.main.forEach((carte,index)=>{
     `;
 });
 
+console.log("BOUTON JOUER :", {
+    monIndex,
+    joueurActuel,
+    carteChoisie,
+    actionEnCours,
+    mancheTerminee
+});
+
 if(monIndex === joueurActuel &&
    carteChoisie !== null &&
    actionEnCours === null){
