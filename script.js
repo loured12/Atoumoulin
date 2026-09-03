@@ -647,34 +647,6 @@ joueur.main.forEach((carte,index)=>{
 
 });
 
-// Affichage des cartes des adversaires en multijoueur
-if(globalThis.__atoumoulinRemote){
-
-    const monIndex = globalThis.__atoumoulinPlayerIndex;
-
-    if(joueurActuel !== monIndex){
-         
-    joueurs.forEach((adversaire, index) => {
-
-        if(index === monIndex){
-            return;
-        }
-
-        zoneJeu.innerHTML += `
-            <div class="main-adversaire">
-                <h3>${adversaire.nom} : ${adversaire.main.length} carte${adversaire.main.length === 1 ? "" : "s"}</h3>
-
-                <div class="cartes-adversaire">
-                    ${adversaire.main.map(() => `
-                        <span class="carte-dos-adversaire"></span>
-                    `).join("")}
-                </div>
-            </div>
-        `;
-    });
-
-  }
-
 }
 
 if(carteChoisie !== null && actionEnCours === null){
@@ -1485,41 +1457,38 @@ zoneJeu.innerHTML += `
 
 function selectionnerCarte(index){
 
-let monIndex = globalThis.__atoumoulinRemote
-    ? globalThis.__atoumoulinPlayerIndex
-    : joueurActuel;
+    let monIndex = globalThis.__atoumoulinRemote
+        ? globalThis.__atoumoulinPlayerIndex
+        : joueurActuel;
 
-let joueur = joueurs[monIndex];
-let carte = joueur.main[index];
-let doubles = trouverDoubles(joueur.main);
+    let joueur = joueurs[monIndex];
+    let carte = joueur.main[index];
+    let doubles = trouverDoubles(joueur.main);
 
-// Si la carte fait partie d'un double
+    if(doubles.includes(carte)){
 
-if(doubles.includes(carte)){
+        carteChoisie = [];
 
-carteChoisie = [];
+        let nombreSelectionnees = 0;
 
-let nombreSelectionnees = 0;
+        joueur.main.forEach((c,i)=>{
 
-joueur.main.forEach((c,i)=>{
+            if(c === carte && nombreSelectionnees < 2){
 
-    if(c === carte && nombreSelectionnees < 2){
+                carteChoisie.push(i);
+                nombreSelectionnees++;
 
-        carteChoisie.push(i);
-        nombreSelectionnees++;
+            }
+
+        });
+
+    }else{
+
+        carteChoisie = index;
 
     }
 
-});
-
-}else{
-
-carteChoisie = index;
-
-}
-
-afficherJeu();
-
+    afficherJeu();
 }
 
 function jouerCarte(){
