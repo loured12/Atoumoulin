@@ -85,7 +85,7 @@
     if (seq) lastSeq = seq;
 
     if (typeof window.__atoumoulinApplyState === "function") {
-      window.__atoumoulinApplyState(state);
+    window.__atoumoulinApplyState(state, playerIndex);
     }
   }
 
