@@ -1485,7 +1485,11 @@ zoneJeu.innerHTML += `
 
 function selectionnerCarte(index){
 
-let joueur = joueurs[joueurActuel];
+let monIndex = globalThis.__atoumoulinRemote
+    ? globalThis.__atoumoulinPlayerIndex
+    : joueurActuel;
+
+let joueur = joueurs[monIndex];
 let carte = joueur.main[index];
 let doubles = trouverDoubles(joueur.main);
 
