@@ -218,17 +218,23 @@ export class AtoumoulinEngine {
     return true;
   }
 
-  setSelection(value) {
+  setPlayerIndex(index) {
+    this.sandbox.__atoumoulinPlayerIndex = Number(index);
+}
+
+setSelection(value) {
     this.sandbox.__atoumoulinSetSelection(value);
-  }
+}
 
-  selectCard(index) {
+selectCard(index, playerIndex) {
+    this.setPlayerIndex(playerIndex);
     this.sandbox.__atoumoulinSelectCard(index);
-  }
+}
 
-  selectDouble13(index) {
+selectDouble13(index, playerIndex) {
+    this.setPlayerIndex(playerIndex);
     this.sandbox.__atoumoulinSelectDouble13(index);
-  }
+}
 
   apply(fn, args = []) {
     const allowed = new Set([
