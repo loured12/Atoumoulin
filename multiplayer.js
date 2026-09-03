@@ -59,10 +59,16 @@
   }
 
   const send = m => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify(m));
-    return true;
-  };
+  console.log("SEND :", m, "WS =", ws?.readyState);
+
+  if (!ws || ws.readyState !== WebSocket.OPEN)
+    return false;
+
+  ws.send(JSON.stringify(m));
+
+  console.log("MESSAGE ENVOYÉ");
+  return true;
+};
 
   const status = t => {
     if ($("multiStatus")) $("multiStatus").textContent = t;
