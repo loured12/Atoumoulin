@@ -629,6 +629,11 @@ if(!maMain){
     return;
 }
 
+    zoneJeu.innerHTML +=
+`
+<p>DEBUG : monIndex = ${monIndex} | cartes = ${maMain ? maMain.main.length : "INCONNU"}</p>
+`;
+
 let aUn7 = maMain.main.includes(7);
 let doubles = trouverDoubles(maMain.main);
 let doublesAffichables = cartesDoublesAffichables(maMain.main);
