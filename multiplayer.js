@@ -26,6 +26,8 @@
 
   const $ = id => document.getElementById(id);
 
+  const boutonNouvellePartie = $("nouvellePartie");
+
   const send = m => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     ws.send(JSON.stringify(m));
