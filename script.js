@@ -673,6 +673,8 @@ if(globalThis.__atoumoulinRemote){
         `;
     });
 
+  }
+
 }
 
 if(carteChoisie !== null && actionEnCours === null){
