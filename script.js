@@ -643,6 +643,30 @@ joueur.main.forEach((carte,index)=>{
 
 });
 
+// Affichage des cartes des adversaires en multijoueur
+if(globalThis.__atoumoulinRemote){
+
+    joueurs.forEach((adversaire, index) => {
+
+        if(index === joueurActuel){
+            return;
+        }
+
+        zoneJeu.innerHTML += `
+            <div class="main-adversaire">
+                <h3>${adversaire.nom} : ${adversaire.main.length} carte${adversaire.main.length === 1 ? "" : "s"}</h3>
+
+                <div class="cartes-adversaire">
+                    ${adversaire.main.map(() => `
+                        <span class="carte-dos-adversaire"></span>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    });
+
+}
+
 if(carteChoisie !== null && actionEnCours === null){
 
 zoneJeu.innerHTML +=
