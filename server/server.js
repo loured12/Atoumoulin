@@ -391,44 +391,41 @@ if(m.type==="game:action"){
 
  if(fn==="jouerCarte"){
   room.engine.setSelection(
-   player.selection
+    player.selection
   );
   args=[];
- }
+}
 
- room.engine.setPlayerIndex(
+room.engine.setPlayerIndex(
   player.index
- );
-
- room.engine.setPlayerIndex(
- player.index
 );
 
 room.engine.apply(
- fn,
- args
+  fn,
+  args
 );
 
 player.selection=null;
 
-// La manche est terminée ou le mode victoire est atteint
 const state = room.engine.stateFor(player.index);
 
-if(state.roundEnded || state.winner){
-
- sendState(room);
- return;
-
+// Manche terminée
+if(state.roundEnded){
+  sendState(room);
+  return;
 }
 
-// Sinon on continue normalement
+// Partie gagnée (premier à X victoires)
+if(state.winner){
+  sendState(room);
+  return;
+}
+
 runBots(room);
 
 sendState(room);
 
 return;
-
-}
 
 throw Error("Action inconnue.");
 
