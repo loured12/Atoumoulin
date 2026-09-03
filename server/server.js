@@ -409,6 +409,14 @@ player.selection=null;
 
 const state = room.engine.stateFor(player.index);
 
+ console.log("ETAT APRES CARTE :", {
+  action: state.action,
+  roundEnded: state.roundEnded,
+  winner: state.winner,
+  roundWinner: state.roundWinner,
+  victories: state.victories
+});
+
 // Manche terminée
 if(state.roundEnded){
   sendState(room);
