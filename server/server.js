@@ -400,10 +400,24 @@ room.engine.setPlayerIndex(
   player.index
 );
 
-room.engine.apply(
+console.log("AVANT APPLY", fn);
+
+try{
+
+ room.engine.apply(
   fn,
   args
-);
+ );
+
+ console.log("APRES APPLY", fn);
+
+}catch(e){
+
+ console.error("ERREUR DANS APPLY :", e);
+
+ throw e;
+
+}
 
 player.selection=null;
 
