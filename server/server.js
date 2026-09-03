@@ -23,10 +23,32 @@ function view(r){return {
 function fail(ws,m){send(ws,{type:"error",message:m});}
 
 function roomCreate(n,max){
-  const r={code:makeCode(),seq:0,maxPlayers:Math.max(2,Math.min(8,Number(max)||8)),
-    started:false,hostId:null,players:[],engine:null};
-  const p={id:id(),token:id(),name:name(n),bot:false,connected:true,ws:null,index:0,selection:null};
-  r.players.push(p);r.hostId=p.id;rooms.set(r.code,r);return [r,p];
+  const r={
+    code:makeCode(),
+    seq:0,
+    maxPlayers:Math.max(2,Math.min(8,Number(max)||8)),
+    started:false,
+    hostId:null,
+    players:[],
+    engine:null,
+    mode:1
+  };
+
+  const p={
+    id:id(),
+    token:id(),
+    name:name(n),
+    bot:false,
+    connected:true,
+    ws:null,
+    index:0,
+    selection:null
+  };
+
+  r.players.push(p);
+  r.hostId=p.id;
+  rooms.set(r.code,r);
+  return [r,p];
 }
 
 function publicState(r, p){
