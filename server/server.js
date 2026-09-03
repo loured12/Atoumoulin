@@ -151,10 +151,10 @@ wss.on("connection",ws=>{
   const idx=Number(m.selection);
   if(!Number.isInteger(idx) || idx < 0)throw Error("Sélection invalide.");
   if(room.engine.stateFor(player.index).action === "double13choix"){
-    room.engine.selectDouble13(idx);
+    room.engine.selectDouble13(idx, player.index);
     player.selection = room.engine.stateFor(player.index).selection;
   } else {
-    room.engine.selectCard(idx);
+    room.engine.selectCard(idx, player.index);
     player.selection = room.engine.stateFor(player.index).selection;
   }
   room.seq++;
