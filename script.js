@@ -5584,9 +5584,9 @@ function afficherFinManche(gagnant){
 
         <br>
 
-                <button onclick="preparerNouvelleManche()">
-            🎴 Distribuer les nouvelles cartes
-        </button>
+                <button onclick="preparerNouvelleManche(Number(document.getElementById('modeJeu').value))">
+                🎴 Distribuer les nouvelles cartes
+                </button>
 
         </div>
         </div>
