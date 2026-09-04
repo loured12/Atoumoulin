@@ -59,14 +59,12 @@
   }
 
   const send = m => {
-  console.log("SEND :", m, "WS =", ws?.readyState);
 
   if (!ws || ws.readyState !== WebSocket.OPEN)
     return false;
 
   ws.send(JSON.stringify(m));
 
-  console.log("MESSAGE ENVOYÉ");
   return true;
 };
 
@@ -214,14 +212,6 @@
 
   started = true;
 
-  console.log("STATE REÇU :", {
-    action: m.state?.action,
-    roundEnded: m.state?.roundEnded,
-    winner: m.state?.winner,
-    roundWinner: m.state?.roundWinner,
-    victories: m.state?.victories
-  });
-
   applyGameState(m.state, m.seq || 0, m.playerIndex);
 }
 
@@ -303,8 +293,6 @@
     if (typeof original !== "function") return;
 
     window[name] = function(...args) {
-
-  console.log("HOOK :", name, "started =", started);
 
   if (!started)
     return original.apply(this,args);
