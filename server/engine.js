@@ -131,7 +131,7 @@ export class AtoumoulinEngine {
     const players = raw.joueurs.map((p, i) => {
       const own = i === viewIndex;
       const reveal =
-        own && raw.actionEnCours === "double9";
+        raw.actionEnCours === "double9";
 
       return {
       id: i,
