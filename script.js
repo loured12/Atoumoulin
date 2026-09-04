@@ -780,56 +780,50 @@ ${adversaire.nom}
 
 if(actionEnCours === "double9"){
 
-zoneJeu.innerHTML +=
-"<h3>👀 Voici les mains de vos adversaires :</h3>";
+    zoneJeu.innerHTML +=
+    "<h3>👀 Voici les mains de vos adversaires :</h3>";
 
-joueurs.forEach((adversaire,index)=>{
+    joueurs.forEach((adversaire,index)=>{
 
-    if(
-    index !== (
-        globalThis.__atoumoulinRemote
-            ? monIndex
-            : joueurActuel
-        )
-    ){
-
-        zoneJeu.innerHTML +=
-        `
-        <h4>${adversaire.nom}</h4>
-        `;
-
-        if(adversaire.main.length === 0){
-
-            zoneJeu.innerHTML +=
-            "Aucune carte<br>";
-
-        }else{
+        if(index !== joueurActuel){
 
             zoneJeu.innerHTML +=
             `
-            ${adversaire.main.map(carte =>
+            <h4>${adversaire.nom}</h4>
+            `;
+
+            if(adversaire.main.length === 0){
+
+                zoneJeu.innerHTML +=
+                "Aucune carte<br>";
+
+            }else{
+
+                zoneJeu.innerHTML +=
+                `
+                ${adversaire.main.map(carte =>
+                `
+                <span class="carte-adversaire-double9">
+                    ${carte}
+                </span>
+                `
+                ).join("")}
+                <br>
+                `;
+
+            }
+
+            zoneJeu.innerHTML +=
             `
-            <span class="carte-adversaire-double9">
-                ${carte}
-            </span>
-            `
-            ).join("")}
+            <button onclick="choisirAdversaireDouble9(${index})">
+                Échanger ma main avec ${adversaire.nom}
+            </button>
             <br>
             `;
 
         }
 
-        zoneJeu.innerHTML +=
-        `
-        <button onclick="choisirAdversaireDouble9(${index})">
-            Échanger ma main avec ${adversaire.nom}
-        </button>
-        <br>
-        `;
-
-    }
-
-});
+    });
 
 }
 
