@@ -11,13 +11,9 @@ function element(id) {
   return {
     id,
     value:
-      id === "nombreJoueurs"
-        ? "2"
-        : id === "nombreBots"
-        ? "0"
-        : id === "modeJeu"
-        ? "1"
-        : "",
+      id === "nombreJoueurs" ? "2" :
+      id === "nombreBots" ? "0" :
+      id === "modeJeu" ? "1" : "",
     innerHTML: "",
     style: { display: "" },
     children: [],
@@ -88,9 +84,10 @@ function makeSandbox() {
 }
 
 export class AtoumoulinEngine {
-  constructor(names, bots = [], mode = 1){
+  constructor(names, bots = [], mode = 1) {
     this.sandbox = makeSandbox();
     this.double9PlayerIndex = null;
+
     this.sandbox.globalThis = this.sandbox;
     this.sandbox.window = this.sandbox;
 
@@ -101,89 +98,142 @@ export class AtoumoulinEngine {
     });
 
     this.sandbox.__atoumoulinInitMultiplayer(
-    names,
-    bots,
-    mode
+      names,
+      bots,
+      mode
     );
   }
 
   stateFor(viewIndex, selection = null) {
-  const s = this.sandbox;
+    const s = this.sandbox;
 
-  if (
-    selection === null &&
-    typeof s.__atoumoulinGetSelection === "function"
-  ) {
-    selection = s.__atoumoulinGetSelection();
-  }
+    if (
+      selection === null &&
+      typeof s.__atoumoulinGetSelection === "function"
+    ) {
+      selection = s.__atoumoulinGetSelection();
+    }
 
-  const raw =
-    typeof s.__atoumoulinGetState === "function"
-      ? s.__atoumoulinGetState()
-      : null;
+    const raw =
+      typeof s.__atoumoulinGetState === "function"
+        ? s.__atoumoulinGetState()
+        : null;
 
-  if (!raw) {
-    throw new Error(
-      "Le moteur Atoumoulin n'a pas été initialisé."
-    );
+    if (!raw) {
+      throw new Error(
+        "Le moteur Atoumoulin n'a pas été initialisé."
+      );
+    }
+
+    const players = raw.joueurs.map((p, i) => {
+      const own = i === Number(viewIndex);
+
+      return {
+        id: i,
+        name: p.nom,
+        score: p.score,
+        bot: !!p.bot,
+        cardCount: p.main.length,
+        main: own
+          ? p.main.slice()
+          : Array(p.main.length).fill(null)
+      };
+    });
+
+    return {
+      players,
+      deckCount: raw.paquet.length,
+      table: raw.cartesTable,
+      discard: raw.defaussePouvoirs,
+      history: String(raw.historique || ""),
+      currentPlayer: raw.joueurActuel,
+      action: raw.actionEnCours,
+      target: raw.cibleChoisie,
+      selection,
+      toursJoker: raw.toursJoker,
+
+      winner:
+        raw.gagnantPartie == null
+          ? null
+          : typeof raw.gagnantPartie === "number"
+            ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+            : raw.gagnantPartie.nom ?? null,
+
+      roundWinner:
+        raw.gagnantManche == null
+          ? null
+          : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+
+      roundEnded: !!raw.mancheTerminee,
+      player17: raw.joueur17,
+      card17Pending: raw.carte17EnAttente,
+      double17Cards: raw.cartesDouble17,
+      double17Active: !!raw.double17EnCours,
+      player19: raw.joueur19,
+      victories: raw.victoires
+    };
   }
 
   getDouble9MultiplayerState(viewIndex, selection = null) {
     const s = this.sandbox;
     const raw = s.__atoumoulinGetState();
 
-    if (!raw || raw.actionEnCours !== "double9") {
-        return null;
+    if (
+      !raw ||
+      raw.actionEnCours !== "double9" ||
+      this.double9PlayerIndex === null
+    ) {
+      return null;
     }
 
     const estLeJoueurDuDouble9 =
-        Number(viewIndex) === Number(raw.joueurActuel);
+      Number(viewIndex) === Number(this.double9PlayerIndex);
 
     return {
-        players: raw.joueurs.map((p, i) => ({
-            id: i,
-            name: p.nom,
-            score: p.score,
-            bot: !!p.bot,
-            cardCount: p.main.length,
+      players: raw.joueurs.map((p, i) => ({
+        id: i,
+        name: p.nom,
+        score: p.score,
+        bot: !!p.bot,
+        cardCount: p.main.length,
 
-            main:
-                estLeJoueurDuDouble9 || i === Number(viewIndex)
-                    ? p.main.slice()
-                    : Array(p.main.length).fill(null)
-        })),
+        main:
+          estLeJoueurDuDouble9 || i === Number(viewIndex)
+            ? p.main.slice()
+            : Array(p.main.length).fill(null)
+      })),
 
-        deckCount: raw.paquet.length,
-        table: raw.cartesTable,
-        discard: raw.defaussePouvoirs,
-        history: String(raw.historique || ""),
-        currentPlayer: raw.joueurActuel,
-        action: raw.actionEnCours,
-        target: raw.cibleChoisie,
-        selection,
-        toursJoker: raw.toursJoker,
+      deckCount: raw.paquet.length,
+      table: raw.cartesTable,
+      discard: raw.defaussePouvoirs,
+      history: String(raw.historique || ""),
+      currentPlayer: raw.joueurActuel,
+      action: raw.actionEnCours,
+      target: raw.cibleChoisie,
+      selection,
+      toursJoker: raw.toursJoker,
 
-        winner:
-            raw.gagnantPartie == null
-                ? null
-                : typeof raw.gagnantPartie === "number"
-                    ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
-                    : raw.gagnantPartie.nom ?? null,
+      winner:
+        raw.gagnantPartie == null
+          ? null
+          : typeof raw.gagnantPartie === "number"
+            ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+            : raw.gagnantPartie.nom ?? null,
 
-        roundWinner:
-            raw.gagnantManche == null
-                ? null
-                : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+      roundWinner:
+        raw.gagnantManche == null
+          ? null
+          : raw.joueurs[raw.gagnantManche]?.nom ?? null,
 
-        roundEnded: !!raw.mancheTerminee,
-        player17: raw.joueur17,
-        card17Pending: raw.carte17EnAttente,
-        double17Cards: raw.cartesDouble17,
-        double17Active: !!raw.double17EnCours,
-        player19: raw.joueur19,
-        victories: raw.victoires
+      roundEnded: !!raw.mancheTerminee,
+      player17: raw.joueur17,
+      card17Pending: raw.carte17EnAttente,
+      double17Cards: raw.cartesDouble17,
+      double17Active: !!raw.double17EnCours,
+      player19: raw.joueur19,
+      victories: raw.victoires
     };
-}
+  }
 
   currentIndex() {
     return Number(
@@ -197,7 +247,6 @@ export class AtoumoulinEngine {
 
   runBotTurn(index) {
     const s = this.sandbox;
-
     const state = s.__atoumoulinGetState();
 
     if (
@@ -215,7 +264,6 @@ export class AtoumoulinEngine {
     }
 
     const previousRemote = !!s.__atoumoulinRemote;
-
     s.__atoumoulinRemote = false;
 
     try {
@@ -233,21 +281,21 @@ export class AtoumoulinEngine {
 
   setPlayerIndex(index) {
     this.sandbox.__atoumoulinPlayerIndex = Number(index);
-}
+  }
 
-setSelection(value) {
+  setSelection(value) {
     this.sandbox.__atoumoulinSetSelection(value);
-}
+  }
 
-selectCard(index, playerIndex) {
+  selectCard(index, playerIndex) {
     this.setPlayerIndex(playerIndex);
     this.sandbox.__atoumoulinSelectCard(index);
-}
+  }
 
-selectDouble13(index, playerIndex) {
+  selectDouble13(index, playerIndex) {
     this.setPlayerIndex(playerIndex);
     this.sandbox.__atoumoulinSelectDouble13(index);
-}
+  }
 
   apply(fn, args = []) {
     const allowed = new Set([
@@ -292,29 +340,31 @@ selectDouble13(index, playerIndex) {
 
     const f = this.sandbox[fn];
 
-if (typeof f !== "function") {
-  throw new Error("Action introuvable.");
-}
+    if (typeof f !== "function") {
+      throw new Error("Action introuvable.");
+    }
 
-const playerIndex = Number(
-  this.sandbox.__atoumoulinPlayerIndex
-);
+    const playerIndex = Number(
+      this.sandbox.__atoumoulinPlayerIndex
+    );
 
-f(...args);
+    f(...args);
 
-const state = this.sandbox.__atoumoulinGetState();
+    const state = this.sandbox.__atoumoulinGetState();
 
-if (
-  fn === "jouerCarte" &&
-  state &&
-  state.actionEnCours === "double9"
-) {
-  this.double9PlayerIndex = playerIndex;
-}
+    if (
+      fn === "jouerCarte" &&
+      state &&
+      state.actionEnCours === "double9"
+    ) {
+      this.double9PlayerIndex = playerIndex;
+    }
 
-if (
-  state &&
-  state.actionEnCours !== "double9"
-) {
-  this.double9PlayerIndex = null;
+    if (
+      state &&
+      state.actionEnCours !== "double9"
+    ) {
+      this.double9PlayerIndex = null;
+    }
+  }
 }
