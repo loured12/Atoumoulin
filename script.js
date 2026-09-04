@@ -2282,8 +2282,6 @@ function gererActionBot(){
         return;
     }
 
-    console.log("🤖 Action du bot :", actionEnCours);
-
     // CHOISIR UN ADVERSAIRE
 
   function choisirAdversaireAleatoire(){
