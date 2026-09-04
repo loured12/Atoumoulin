@@ -74,10 +74,23 @@ function view(r){
 }
 
 function publicState(r,p){
- return r.engine.stateFor(
-  p.index,
-  p?.selection??null
- );
+  if (
+    r.engine.getDouble9MultiplayerState &&
+    r.engine.getDouble9MultiplayerState(
+      p.index,
+      p?.selection ?? null
+    )
+  ) {
+    return r.engine.getDouble9MultiplayerState(
+      p.index,
+      p?.selection ?? null
+    );
+  }
+
+  return r.engine.stateFor(
+    p.index,
+    p?.selection ?? null
+  );
 }
 
 function sendState(r){
