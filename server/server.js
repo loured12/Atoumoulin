@@ -74,17 +74,14 @@ function view(r){
 }
 
 function publicState(r,p){
-  if (
-    r.engine.getDouble9MultiplayerState &&
-    r.engine.getDouble9MultiplayerState(
-      p.index,
-      p?.selection ?? null
-    )
-  ) {
-    return r.engine.getDouble9MultiplayerState(
+  const special =
+    r.engine.getDouble9MultiplayerState?.(
       p.index,
       p?.selection ?? null
     );
+
+  if (special !== null) {
+    return special;
   }
 
   return r.engine.stateFor(
