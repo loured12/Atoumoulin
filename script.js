@@ -159,65 +159,7 @@ afficherJeu();
 
 };
 
-function afficherDouble9Multijoueur(){
-    if(
-        !globalThis.__atoumoulinRemote ||
-        actionEnCours !== "double9"
-    ){
-        return false;
-    }
-
-    const monIndex = Number(
-        globalThis.__atoumoulinPlayerIndex
-    );
-
-    // Ce n'est pas le joueur qui a joué le double 9 :
-    // aucune interface spéciale.
-    if(monIndex !== Number(joueurActuel)){
-        return false;
-    }
-
-    zoneJeu.innerHTML = `
-        <h3>👀 Voici les mains de vos adversaires :</h3>
-    `;
-
-    joueurs.forEach((adversaire,index)=>{
-        if(index === monIndex){
-            return;
-        }
-
-        zoneJeu.innerHTML += `
-            <h4>${adversaire.nom}</h4>
-        `;
-
-        zoneJeu.innerHTML +=
-            adversaire.main.length > 0
-            ? `
-                ${adversaire.main.map(carte => `
-                    <span class="carte-adversaire-double9">
-                        ${carte}
-                    </span>
-                `).join("")}
-                <br>
-            `
-            : "Aucune carte<br>";
-
-        zoneJeu.innerHTML += `
-            <button onclick="choisirAdversaireDouble9(${index})">
-                Échanger ma main avec ${adversaire.nom}
-            </button>
-            <br>
-        `;
-    });
-
-    return true;
-}
-
 function afficherJeu(){
-
-if(afficherDouble9Multijoueur()){
-    return;
-}
 
 if(actionEnCours === "partieTerminee"){
 
