@@ -417,8 +417,6 @@ sendState(room);
 
 return;
 
-throw Error("Action inconnue.");
-
  }catch(e){
 
   fail(
