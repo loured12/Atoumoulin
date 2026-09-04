@@ -2056,6 +2056,10 @@ historiqueCarte: [7]
 historique +=
 `${joueur.nom} joue 7 (+20)<br>`;
 
+if(gererMainVideMultijoueur()){
+    return;
+}
+
 passerJoueur();
 
 afficherJeu();
@@ -2206,6 +2210,10 @@ if(paquet.length>0){
 
 joueur.main.push(paquet.pop());
 
+}
+
+if(gererMainVideMultijoueur()){
+    return;
 }
 
 joueurActuel++;
@@ -5631,6 +5639,41 @@ function fermerRolesCartes(event){
 
     document.getElementById("fenetreRolesCartes").style.display = "none";
 
+}
+
+function gererMainVideMultijoueur(){
+
+    if(!globalThis.__atoumoulinRemote){
+        return false;
+    }
+
+    const joueursAvecCartes =
+        joueurs.filter(j => j.main.length > 0);
+
+    if(joueursAvecCartes.length === 0){
+        verifierFinPartie();
+        return true;
+    }
+
+    if(joueurs[joueurActuel].main.length === 0){
+
+        passerJoueur();
+
+        let tentatives = 0;
+
+        while(
+            joueurs[joueurActuel].main.length === 0 &&
+            tentatives < joueurs.length
+        ){
+            passerJoueur();
+            tentatives++;
+        }
+
+        afficherJeu();
+        return true;
+    }
+
+    return false;
 }
 
 /* =========================================================
