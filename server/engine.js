@@ -90,6 +90,7 @@ function makeSandbox() {
 export class AtoumoulinEngine {
   constructor(names, bots = [], mode = 1){
     this.sandbox = makeSandbox();
+    this.double9PlayerIndex = null;
     this.sandbox.globalThis = this.sandbox;
     this.sandbox.window = this.sandbox;
 
@@ -127,11 +128,13 @@ export class AtoumoulinEngine {
     );
   }
 
-  // Pendant le double 9, seul le joueur dont c'est le tour
-  // reçoit les vraies mains de tous les joueurs.
+  // =====================================================
+  // DOUBLE 9 MULTIJOUEUR UNIQUEMENT
+  // =====================================================
   const revealDouble9 =
     raw.actionEnCours === "double9" &&
-    Number(viewIndex) === Number(raw.joueurActuel);
+    this.double9PlayerIndex !== null &&
+    Number(viewIndex) === Number(this.double9PlayerIndex);
 
   const players = raw.joueurs.map((p, i) => {
     const own = i === Number(viewIndex);
@@ -292,9 +295,28 @@ selectDouble13(index, playerIndex) {
     const f = this.sandbox[fn];
 
 if (typeof f !== "function") {
-    throw new Error("Action introuvable.");
+  throw new Error("Action introuvable.");
 }
 
+const playerIndex = Number(
+  this.sandbox.__atoumoulinPlayerIndex
+);
+
 f(...args);
+
+const state = this.sandbox.__atoumoulinGetState();
+
+if (
+  fn === "jouerCarte" &&
+  state &&
+  state.actionEnCours === "double9"
+) {
+  this.double9PlayerIndex = playerIndex;
 }
+
+if (
+  state &&
+  state.actionEnCours !== "double9"
+) {
+  this.double9PlayerIndex = null;
 }
