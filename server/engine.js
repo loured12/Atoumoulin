@@ -157,10 +157,7 @@ export class AtoumoulinEngine {
     target: raw.cibleChoisie,
     selection,
     toursJoker: raw.toursJoker,
-    double9PlayerIndex:
-        raw.actionEnCours === "double9"
-            ? this.double9PlayerIndex
-            : null,
+    
     winner:
         raw.gagnantPartie == null
             ? null
