@@ -679,14 +679,6 @@ maMain.main.forEach((carte,index)=>{
     `;
 });
 
-console.log("BOUTON JOUER :", {
-    monIndex,
-    joueurActuel,
-    carteChoisie,
-    actionEnCours,
-    mancheTerminee
-});
-
 if(monIndex === joueurActuel &&
    carteChoisie !== null &&
    actionEnCours === null){
@@ -3247,6 +3239,10 @@ function choisirAdversaireCarte17(index){
 
     let cartePiochee =
         cible.main.splice(indexAleatoire, 1)[0];
+    
+    if(gererMainVideMultijoueur()){
+    return;
+    }
 
     if(cartePiochee === undefined){
     return;
@@ -5652,24 +5648,6 @@ function gererMainVideMultijoueur(){
 
     if(joueursAvecCartes.length === 0){
         verifierFinPartie();
-        return true;
-    }
-
-    if(joueurs[joueurActuel].main.length === 0){
-
-        passerJoueur();
-
-        let tentatives = 0;
-
-        while(
-            joueurs[joueurActuel].main.length === 0 &&
-            tentatives < joueurs.length
-        ){
-            passerJoueur();
-            tentatives++;
-        }
-
-        afficherJeu();
         return true;
     }
 
