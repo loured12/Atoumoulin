@@ -296,15 +296,5 @@ if (typeof f !== "function") {
 }
 
 f(...args);
-
-// Si cette action déclenche le double 9,
-// mémoriser explicitement le joueur qui a joué le double 9.
-const state = this.sandbox.__atoumoulinGetState?.();
-
-const f = this.sandbox[fn];
-
-if (typeof f !== "function") {
-  throw new Error("Action introuvable.");
 }
-
-f(...args);
+}
