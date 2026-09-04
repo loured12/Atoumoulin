@@ -129,7 +129,7 @@ export class AtoumoulinEngine {
     }
 
     const revealDouble9 =
-       Number(viewIndex) === Number(raw.joueurActuel) &&
+       Number(viewIndex) === Number(this.sandbox.__atoumoulinPlayerIndex) &&
        raw.actionEnCours === "double9";
 
     const players = raw.joueurs.map((p, i) => {
