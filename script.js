@@ -781,9 +781,9 @@ ${adversaire.nom}
 if(actionEnCours === "double9"){
 
     const afficherDouble9 =
-        !globalThis.__atoumoulinRemote ||
-        Number(globalThis.__atoumoulinPlayerIndex) ===
-        Number(globalThis.__atoumoulinDouble9PlayerIndex);
+    !globalThis.__atoumoulinRemote ||
+    Number(globalThis.__atoumoulinPlayerIndex) ===
+    Number(joueurActuel);
 
     if(afficherDouble9){
 
@@ -5845,10 +5845,6 @@ globalThis.__atoumoulinGetSelection = function(){
 globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
-    globalThis.__atoumoulinDouble9PlayerIndex =
-    state.double9PlayerIndex == null
-        ? null
-        : Number(state.double9PlayerIndex);
     joueurs = (state.players || []).map(p => ({
     nom: p.name,
     main: Array.isArray(p.main) ? p.main.slice() : [],
