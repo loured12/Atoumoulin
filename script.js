@@ -780,50 +780,66 @@ ${adversaire.nom}
 
 if(actionEnCours === "double9"){
 
-    zoneJeu.innerHTML +=
-    "<h3>👀 Voici les mains de vos adversaires :</h3>";
+    // En multijoueur :
+    // seul le joueur qui a joué le double 9
+    // voit les mains et les boutons d'échange.
+    //
+    // En solo :
+    // comportement identique à avant.
 
-    joueurs.forEach((adversaire,index)=>{
+    const afficherDouble9 =
+        !globalThis.__atoumoulinRemote ||
+        Number(globalThis.__atoumoulinPlayerIndex) ===
+        Number(globalThis.__atoumoulinDouble9PlayerIndex);
 
-        if(index !== joueurActuel){
+    if(afficherDouble9){
 
-            zoneJeu.innerHTML +=
-            `
-            <h4>${adversaire.nom}</h4>
-            `;
+        zoneJeu.innerHTML +=
+        "<h3>👀 Voici les mains de vos adversaires :</h3>";
 
-            if(adversaire.main.length === 0){
+        joueurs.forEach((adversaire,index)=>{
+
+            if(index !== joueurActuel){
 
                 zoneJeu.innerHTML +=
-                "Aucune carte<br>";
+                `
+                <h4>${adversaire.nom}</h4>
+                `;
 
-            }else{
+                if(adversaire.main.length === 0){
+
+                    zoneJeu.innerHTML +=
+                    "Aucune carte<br>";
+
+                }else{
+
+                    zoneJeu.innerHTML +=
+                    `
+                    ${adversaire.main.map(carte =>
+                    `
+                    <span class="carte-adversaire-double9">
+                        ${carte}
+                    </span>
+                    `
+                    ).join("")}
+                    <br>
+                    `;
+
+                }
 
                 zoneJeu.innerHTML +=
                 `
-                ${adversaire.main.map(carte =>
-                `
-                <span class="carte-adversaire-double9">
-                    ${carte}
-                </span>
-                `
-                ).join("")}
+                <button onclick="choisirAdversaireDouble9(${index})">
+                    Échanger ma main avec ${adversaire.nom}
+                </button>
                 <br>
                 `;
 
             }
 
-            zoneJeu.innerHTML +=
-            `
-            <button onclick="choisirAdversaireDouble9(${index})">
-                Échanger ma main avec ${adversaire.nom}
-            </button>
-            <br>
-            `;
+        });
 
-        }
-
-    });
+    }
 
 }
 
@@ -5841,6 +5857,10 @@ globalThis.__atoumoulinGetSelection = function(){
 globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
+    globalThis.__atoumoulinDouble9PlayerIndex =
+    state.double9PlayerIndex == null
+        ? null
+        : Number(state.double9PlayerIndex);
     joueurs = (state.players || []).map(p => ({
     nom: p.name,
     main: Array.isArray(p.main) ? p.main.slice() : [],
