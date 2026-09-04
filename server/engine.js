@@ -128,21 +128,23 @@ export class AtoumoulinEngine {
       );
     }
 
-    const players = raw.joueurs.map((p, i) => {
-      const own = i === viewIndex;
-      const reveal =
-      own && raw.actionEnCours === "double9";
+    const revealDouble9 =
+       Number(viewIndex) === Number(raw.joueurActuel) &&
+       raw.actionEnCours === "double9";
 
-      return {
-      id: i,
-      name: p.nom,
-      score: p.score,
-      bot: !!p.bot,
-      cardCount: p.main.length,
-      main: own || reveal
-      ? p.main.slice()
-      : Array(p.main.length).fill(null)
-      };
+    const players = raw.joueurs.map((p, i) => {
+    const own = i === viewIndex;
+
+       return {
+        id: i,
+        name: p.nom,
+        score: p.score,
+        bot: !!p.bot,
+        cardCount: p.main.length,
+        main: own || revealDouble9
+            ? p.main.slice()
+            : Array(p.main.length).fill(null)
+        };
     });
 
     return {
