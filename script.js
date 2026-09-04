@@ -549,7 +549,9 @@ return;
 
 }
 
-if(joueurTour.main.length === 0 && actionEnCours === null){
+if(!globalThis.__atoumoulinRemote &&
+   joueurTour.main.length === 0 &&
+   actionEnCours === null){
 
     let joueursAvecCartes = joueurs.filter(j => j.main.length > 0);
 
