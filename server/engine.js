@@ -90,7 +90,7 @@ function makeSandbox() {
 export class AtoumoulinEngine {
   constructor(names, bots = [], mode = 1){
     this.sandbox = makeSandbox();
-
+    this.double9PlayerIndex = null;
     this.sandbox.globalThis = this.sandbox;
     this.sandbox.window = this.sandbox;
 
@@ -129,8 +129,8 @@ export class AtoumoulinEngine {
     }
 
     const revealDouble9 =
-       Number(viewIndex) === Number(this.sandbox.__atoumoulinPlayerIndex) &&
-       raw.actionEnCours === "double9";
+    Number(viewIndex) === Number(this.double9PlayerIndex) &&
+    raw.actionEnCours === "double9";
 
     const players = raw.joueurs.map((p, i) => {
     const own = i === viewIndex;
@@ -285,10 +285,26 @@ selectDouble13(index, playerIndex) {
 
     const f = this.sandbox[fn];
 
-    if (typeof f !== "function") {
-      throw new Error("Action introuvable.");
-    }
+if (typeof f !== "function") {
+    throw new Error("Action introuvable.");
+}
 
-    f(...args);
+// Mémorise le joueur qui effectue cette action.
+// Utilisé uniquement pour le pouvoir du double 9.
+const actionPlayerIndex =
+    Number(this.sandbox.__atoumoulinPlayerIndex);
+
+f(...args);
+
+// Si cette action déclenche le double 9,
+// mémorise définitivement son joueur.
+const state = this.sandbox.__atoumoulinGetState?.();
+
+if (
+    state &&
+    state.actionEnCours === "double9"
+) {
+    this.double9PlayerIndex = actionPlayerIndex;
+}
   }
 }
