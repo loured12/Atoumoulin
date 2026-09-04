@@ -134,12 +134,14 @@ export class AtoumoulinEngine {
         own && raw.actionEnCours === "double9";
 
       return {
-        id: i,
-        name: p.nom,
-        score: p.score,
-        bot: !!p.bot,
-        cardCount: p.main.length,
-        main: own || reveal ? p.main.slice() : Array(p.cardCount).fill(null)
+      id: i,
+      name: p.nom,
+      score: p.score,
+      bot: !!p.bot,
+      cardCount: p.main.length,
+      main: own || reveal
+      ? p.main.slice()
+      : Array(p.main.length).fill(null)
       };
     });
 
