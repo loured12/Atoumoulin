@@ -148,35 +148,38 @@ export class AtoumoulinEngine {
     });
 
     return {
-      players,
-      deckCount: raw.paquet.length,
-      table: raw.cartesTable,
-      discard: raw.defaussePouvoirs,
-      history: String(raw.historique || ""),
-      currentPlayer: raw.joueurActuel,
-      action: raw.actionEnCours,
-      target: raw.cibleChoisie,
-      selection,
-      toursJoker: raw.toursJoker,
-      winner:
-      raw.gagnantPartie == null
-      ? null
-      : typeof raw.gagnantPartie === "number"
-      ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
-      : raw.gagnantPartie.nom ?? null,
-      roundWinner:
+    players,
+    deckCount: raw.paquet.length,
+    table: raw.cartesTable,
+    discard: raw.defaussePouvoirs,
+    history: String(raw.historique || ""),
+    currentPlayer: raw.joueurActuel,
+    action: raw.actionEnCours,
+    target: raw.cibleChoisie,
+    selection,
+    toursJoker: raw.toursJoker,
+    double9PlayerIndex:
+        raw.actionEnCours === "double9"
+            ? this.double9PlayerIndex
+            : null,
+    winner:
+        raw.gagnantPartie == null
+            ? null
+            : typeof raw.gagnantPartie === "number"
+                ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+                : raw.gagnantPartie.nom ?? null,
+    roundWinner:
         raw.gagnantManche == null
-          ? null
-          : raw.joueurs[raw.gagnantManche]?.nom ?? null,
-      roundEnded: !!raw.mancheTerminee,
-      player17: raw.joueur17,
-      card17Pending: raw.carte17EnAttente,
-      double17Cards: raw.cartesDouble17,
-      double17Active: !!raw.double17EnCours,
-      player19: raw.joueur19,
-      victories: raw.victoires
-    };
-  }
+            ? null
+            : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+    roundEnded: !!raw.mancheTerminee,
+    player17: raw.joueur17,
+    card17Pending: raw.carte17EnAttente,
+    double17Cards: raw.cartesDouble17,
+    double17Active: !!raw.double17EnCours,
+    player19: raw.joueur19,
+    victories: raw.victoires
+  };
 
   currentIndex() {
     return Number(
