@@ -128,63 +128,61 @@ export class AtoumoulinEngine {
     );
   }
 
-  // =====================================================
-  // DOUBLE 9 MULTIJOUEUR UNIQUEMENT
-  // =====================================================
-  const revealDouble9 =
-    raw.actionEnCours === "double9" &&
-    this.double9PlayerIndex !== null &&
-    Number(viewIndex) === Number(this.double9PlayerIndex);
+  getDouble9MultiplayerState(viewIndex, selection = null) {
+    const s = this.sandbox;
+    const raw = s.__atoumoulinGetState();
 
-  const players = raw.joueurs.map((p, i) => {
-    const own = i === Number(viewIndex);
+    if (!raw || raw.actionEnCours !== "double9") {
+        return null;
+    }
+
+    const estLeJoueurDuDouble9 =
+        Number(viewIndex) === Number(raw.joueurActuel);
 
     return {
-      id: i,
-      name: p.nom,
-      score: p.score,
-      bot: !!p.bot,
-      cardCount: p.main.length,
+        players: raw.joueurs.map((p, i) => ({
+            id: i,
+            name: p.nom,
+            score: p.score,
+            bot: !!p.bot,
+            cardCount: p.main.length,
 
-      main:
-        own || revealDouble9
-          ? p.main.slice()
-          : Array(p.main.length).fill(null)
+            main:
+                estLeJoueurDuDouble9 || i === Number(viewIndex)
+                    ? p.main.slice()
+                    : Array(p.main.length).fill(null)
+        })),
+
+        deckCount: raw.paquet.length,
+        table: raw.cartesTable,
+        discard: raw.defaussePouvoirs,
+        history: String(raw.historique || ""),
+        currentPlayer: raw.joueurActuel,
+        action: raw.actionEnCours,
+        target: raw.cibleChoisie,
+        selection,
+        toursJoker: raw.toursJoker,
+
+        winner:
+            raw.gagnantPartie == null
+                ? null
+                : typeof raw.gagnantPartie === "number"
+                    ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+                    : raw.gagnantPartie.nom ?? null,
+
+        roundWinner:
+            raw.gagnantManche == null
+                ? null
+                : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+
+        roundEnded: !!raw.mancheTerminee,
+        player17: raw.joueur17,
+        card17Pending: raw.carte17EnAttente,
+        double17Cards: raw.cartesDouble17,
+        double17Active: !!raw.double17EnCours,
+        player19: raw.joueur19,
+        victories: raw.victoires
     };
-  });
-
-  return {
-    players,
-    deckCount: raw.paquet.length,
-    table: raw.cartesTable,
-    discard: raw.defaussePouvoirs,
-    history: String(raw.historique || ""),
-    currentPlayer: raw.joueurActuel,
-    action: raw.actionEnCours,
-    target: raw.cibleChoisie,
-    selection,
-    toursJoker: raw.toursJoker,
-
-    winner:
-      raw.gagnantPartie == null
-        ? null
-        : typeof raw.gagnantPartie === "number"
-          ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
-          : raw.gagnantPartie.nom ?? null,
-
-    roundWinner:
-      raw.gagnantManche == null
-        ? null
-        : raw.joueurs[raw.gagnantManche]?.nom ?? null,
-
-    roundEnded: !!raw.mancheTerminee,
-    player17: raw.joueur17,
-    card17Pending: raw.carte17EnAttente,
-    double17Cards: raw.cartesDouble17,
-    double17Active: !!raw.double17EnCours,
-    player19: raw.joueur19,
-    victories: raw.victoires
-  };
 }
 
   currentIndex() {
