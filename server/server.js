@@ -390,13 +390,10 @@ if(m.type==="game:action"){
 }
 
 room.engine.setPlayerIndex(
-  player.index
+    player.index
 );
 
- room.engine.apply(
- fn,
- args
-);
+room.engine.apply(fn,args,player.index);
 
 player.selection=null;
 
