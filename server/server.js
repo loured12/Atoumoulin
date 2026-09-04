@@ -393,7 +393,7 @@ room.engine.setPlayerIndex(
     player.index
 );
 
-room.engine.apply(fn,args,player.index);
+room.engine.apply(fn,args);
 
 player.selection=null;
 
