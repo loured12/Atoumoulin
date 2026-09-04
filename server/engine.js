@@ -107,46 +107,50 @@ export class AtoumoulinEngine {
   }
 
   stateFor(viewIndex, selection = null) {
-    const s = this.sandbox;
+  const s = this.sandbox;
 
-    if (
-      selection === null &&
-      typeof s.__atoumoulinGetSelection === "function"
-    ) {
-      selection = s.__atoumoulinGetSelection();
-    }
+  if (
+    selection === null &&
+    typeof s.__atoumoulinGetSelection === "function"
+  ) {
+    selection = s.__atoumoulinGetSelection();
+  }
 
-    const raw =
-      typeof s.__atoumoulinGetState === "function"
-        ? s.__atoumoulinGetState()
-        : null;
+  const raw =
+    typeof s.__atoumoulinGetState === "function"
+      ? s.__atoumoulinGetState()
+      : null;
 
-    if (!raw) {
-      throw new Error(
-        "Le moteur Atoumoulin n'a pas été initialisé."
-      );
-    }
+  if (!raw) {
+    throw new Error(
+      "Le moteur Atoumoulin n'a pas été initialisé."
+    );
+  }
 
-    const revealDouble9 =
+  // Pendant le double 9, seul le joueur dont c'est le tour
+  // reçoit les vraies mains de tous les joueurs.
+  const revealDouble9 =
     raw.actionEnCours === "double9" &&
     Number(viewIndex) === Number(raw.joueurActuel);
 
-    const players = raw.joueurs.map((p, i) => {
-    const own = i === viewIndex;
-
-       return {
-        id: i,
-        name: p.nom,
-        score: p.score,
-        bot: !!p.bot,
-        cardCount: p.main.length,
-        main: own || revealDouble9
-            ? p.main.slice()
-            : Array(p.main.length).fill(null)
-        };
-    });
+  const players = raw.joueurs.map((p, i) => {
+    const own = i === Number(viewIndex);
 
     return {
+      id: i,
+      name: p.nom,
+      score: p.score,
+      bot: !!p.bot,
+      cardCount: p.main.length,
+
+      main:
+        own || revealDouble9
+          ? p.main.slice()
+          : Array(p.main.length).fill(null)
+    };
+  });
+
+  return {
     players,
     deckCount: raw.paquet.length,
     table: raw.cartesTable,
@@ -157,17 +161,19 @@ export class AtoumoulinEngine {
     target: raw.cibleChoisie,
     selection,
     toursJoker: raw.toursJoker,
-    
+
     winner:
-        raw.gagnantPartie == null
-            ? null
-            : typeof raw.gagnantPartie === "number"
-                ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
-                : raw.gagnantPartie.nom ?? null,
+      raw.gagnantPartie == null
+        ? null
+        : typeof raw.gagnantPartie === "number"
+          ? raw.joueurs[raw.gagnantPartie]?.nom ?? null
+          : raw.gagnantPartie.nom ?? null,
+
     roundWinner:
-        raw.gagnantManche == null
-            ? null
-            : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+      raw.gagnantManche == null
+        ? null
+        : raw.joueurs[raw.gagnantManche]?.nom ?? null,
+
     roundEnded: !!raw.mancheTerminee,
     player17: raw.joueur17,
     card17Pending: raw.carte17EnAttente,
@@ -176,6 +182,7 @@ export class AtoumoulinEngine {
     player19: raw.joueur19,
     victories: raw.victoires
   };
+}
 
   currentIndex() {
     return Number(
