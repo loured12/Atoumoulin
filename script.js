@@ -780,13 +780,6 @@ ${adversaire.nom}
 
 if(actionEnCours === "double9"){
 
-    // En multijoueur :
-    // seul le joueur qui a joué le double 9
-    // voit les mains et les boutons d'échange.
-    //
-    // En solo :
-    // comportement identique à avant.
-
     const afficherDouble9 =
         !globalThis.__atoumoulinRemote ||
         Number(globalThis.__atoumoulinPlayerIndex) ===
@@ -824,7 +817,6 @@ if(actionEnCours === "double9"){
                     ).join("")}
                     <br>
                     `;
-
                 }
 
                 zoneJeu.innerHTML +=
@@ -834,13 +826,9 @@ if(actionEnCours === "double9"){
                 </button>
                 <br>
                 `;
-
             }
-
         });
-
     }
-
 }
 
 if(actionEnCours === "carte9"){
