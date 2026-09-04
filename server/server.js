@@ -367,13 +367,6 @@ if(m.type==="game:action"){
   const nouveauMode=
    Number(args[0])||room.mode||1;
 
-  console.log(
-   "CHANGEMENT MODE :",
-   room.mode,
-   "=>",
-   nouveauMode
-  );
-
   room.mode=nouveauMode;
 
   room.engine.apply(
