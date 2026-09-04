@@ -90,7 +90,6 @@ function makeSandbox() {
 export class AtoumoulinEngine {
   constructor(names, bots = [], mode = 1){
     this.sandbox = makeSandbox();
-    this.double9PlayerIndex = null;
     this.sandbox.globalThis = this.sandbox;
     this.sandbox.window = this.sandbox;
 
@@ -129,8 +128,8 @@ export class AtoumoulinEngine {
     }
 
     const revealDouble9 =
-    Number(viewIndex) === Number(this.double9PlayerIndex) &&
-    raw.actionEnCours === "double9";
+    raw.actionEnCours === "double9" &&
+    Number(viewIndex) === Number(raw.joueurActuel);
 
     const players = raw.joueurs.map((p, i) => {
     const own = i === viewIndex;
