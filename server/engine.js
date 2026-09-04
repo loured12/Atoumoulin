@@ -248,7 +248,7 @@ selectDouble13(index, playerIndex) {
     this.sandbox.__atoumoulinSelectDouble13(index);
 }
 
-  apply(fn, args = [], playerIndex = null) {
+  apply(fn, args = []) {
     const allowed = new Set([
       "jouerCarte",
       "effetCarte11",
@@ -301,11 +301,10 @@ f(...args);
 // mémoriser explicitement le joueur qui a joué le double 9.
 const state = this.sandbox.__atoumoulinGetState?.();
 
-if(
-    state &&
-    state.actionEnCours === "double9" &&
-    playerIndex !== null
-){
-    this.double9PlayerIndex = Number(playerIndex);
-  }
+const f = this.sandbox[fn];
+
+if (typeof f !== "function") {
+  throw new Error("Action introuvable.");
 }
+
+f(...args);
