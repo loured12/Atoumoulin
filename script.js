@@ -1715,6 +1715,10 @@ if(valeurDouble === 7){
         return;
     }
 
+    if(gererMainVideMultijoueur()){
+    return;
+    }
+
     // Pas de pioche pour le double 7
 
     passerJoueur();
@@ -1947,8 +1951,6 @@ historique +=
 `${joueur.nom} joue ${carte} (+${carte})<br>`;
 
 }else{
-
-// Pouvoir (temporaire)
 
 // Cartes pouvoirs
 
@@ -3239,12 +3241,12 @@ function choisirAdversaireCarte17(index){
 
     let cartePiochee =
         cible.main.splice(indexAleatoire, 1)[0];
-    
-    if(gererMainVideMultijoueur()){
-    return;
-    }
 
     if(cartePiochee === undefined){
+    return;
+    }
+    
+    if(gererMainVideMultijoueur()){
     return;
     }
 
