@@ -785,7 +785,13 @@ zoneJeu.innerHTML +=
 
 joueurs.forEach((adversaire,index)=>{
 
-    if(index !== joueurActuel){
+    if(
+    index !== (
+        globalThis.__atoumoulinRemote
+            ? monIndex
+            : joueurActuel
+        )
+    ){
 
         zoneJeu.innerHTML +=
         `
