@@ -136,7 +136,13 @@
       return false;
     }
 
-    if (ws && ws.readyState === WebSocket.OPEN) return true;
+    if (
+      ws &&
+      (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      )
+     ) return true;
 
     try {
       ws = new WebSocket(SERVER_URL);
@@ -262,14 +268,15 @@
     token:sessionToken
   };
 
-  if(
-    ws &&
-    ws.readyState===WebSocket.OPEN
-  ){
+  if(ws && ws.readyState===WebSocket.OPEN){
+    
     send(action);
-  }
-  else if(connect()){
+    
+    }else{
+
     pendingAction=action;
+
+    connect();
   }
 };
 
