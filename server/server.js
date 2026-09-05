@@ -307,6 +307,13 @@ if(m.type==="room:reconnect"){
  player.connected=true;
  player.bot=false;
 
+ if(room.engine){
+  room.engine.setBot(
+    player.index,
+    false
+  );
+ }
+
  send(ws,{
   type:"room:reconnected",
   playerId:player.id,
