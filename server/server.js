@@ -193,43 +193,101 @@ wss.on("connection",ws=>{
 
  if(m.type==="room:join"){
 
-  if(room)throw Error("Vous êtes déjà dans un salon.");
+  if(room)
+    throw Error("Vous êtes déjà dans un salon.");
 
-  room=rooms.get(
-   String(m.code||"").trim().toUpperCase()
+  const wanted=rooms.get(
+    String(m.code||"").trim().toUpperCase()
   );
 
-  if(!room)throw Error("Salon introuvable.");
+  if(!wanted)
+    throw Error("Salon introuvable.");
 
-  if(room.started)
-   throw Error("La partie a déjà commencé.");
+  // ---------------------------------------------------------
+  // RECONNEXION / RÉCUPÉRATION DE LA PLACE
+  // ---------------------------------------------------------
 
-  if(room.players.length>=room.maxPlayers)
-   throw Error("Salon complet.");
+  const existing=wanted.players.find(
+    p =>
+      m.playerId &&
+      m.token &&
+      p.id===m.playerId &&
+      p.token===m.token
+  );
+
+  if(existing){
+
+    if(existing.ws && existing.ws!==ws){
+      try{
+        existing.ws.close();
+      }catch{}
+    }
+
+    room=wanted;
+    player=existing;
+
+    player.ws=ws;
+    player.connected=true;
+    player.bot=false;
+
+    if(room.engine){
+      room.engine.setBot(
+        player.index,
+        false
+      );
+    }
+
+    send(ws,{
+      type:"room:reconnected",
+      playerId:player.id,
+      token:player.token,
+      room:view(room)
+    });
+
+    if(room.engine)
+      sendState(room);
+
+    lobby(room);
+
+    return;
+  }
+
+  // ---------------------------------------------------------
+  // NOUVEAU JOUEUR
+  // ---------------------------------------------------------
+
+  if(wanted.started)
+    throw Error("La partie a déjà commencé.");
+
+  if(wanted.players.length>=wanted.maxPlayers)
+    throw Error("Salon complet.");
+
+  room=wanted;
 
   player={
-   id:id(),
-   token:id(),
-   name:name(m.name),
-   bot:false,
-   connected:true,
-   ws,
-   index:room.players.length,
-   selection:null
+    id:id(),
+    token:id(),
+    name:name(m.name),
+    bot:false,
+    connected:true,
+    ws,
+    index:room.players.length,
+    selection:null
   };
 
   room.players.push(player);
 
   send(ws,{
-   type:"room:joined",
-   playerId:player.id,
-   token:player.token,
-   room:view(room)
+    type:"room:joined",
+    playerId:player.id,
+    token:player.token,
+    room:view(room)
   });
 
   lobby(room);
+
   return;
- }
+}
 
  if(!room||!player)
   throw Error("Rejoignez d'abord un salon.");
@@ -280,54 +338,6 @@ wss.on("connection",ws=>{
 
   return;
  }
-
-if(m.type==="room:reconnect"){
-
- const wanted=rooms.get(
-  String(m.code||"").trim().toUpperCase()
- );
-
- if(!wanted)
-  throw Error("Salon introuvable.");
-
- const existing=wanted.players.find(
-  p=>p.id===m.playerId && p.token===m.token
- );
-
- if(!existing)
-  throw Error("Session introuvable.");
-
- if(existing.ws && existing.ws!==ws){
-  try{existing.ws.close()}catch{}
- }
-
- room=wanted;
- player=existing;
- player.ws=ws;
- player.connected=true;
- player.bot=false;
-
- if(room.engine){
-  room.engine.setBot(
-    player.index,
-    false
-  );
- }
-
- send(ws,{
-  type:"room:reconnected",
-  playerId:player.id,
-  token:player.token,
-  room:view(room)
- });
-
- if(room.engine)
-  sendState(room);
-
- lobby(room);
-
- return;
-}
 
 if(m.type==="game:select"){
 
@@ -450,17 +460,16 @@ return;
 
   if(!room||!player)return;
 
+  // Si ce n'est plus la connexion actuelle du joueur,
+  // c'est une ancienne connexion : on ne touche pas à son état.
+  if(player.ws!==ws)return;
+
   player.ws=null;
   player.connected=false;
 
   if(room.started){
-
-   player.bot=true;
-
-   room.engine.setBot(
-    player.index,
-    true
-   );
+      player.bot=true;
+      room.engine.setBot(player.index,true);
 
    broadcast(room,{
     type:"player:bot",
