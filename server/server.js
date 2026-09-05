@@ -305,6 +305,7 @@ if(m.type==="room:reconnect"){
  player=existing;
  player.ws=ws;
  player.connected=true;
+ player.bot=false;
 
  send(ws,{
   type:"room:reconnected",
