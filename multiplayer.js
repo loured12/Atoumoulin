@@ -250,21 +250,42 @@
   };
 
   // Rejoindre : fonctionne en un seul clic
+  // Rejoindre ou récupérer sa place dans une partie en cours
   $("mpJoin").onclick = () => {
-    localStorage.setItem("atoumoulin_name", $("mpName").value);
+  localStorage.setItem("atoumoulin_name", $("mpName").value);
 
-    const action = {
+  const code = $("mpCode").value.trim().toUpperCase();
+
+  if (!code) {
+    return status("⚠️ Entre le code du salon.");
+  }
+
+  let action;
+
+  // Si le joueur possède encore ses identifiants,
+  // on tente de récupérer son ancienne place.
+  if (myId && sessionToken) {
+    action = {
+      type: "room:reconnect",
+      code,
+      playerId: myId,
+      token: sessionToken
+    };
+  } else {
+    // Nouveau joueur
+    action = {
       type: "room:join",
       name: $("mpName").value,
-      code: $("mpCode").value
+      code
     };
+  }
 
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      send(action);
-    } else if (connect()) {
-      pendingAction = action;
-    }
-  };
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    send(action);
+  } else if (connect()) {
+    pendingAction = action;
+  }
+};
 
   $("mpStart").onclick = () => send({
   type:"room:start",
