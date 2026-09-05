@@ -148,17 +148,6 @@
     ws.onopen = () => {
       status("Connecté au serveur");
 
-      const code = localStorage.getItem("atoumoulin_room_code");
-
-      if (code && myId && sessionToken) {
-        send({
-          type:"room:reconnect",
-          code,
-          playerId:myId,
-          token:sessionToken
-        });
-      }
-
       // Envoie l'action demandée au premier clic
       if (pendingAction) {
         const action = pendingAction;
@@ -249,41 +238,38 @@
     }
   };
 
-  // Rejoindre : fonctionne en un seul clic
   // Rejoindre ou récupérer sa place dans une partie en cours
   $("mpJoin").onclick = () => {
-  localStorage.setItem("atoumoulin_name", $("mpName").value);
 
-  const code = $("mpCode").value.trim().toUpperCase();
+  localStorage.setItem(
+    "atoumoulin_name",
+    $("mpName").value
+  );
 
-  if (!code) {
+  const code=$("mpCode").value
+    .trim()
+    .toUpperCase();
+
+  if(!code){
     return status("⚠️ Entre le code du salon.");
   }
 
-  let action;
+  const action={
+    type:"room:join",
+    name:$("mpName").value,
+    code,
+    playerId:myId,
+    token:sessionToken
+  };
 
-  // Si le joueur possède encore ses identifiants,
-  // on tente de récupérer son ancienne place.
-  if (myId && sessionToken) {
-    action = {
-      type: "room:reconnect",
-      code,
-      playerId: myId,
-      token: sessionToken
-    };
-  } else {
-    // Nouveau joueur
-    action = {
-      type: "room:join",
-      name: $("mpName").value,
-      code
-    };
-  }
-
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  if(
+    ws &&
+    ws.readyState===WebSocket.OPEN
+  ){
     send(action);
-  } else if (connect()) {
-    pendingAction = action;
+  }
+  else if(connect()){
+    pendingAction=action;
   }
 };
 
