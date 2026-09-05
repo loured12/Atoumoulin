@@ -5707,74 +5707,17 @@ function gererMainVideMultijoueur(){
         };
     };
 
-    window.__atoumoulinInitMultiplayer = function(names, mode, seed){
-        window.__atoumoulinSetSeed(seed);
-
-        const nombreJoueurs = Math.max(2, Math.min(8, names.length));
-
-        modeJeu = Number(mode) || 1;
-        joueurs = [];
-        paquet = [];
-        cartesTable = [];
-        defaussePouvoirs = [];
-        historique = "";
-        joueurActuel = Math.floor(Math.random() * nombreJoueurs);
-        actionEnCours = null;
-        cibleChoisie = null;
-        carteChoisie = null;
-        toursJoker = {};
-        gagnantPartie = null;
-        gagnantManche = null;
-        mancheTerminee = false;
-        joueur17 = null;
-        carte17EnAttente = null;
-        cartesDouble17 = [];
-        double17EnCours = false;
-        joueur19 = null;
-
-        let nombrePaquets = nombreJoueurs <= 3 ? 2 : nombreJoueurs - 1;
-
-        for(let i=0;i<nombrePaquets;i++){
-            paquet = paquet.concat(cartesBase);
-        }
-
-        paquet.sort(()=>Math.random()-0.5);
-
-        for(let i=0;i<nombreJoueurs;i++){
-            joueurs.push({
-                nom: String(names[i] || ("Joueur "+(i+1))),
-                main: [],
-                score: 0,
-                bot: false
-            });
-        }
-
-        victoires = joueurs.map(()=>0);
-
-        joueurs.forEach(joueur=>{
-            for(let i=0;i<4;i++){
-                joueur.main.push(paquet.pop());
-            }
-        });
-
-        afficherJeu();
-    };
-
-    window.__atoumoulinGetSelection = function(){ return carteChoisie; };
-
     window.__atoumoulinSetCarteChoisie = function(value){
         carteChoisie = value;
-    };
-
-    window.__atoumoulinSetBot = function(index, value){
-        if(joueurs[index]) joueurs[index].bot = !!value;
-        afficherJeu();
     };
 
     window.__atoumoulinGetState = function(){
         return {
             joueurs: joueurs.map(j=>({
-                nom:j.nom, main:[...j.main], score:j.score, bot:!!j.bot
+                nom:j.nom,
+                main:[...j.main],
+                score:j.score,
+                bot:!!j.bot
             })),
             paquet:[...paquet],
             joueurActuel,
@@ -5797,7 +5740,6 @@ function gererMainVideMultijoueur(){
         };
     };
 })();
-
 
 /* ===== Atoumoulin multiplayer bridge ===== */
 globalThis.__atoumoulinRemote = false;
@@ -5837,13 +5779,19 @@ globalThis.__atoumoulinInitMultiplayer = function(noms, bots, mode = 1){
     });
 
     const nombrePaquets = joueurs.length <= 3 ? 2 : joueurs.length - 1;
-    for(let i=0;i<nombrePaquets;i++) paquet = paquet.concat(cartesBase);
+
+    for(let i=0;i<nombrePaquets;i++){
+        paquet = paquet.concat(cartesBase);
+    }
+
     paquet.sort(() => Math.random() - 0.5);
 
     joueurActuel = Math.floor(Math.random() * joueurs.length);
 
     joueurs.forEach(j => {
-        for(let i=0;i<4;i++) if(paquet.length) j.main.push(paquet.pop());
+        for(let i=0;i<4;i++){
+            if(paquet.length) j.main.push(paquet.pop());
+        }
     });
 
     afficherJeu();
@@ -5868,37 +5816,54 @@ globalThis.__atoumoulinGetSelection = function(){
 globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
+
     joueurs = (state.players || []).map(p => ({
-    nom: p.name,
-    main: Array.isArray(p.main) ? p.main.slice() : [],
-    cardCount: Number(p.cardCount) || 0,
-    score: Number(p.score) || 0,
-    bot: !!p.bot
-}));
-    paquet = Array(Math.max(0, Number(state.deckCount)||0)).fill(null);
+        nom: p.name,
+        main: Array.isArray(p.main) ? p.main.slice() : [],
+        cardCount: Number(p.cardCount) || 0,
+        score: Number(p.score) || 0,
+        bot: !!p.bot
+    }));
+
+    paquet = Array(Math.max(0, Number(state.deckCount) || 0)).fill(null);
     cartesTable = Array.isArray(state.table) ? state.table : [];
     defaussePouvoirs = Array.isArray(state.discard) ? state.discard : [];
     historique = String(state.history || "");
-    joueurActuel = Number(state.currentPlayer)||0;
+    joueurActuel = Number(state.currentPlayer) || 0;
     actionEnCours = state.action ?? null;
     cibleChoisie = state.target ?? null;
     carteChoisie = state.selection ?? null;
     toursJoker = state.toursJoker || {};
-    gagnantPartie = state.winner == null ? null : joueurs.find(j=>j.nom===state.winner) || null;
-    gagnantManche = state.roundWinner == null ? null : joueurs.find(j=>j.nom===state.roundWinner) || null;
+
+    gagnantPartie =
+        state.winner == null
+            ? null
+            : joueurs.find(j => j.nom === state.winner) || null;
+
+    gagnantManche =
+        state.roundWinner == null
+            ? null
+            : joueurs.find(j => j.nom === state.roundWinner) || null;
+
     mancheTerminee = !!state.roundEnded;
     joueur17 = state.player17 == null ? null : Number(state.player17);
     carte17EnAttente = state.card17Pending ?? null;
-    cartesDouble17 = Array.isArray(state.double17Cards) ? state.double17Cards : [];
+    cartesDouble17 = Array.isArray(state.double17Cards)
+        ? state.double17Cards
+        : [];
     double17EnCours = !!state.double17Active;
     joueur19 = state.player19 == null ? null : Number(state.player19);
-    victoires = Array.isArray(state.victories) ? state.victories.slice() : joueurs.map(()=>0);
+    victoires = Array.isArray(state.victories)
+        ? state.victories.slice()
+        : joueurs.map(() => 0);
+
     afficherJeu();
 };
 
 globalThis.__atoumoulinSelectCard = function(index){
     selectionnerCarte(Number(index));
 };
+
 globalThis.__atoumoulinSelectDouble13 = function(index){
     selectionnerCarteDouble13(Number(index));
 };
