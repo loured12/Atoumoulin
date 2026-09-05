@@ -363,4 +363,12 @@
     room:() => room,
     playerId:() => myId
   };
+
+  // Reconnexion automatique à une partie existante
+  const savedRoomCode = localStorage.getItem("atoumoulin_room_code");
+
+  if (savedRoomCode && myId && sessionToken) {
+    connect();
+  }
+  
 })();
