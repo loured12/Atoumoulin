@@ -3466,6 +3466,7 @@ function continuerCarte17(){
         afficherJeu();
 
         return;
+    }
 
     // CARTE 1
 
