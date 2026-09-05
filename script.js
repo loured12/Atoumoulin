@@ -5338,10 +5338,15 @@ function terminer17SansCarte(){
     actionEnCours = null;
     carteChoisie = null;
 
-    // Tour suivant
+    // Si ce 17 faisait partie d'un double 17,
+    // on revient jouer la carte restante.
+    if(double17EnCours){
+    reprendreDouble17();
+    return;
+    }
 
+    // 17 normal : tour suivant
     passerJoueur();
-
     afficherJeu();
 
 }
