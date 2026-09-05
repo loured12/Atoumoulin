@@ -3445,20 +3445,27 @@ function continuerCarte17(){
             return;
         }
 
-        // Le 17 fait piocher 1 carte après avoir joué la carte volée
+        // Pioche finale
         piocherCarte(joueur);
 
         actionEnCours = null;
-        joueur17 = null;
-
-        passerJoueur();
-
         carteChoisie = null;
+
+        // Si le 17 venait d'un double 17,
+        // on revient jouer la carte restante du double 17
+        if(double17EnCours){
+        joueur17 = null;
+        reprendreDouble17();
+        return;
+        }
+
+        // 17 normal : fin du tour
+        joueur17 = null;
+        passerJoueur();
 
         afficherJeu();
 
         return;
-    }
 
     // CARTE 1
 
@@ -3513,11 +3520,16 @@ function continuerCarte17(){
 }
 
         actionEnCours = null;
-        joueur17 = null;
-
-        passerJoueur();
-
         carteChoisie = null;
+
+        if(double17EnCours){
+        joueur17 = null;
+        reprendreDouble17();
+        return;
+    }
+
+        joueur17 = null;
+        passerJoueur();
 
         afficherJeu();
 
@@ -3546,11 +3558,16 @@ function continuerCarte17(){
         piocherCarte(joueur);
 
         actionEnCours = null;
-        joueur17 = null;
-
-        passerJoueur();
-
         carteChoisie = null;
+
+        if(double17EnCours){
+        joueur17 = null;
+        reprendreDouble17();
+        return;
+        }
+
+        joueur17 = null;
+        passerJoueur();
 
         afficherJeu();
 
