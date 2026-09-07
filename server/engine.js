@@ -348,13 +348,10 @@ export class AtoumoulinEngine {
     this.sandbox.__atoumoulinPlayerIndex
   );
 
-  // Exécute réellement l'action dans le moteur.
   f(...args);
 
-  // Récupère l'état APRÈS l'action.
   const state = this.sandbox.__atoumoulinGetState();
 
-  // Le double 9 nécessite de savoir quel joueur a déclenché l'action.
   if (
     fn === "jouerCarte" &&
     state &&
