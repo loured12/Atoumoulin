@@ -5708,6 +5708,59 @@ function gererMainVideMultijoueur(){
     return false;
 }
 
+function gererFinTourMultijoueur(){
+
+    // En solo : absolument aucun changement.
+    if(!globalThis.__atoumoulinRemote){
+        return false;
+    }
+
+    // Une action spéciale est encore en cours :
+    // surtout ne pas changer de joueur maintenant.
+    if(actionEnCours !== null){
+        return false;
+    }
+
+    // Il reste au moins un joueur avec des cartes.
+    const joueursAvecCartes =
+        joueurs.filter(j => j.main.length > 0);
+
+    // Tout le monde est à 0 :
+    // on laisse la fonction existante gérer la fin normale.
+    if(joueursAvecCartes.length === 0){
+        gererMainVideMultijoueur();
+        return true;
+    }
+
+    // Le joueur actuel a encore des cartes :
+    // son tour peut se terminer normalement.
+    if(joueurs[joueurActuel].main.length > 0){
+        return false;
+    }
+
+    // Le joueur actuel est à 0.
+    // On cherche le prochain joueur qui possède au moins une carte.
+    let prochain = joueurActuel;
+
+    for(let i = 0; i < joueurs.length; i++){
+
+        prochain++;
+
+        if(prochain >= joueurs.length){
+            prochain = 0;
+        }
+
+        if(joueurs[prochain].main.length > 0){
+
+            joueurActuel = prochain;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /* =========================================================
    ATOUMOULIN - PONT MULTIJOUEUR
    Ajouté sans modifier les règles existantes.
