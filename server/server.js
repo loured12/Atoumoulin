@@ -418,6 +418,14 @@ if(m.type==="game:action"){
   throw Error("Ce n'est pas votre tour.");
 
  if(fn==="jouerCarte"){
+
+console.log(
+  "[DEBUG JOUER SERVEUR]",
+  "player =", player.index,
+  "selection =", player.selection,
+  "main avant =", room.engine.stateFor(player.index).players[player.index].main
+);
+  
   room.engine.setSelection(
     player.selection
   );
