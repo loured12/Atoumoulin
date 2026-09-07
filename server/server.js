@@ -446,8 +446,6 @@ sendState(room);
 
 return;
 
-}
-
  }catch(e){
 
   fail(
