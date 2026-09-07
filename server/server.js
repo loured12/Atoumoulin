@@ -421,7 +421,11 @@ room.engine.setPlayerIndex(
     player.index
 );
 
+console.log("[DEBUG AVANT ENGINE APPLY]", fn, args);
+
 room.engine.apply(fn,args);
+
+console.log("[DEBUG APRES ENGINE APPLY]", fn);
 
  const debugApresAction = room.engine.stateFor(player.index);
 
