@@ -4418,6 +4418,19 @@ function terminerActionPouvoir(){
 
 function passerJoueur(){
 
+    // Si personne n'a plus de carte,
+    // on termine normalement la manche.
+    let joueursAvecCartes = joueurs.filter(
+        joueur => joueur.main.length > 0
+    );
+
+    if(joueursAvecCartes.length === 0){
+
+        verifierFinPartie();
+
+        return;
+    }
+
     let prochain = joueurActuel + 1;
 
     if(prochain >= joueurs.length){
@@ -4431,6 +4444,7 @@ function passerJoueur(){
         joueurs[prochain].main.length === 0 &&
         tentatives < joueurs.length
     ){
+
         prochain++;
 
         if(prochain >= joueurs.length){
