@@ -1533,6 +1533,14 @@ function selectionnerCarte(index){
 
 function jouerCarte(){
 
+    console.log(
+    "[DEBUG JOUER]",
+    "joueurActuel =", joueurActuel,
+    "playerIndex =", globalThis.__atoumoulinPlayerIndex,
+    "carteChoisie =", carteChoisie,
+    "main =", joueurs[globalThis.__atoumoulinPlayerIndex]?.main
+);
+
 let joueur = joueurs[joueurActuel];
 let cartesJouees = [];
 
