@@ -5817,6 +5817,11 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
 
+    console.log(
+    "[DEBUG STATE SERVEUR]",
+    JSON.stringify(state.players)
+);
+
     joueurs = (state.players || []).map(p => ({
         nom: p.name,
         main: Array.isArray(p.main) ? p.main.slice() : [],
