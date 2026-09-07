@@ -297,78 +297,78 @@ export class AtoumoulinEngine {
     this.sandbox.__atoumoulinSelectDouble13(index);
   }
 
-  apply(fn, args = []) {
-    const allowed = new Set([
-      "jouerCarte",
-      "effetCarte11",
-      "effetCarte21",
-      "effetDouble11",
-      "effetDouble21",
-      "effetJoker",
-      "choisirAdversaireVol1",
-      "choisirAdversaireCarte3",
-      "choisirAdversaireCarte9",
-      "choisirAdversaireCarte13",
-      "volerCarte13",
-      "doublerCarte15",
-      "choisirAdversaireCarte17",
-      "continuerCarte17",
-      "choisirAdversaireCarte19",
-      "cibleCarte21",
-      "echangeJoker",
-      "choisirAdversaireDouble1",
-      "choisirAdversaireDouble3",
-      "choisirAdversaireDouble9",
-      "choisirAdversaireDouble13",
-      "volerCartesDouble13",
-      "terminerDouble13",
-      "triplerCarte15",
-      "terminerDouble15",
-      "choisirAdversaireDouble17",
-      "choisirCarteDouble17",
-      "continuerDouble17",
-      "choisirAdversaireDouble19",
-      "effectuerEchangeDouble19",
-      "cibleDouble21",
-      "terminer17SansCarte",
-      "preparerNouvelleManche"
-    ]);
+ apply(fn, args = []) {
+  const allowed = new Set([
+    "jouerCarte",
+    "effetCarte11",
+    "effetCarte21",
+    "effetDouble11",
+    "effetDouble21",
+    "effetJoker",
+    "choisirAdversaireVol1",
+    "choisirAdversaireCarte3",
+    "choisirAdversaireCarte9",
+    "choisirAdversaireCarte13",
+    "volerCarte13",
+    "doublerCarte15",
+    "choisirAdversaireCarte17",
+    "continuerCarte17",
+    "choisirAdversaireCarte19",
+    "cibleCarte21",
+    "echangeJoker",
+    "choisirAdversaireDouble1",
+    "choisirAdversaireDouble3",
+    "choisirAdversaireDouble9",
+    "choisirAdversaireDouble13",
+    "volerCartesDouble13",
+    "terminerDouble13",
+    "triplerCarte15",
+    "terminerDouble15",
+    "choisirAdversaireDouble17",
+    "choisirCarteDouble17",
+    "continuerDouble17",
+    "choisirAdversaireDouble19",
+    "effectuerEchangeDouble19",
+    "cibleDouble21",
+    "terminer17SansCarte",
+    "preparerNouvelleManche"
+  ]);
 
-    if (!allowed.has(fn)) {
-      throw new Error("Action non autorisée.");
-    }
-
-    const f = this.sandbox[fn];
-
-    if (typeof f !== "function") {
-      throw new Error("Action introuvable.");
-    }
-
-    const playerIndex = Number(
-      this.sandbox.__atoumoulinPlayerIndex
-    );
-
-    f(...args);
-
-    const debugState = this.sandbox.__atoumoulinGetState();
-
-const state = debugState;
-
-const state = this.sandbox.__atoumoulinGetState();
-
-    if (
-      fn === "jouerCarte" &&
-      state &&
-      state.actionEnCours === "double9"
-    ) {
-      this.double9PlayerIndex = playerIndex;
-    }
-
-    if (
-      state &&
-      state.actionEnCours !== "double9"
-    ) {
-      this.double9PlayerIndex = null;
-    }
+  if (!allowed.has(fn)) {
+    throw new Error("Action non autorisée.");
   }
+
+  const f = this.sandbox[fn];
+
+  if (typeof f !== "function") {
+    throw new Error("Action introuvable.");
+  }
+
+  const playerIndex = Number(
+    this.sandbox.__atoumoulinPlayerIndex
+  );
+
+  // Exécute réellement l'action dans le moteur.
+  f(...args);
+
+  // Récupère l'état APRÈS l'action.
+  const state = this.sandbox.__atoumoulinGetState();
+
+  // Le double 9 nécessite de savoir quel joueur a déclenché l'action.
+  if (
+    fn === "jouerCarte" &&
+    state &&
+    state.actionEnCours === "double9"
+  ) {
+    this.double9PlayerIndex = playerIndex;
+  }
+
+  if (
+    state &&
+    state.actionEnCours !== "double9"
+  ) {
+    this.double9PlayerIndex = null;
+  }
+
+  return state;
 }
