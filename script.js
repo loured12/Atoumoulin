@@ -3445,6 +3445,27 @@ function continuerCarte17(){
         return;
     }
 
+    // Une carte pouvoir volée avec le 17
+    // va dans la défausse des pouvoirs.
+    if(
+    carte === 1 ||
+    carte === 3 ||
+    carte === 9 ||
+    carte === 11 ||
+    carte === 13 ||
+    carte === 15 ||
+    carte === 17 ||
+    carte === 19 ||
+    carte === 21 ||
+    carte === "Joker"
+    ){
+
+    defaussePouvoirs.push({
+        valeur: carte,
+        joueur: joueur.nom
+    });
+    }
+
     // CARTE PAIRE = POINTS
 
     if(typeof carte === "number" && carte % 2 === 0){
