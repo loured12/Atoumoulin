@@ -350,6 +350,18 @@ export class AtoumoulinEngine {
 
     f(...args);
 
+    const debugState = this.sandbox.__atoumoulinGetState();
+
+console.log(
+  "[DEBUG APRES ACTION]",
+  "fn =", fn,
+  "joueurActuel =", debugState.joueurActuel,
+  "main joueur actif =", debugState.joueurs[debugState.joueurActuel]?.main,
+  "action =", debugState.actionEnCours
+);
+
+const state = debugState;
+
 const state = this.sandbox.__atoumoulinGetState();
 
     if (
