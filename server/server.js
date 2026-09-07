@@ -410,12 +410,17 @@ if(m.type==="game:action"){
  if(player.index!==room.engine.currentIndex())
   throw Error("Ce n'est pas votre tour.");
 
- if(fn==="jouerCarte"){
-  
-  room.engine.setSelection(
-    player.selection
-  );
-  args=[];
+if(fn === "jouerCarte") {
+
+  if(
+    player.selection === null ||
+    player.selection === undefined
+  ){
+    throw Error("Aucune carte sélectionnée.");
+  }
+
+  room.engine.setSelection(player.selection);
+  args = [];
 }
 
 room.engine.setPlayerIndex(
