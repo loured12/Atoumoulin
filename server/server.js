@@ -377,13 +377,6 @@ if(m.type==="game:select"){
 
 if(m.type==="game:action"){
 
- console.log(
-  "[DEBUG SERVER ACTION REÇUE]",
-  "player =", player.index,
-  "fn =", m.fn,
-  "currentPlayer =", room.engine?.currentIndex()
-);
-
  if(!room.started)
   throw Error("La partie n'a pas commencé.");
 
@@ -418,13 +411,6 @@ if(m.type==="game:action"){
   throw Error("Ce n'est pas votre tour.");
 
  if(fn==="jouerCarte"){
-
-console.log(
-  "[DEBUG JOUER SERVEUR]",
-  "player =", player.index,
-  "selection =", player.selection,
-  "main avant =", room.engine.stateFor(player.index).players[player.index].main
-);
   
   room.engine.setSelection(
     player.selection
@@ -436,23 +422,9 @@ room.engine.setPlayerIndex(
     player.index
 );
 
-console.log("[DEBUG AVANT ENGINE APPLY]", fn, args);
-
 room.engine.apply(fn,args);
 
-console.log("[DEBUG APRES ENGINE APPLY]", fn);
-
  const debugApresAction = room.engine.stateFor(player.index);
-
-console.log(
-  "[DEBUG APRES ACTION]",
-  "fn =", fn,
-  "joueur =", player.index,
-  "currentPlayer =", debugApresAction.currentPlayer,
-  "action =", debugApresAction.action,
-  "main =", debugApresAction.players[player.index]?.main,
-  "cardCount =", debugApresAction.players[player.index]?.cardCount
-);
 
 player.selection=null;
 
