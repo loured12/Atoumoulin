@@ -424,8 +424,6 @@ room.engine.setPlayerIndex(
 
 room.engine.apply(fn,args);
 
- const debugApresAction = room.engine.stateFor(player.index);
-
 player.selection=null;
 
 const state = room.engine.stateFor(player.index);
