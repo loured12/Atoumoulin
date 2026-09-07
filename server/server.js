@@ -421,7 +421,21 @@ room.engine.setPlayerIndex(
     player.index
 );
 
+console.log(
+  "[DEBUG ACTION]",
+  fn,
+  "tour serveur AVANT apply =",
+  room.engine.currentIndex()
+);
+
 room.engine.apply(fn,args);
+
+console.log(
+  "[DEBUG ACTION]",
+  fn,
+  "tour serveur APRÈS apply =",
+  room.engine.currentIndex()
+);
 
 player.selection=null;
 
