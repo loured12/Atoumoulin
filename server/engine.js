@@ -350,14 +350,6 @@ export class AtoumoulinEngine {
 
     f(...args);
 
-// En multijoueur, si l'action est terminée,
-// on ne laisse pas le tour bloqué sur un joueur à 0 carte.
-if(
-    typeof this.sandbox.__atoumoulinNormaliserTourMultijoueur === "function"
-){
-    this.sandbox.__atoumoulinNormaliserTourMultijoueur();
-}
-
 const state = this.sandbox.__atoumoulinGetState();
 
     if (
