@@ -523,6 +523,7 @@ let joueurTour = joueurs[joueurActuel];
     console.log(
     "[TEST TOUR]",
     "joueurActuel =", joueurActuel,
+    "cardCount =", joueurTour?.cardCount,
     "main =", joueurTour?.main,
     "action =", actionEnCours
 );
