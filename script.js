@@ -4424,12 +4424,29 @@ function terminerActionPouvoir(){
 
 function passerJoueur(){
 
-    joueurActuel++;
+    let prochain = joueurActuel + 1;
 
-    if(joueurActuel >= joueurs.length){
-        joueurActuel = 0;
+    if(prochain >= joueurs.length){
+        prochain = 0;
     }
 
+    let tentatives = 0;
+
+    while(
+        joueurs[prochain] &&
+        joueurs[prochain].main.length === 0 &&
+        tentatives < joueurs.length
+    ){
+        prochain++;
+
+        if(prochain >= joueurs.length){
+            prochain = 0;
+        }
+
+        tentatives++;
+    }
+
+    joueurActuel = prochain;
 }
 
 function piocherCarte(joueur){
