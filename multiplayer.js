@@ -60,15 +60,6 @@
 
   const send = m => {
 
-    console.log(
-    "[DEBUG SEND]",
-    m,
-    "ws =",
-    !!ws,
-    "readyState =",
-    ws ? ws.readyState : "NULL"
-  );
-
   if (!ws || ws.readyState !== WebSocket.OPEN)
     return false;
 
