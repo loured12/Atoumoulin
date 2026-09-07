@@ -1533,14 +1533,6 @@ function selectionnerCarte(index){
 
 function jouerCarte(){
 
-    console.log(
-    "[DEBUG JOUER]",
-    "joueurActuel =", joueurActuel,
-    "playerIndex =", globalThis.__atoumoulinPlayerIndex,
-    "carteChoisie =", carteChoisie,
-    "main =", joueurs[globalThis.__atoumoulinPlayerIndex]?.main
-);
-
 let joueur = joueurs[joueurActuel];
 let cartesJouees = [];
 
@@ -5842,11 +5834,6 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     globalThis.__atoumoulinRemote = true;
     globalThis.__atoumoulinPlayerIndex = playerIndex;
 
-    console.log(
-    "[DEBUG STATE SERVEUR]",
-    JSON.stringify(state.players)
-);
-
     joueurs = (state.players || []).map(p => ({
         nom: p.name,
         main: Array.isArray(p.main) ? p.main.slice() : [],
@@ -5860,15 +5847,6 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     defaussePouvoirs = Array.isArray(state.discard) ? state.discard : [];
     historique = String(state.history || "");
     joueurActuel = Number(state.currentPlayer) || 0;
-
-    console.log(
-    "[DEBUG APPLY STATE]",
-    "currentPlayer reçu =", state.currentPlayer,
-    "joueurActuel local =", joueurActuel,
-    "playerIndex local =", playerIndex,
-    "action =", state.action,
-    "main joueur local =", joueurs[playerIndex]?.main
-);
     
     actionEnCours = state.action ?? null;
     cibleChoisie = state.target ?? null;
@@ -5896,13 +5874,6 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     victoires = Array.isArray(state.victories)
         ? state.victories.slice()
         : joueurs.map(() => 0);
-
-    console.log(
-    "[DEBUG 0 CARTE]",
-    "joueurActuel =", joueurActuel,
-    "main =", joueurs[joueurActuel]?.main,
-    "action =", actionEnCours
-);
 
     afficherJeu();
 };
