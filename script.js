@@ -520,6 +520,13 @@ let monIndex = globalThis.__atoumoulinRemote &&
 let joueur = joueurs[monIndex];
 let joueurTour = joueurs[joueurActuel];
 
+    console.log(
+    "[TEST TOUR]",
+    "joueurActuel =", joueurActuel,
+    "main =", joueurTour?.main,
+    "action =", actionEnCours
+);
+
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
     if(actionEnCours === null){
