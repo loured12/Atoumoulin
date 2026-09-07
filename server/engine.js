@@ -352,6 +352,13 @@ export class AtoumoulinEngine {
 
 const state = this.sandbox.__atoumoulinGetState();
 
+    console.log(
+    "[DEBUG TOUR]",
+    "fn =", fn,
+    "joueurActuel =", state.joueurActuel,
+    "mains =", state.joueurs.map(j => j.main.length)
+);
+
     if (
       fn === "jouerCarte" &&
       state &&
