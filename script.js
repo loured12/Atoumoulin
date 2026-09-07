@@ -5830,6 +5830,16 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
     defaussePouvoirs = Array.isArray(state.discard) ? state.discard : [];
     historique = String(state.history || "");
     joueurActuel = Number(state.currentPlayer) || 0;
+
+    console.log(
+    "[DEBUG APPLY STATE]",
+    "currentPlayer reçu =", state.currentPlayer,
+    "joueurActuel local =", joueurActuel,
+    "playerIndex local =", playerIndex,
+    "action =", state.action,
+    "main joueur local =", joueurs[playerIndex]?.main
+);
+    
     actionEnCours = state.action ?? null;
     cibleChoisie = state.target ?? null;
     carteChoisie = state.selection ?? null;
