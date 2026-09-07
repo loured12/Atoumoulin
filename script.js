@@ -2214,13 +2214,7 @@ if(gererMainVideMultijoueur()){
     return;
 }
 
-joueurActuel++;
-
-if(joueurActuel>=joueurs.length){
-
-joueurActuel=0;
-
-}
+passerJoueur();
 
 carteChoisie=null;
 
