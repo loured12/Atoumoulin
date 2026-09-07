@@ -4432,52 +4432,6 @@ function passerJoueur(){
 
 }
 
-globalThis.__atoumoulinNormaliserTourMultijoueur = function(){
-
-    // Une action est encore en cours :
-    // surtout ne pas toucher au joueur actuel.
-    if(actionEnCours !== null){
-        return;
-    }
-
-    if(!joueurs.length){
-        return;
-    }
-
-    // Le joueur actuel a encore des cartes :
-    // rien à faire.
-    if(joueurs[joueurActuel].main.length > 0){
-        return;
-    }
-
-    // Le joueur actuel n'a plus de cartes.
-    // On cherche le prochain joueur qui en possède.
-    let joueursAvecCartes = joueurs.filter(
-        joueur => joueur.main.length > 0
-    );
-
-    // Tout le monde est à 0 carte.
-    if(joueursAvecCartes.length === 0){
-        verifierFinPartie();
-        return;
-    }
-
-    let ancienJoueur = joueurActuel;
-
-    do {
-
-        joueurActuel++;
-
-        if(joueurActuel >= joueurs.length){
-            joueurActuel = 0;
-        }
-
-    } while(
-        joueurs[joueurActuel].main.length === 0 &&
-        joueurActuel !== ancienJoueur
-    );
-};
-
 function piocherCarte(joueur){
 
     if(paquet.length > 0){
