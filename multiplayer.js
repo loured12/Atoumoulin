@@ -334,6 +334,14 @@
   };
   }
 
+  console.log(
+    "[DEBUG HOOK]",
+    "jouerCarte =",
+    typeof window.jouerCarte,
+    "started =",
+    started
+);
+
   for (const fn of ACTIONS)
     hook(fn);
 
