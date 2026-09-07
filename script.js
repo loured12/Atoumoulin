@@ -5867,6 +5867,13 @@ globalThis.__atoumoulinApplyState = function(state, playerIndex){
         ? state.victories.slice()
         : joueurs.map(() => 0);
 
+    console.log(
+    "[DEBUG 0 CARTE]",
+    "joueurActuel =", joueurActuel,
+    "main =", joueurs[joueurActuel]?.main,
+    "action =", actionEnCours
+);
+
     afficherJeu();
 };
 
