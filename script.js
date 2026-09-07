@@ -1540,21 +1540,21 @@ let cartesJouees = [];
 
 if(Array.isArray(carteChoisie)){
 
-carteChoisie.sort((a,b)=>b-a);
+    carteChoisie.sort((a,b)=>b-a);
 
-carteChoisie.forEach(index=>{
+    carteChoisie.forEach(index=>{
 
-cartesJouees.push(joueur.main[index]);
+        cartesJouees.push(joueur.main[index]);
 
-joueur.main.splice(index,1);
+        joueur.main.splice(index,1);
 
-});
+    });
 
 }else{
 
-cartesJouees.push(joueur.main[carteChoisie]);
+    cartesJouees.push(joueur.main[carteChoisie]);
 
-joueur.main.splice(carteChoisie,1);
+    joueur.main.splice(carteChoisie,1);
 
 }
 
@@ -1566,166 +1566,370 @@ let carte = cartesJouees[0];
 
 if(cartesJouees.length === 2){
 
-let valeurDouble = cartesJouees[0];
+    let valeurDouble = cartesJouees[0];
 
-// Double pair = points
+    // Double pair = points
 
-if(valeurDouble % 2 === 0){
+    if(valeurDouble % 2 === 0){
 
-let resultat = valeurDouble * 2;
+        let resultat = valeurDouble * 2;
 
-joueur.score += resultat;
+        joueur.score += resultat;
 
-// Le double pair devient une nouvelle carte
-// avec les deux cartes identiques dans son historique
+        // Le double pair devient une nouvelle carte
+        // avec les deux cartes identiques dans son historique
 
-cartesTable.push({
-    valeur: resultat,
-    proprietaire: joueur.nom,
-    liee: false,
-    historiqueCarte: [valeurDouble, valeurDouble]
-});
+        cartesTable.push({
+            valeur: resultat,
+            proprietaire: joueur.nom,
+            liee: false,
+            historiqueCarte: [valeurDouble, valeurDouble]
+        });
 
-historique +=
-`${joueur.nom} joue un double ${valeurDouble} (+${resultat})<br>`;
+        historique +=
+        `${joueur.nom} joue un double ${valeurDouble} (+${resultat})<br>`;
 
-if(verifierFinPartie()){
-    return;
-}
+        if(verifierFinPartie()){
+            return;
+        }
 
-}
-
-// Double impair = pouvoir
-
-else{
-
-if(valeurDouble === 1){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double1";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 3){
-
-defaussePouvoirs.push({
-    valeur: 3,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: 3,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double3";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 5){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-let cartesPiochees = 0;
-
-while(cartesPiochees < 4 && paquet.length > 0){
-
-joueur.main.push(paquet.pop());
-cartesPiochees++;
-
-}
-
-if(cartesPiochees === 0){
-
-    historique +=
-    `${joueur.nom} joue le double 5, aucune carte disponible<br>`;
-
-}
-else if(cartesPiochees === 1){
-
-    historique +=
-    `${joueur.nom} pioche 1 carte avec le double 5<br>`;
-
-}
-else{
-
-    historique +=
-    `${joueur.nom} pioche ${cartesPiochees} cartes avec le double 5<br>`;
-
-}
-
-// Tour suivant
-
-passerJoueur();
-
-carteChoisie = null;
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 7){
-
-    joueur.score += 40;
-
-    cartesTable.push({
-        valeur: 40,
-        proprietaire: joueur.nom,
-        liee: false,
-        historiqueCarte: [7, 7]
-    });
-
-    defaussePouvoirs.push({
-        valeur: 7,
-        joueur: joueur.nom
-    });
-
-    defaussePouvoirs.push({
-        valeur: 7,
-        joueur: joueur.nom
-    });
-
-    historique +=
-    `${joueur.nom} joue un double 7 (+40)<br>`;
-
-    if(verifierFinPartie()){
-        return;
     }
 
-    if(gererMainVideMultijoueur()){
-    return;
+    // Double impair = pouvoir
+
+    else{
+
+        if(valeurDouble === 1){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double1";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 3){
+
+            defaussePouvoirs.push({
+                valeur: 3,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: 3,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double3";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 5){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            let cartesPiochees = 0;
+
+            while(cartesPiochees < 4 && paquet.length > 0){
+
+                joueur.main.push(paquet.pop());
+                cartesPiochees++;
+
+            }
+
+            if(cartesPiochees === 0){
+
+                historique +=
+                `${joueur.nom} joue le double 5, aucune carte disponible<br>`;
+
+            }
+            else if(cartesPiochees === 1){
+
+                historique +=
+                `${joueur.nom} pioche 1 carte avec le double 5<br>`;
+
+            }
+            else{
+
+                historique +=
+                `${joueur.nom} pioche ${cartesPiochees} cartes avec le double 5<br>`;
+
+            }
+
+            // Tour suivant
+
+            if(!gererFinTourMultijoueur()){
+                passerJoueur();
+            }
+
+            carteChoisie = null;
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 7){
+
+            joueur.score += 40;
+
+            cartesTable.push({
+                valeur: 40,
+                proprietaire: joueur.nom,
+                liee: false,
+                historiqueCarte: [7, 7]
+            });
+
+            defaussePouvoirs.push({
+                valeur: 7,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: 7,
+                joueur: joueur.nom
+            });
+
+            historique +=
+            `${joueur.nom} joue un double 7 (+40)<br>`;
+
+            if(verifierFinPartie()){
+                return;
+            }
+
+            // Pas de pioche pour le double 7
+
+            if(!gererFinTourMultijoueur()){
+                passerJoueur();
+            }
+
+            carteChoisie = null;
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 9){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            // Pioche 1 carte immédiatement
+
+            piocherCarte(joueur);
+
+            // Ensuite, voir les mains adverses
+
+            actionEnCours = "double9";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 11){
+
+            defaussePouvoirs.push({
+                valeur: 11,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: 11,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double11";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 13){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double13";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 15){
+
+            defaussePouvoirs.push({
+                valeur: 15,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: 15,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double15";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 17){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double17";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 19){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double19";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === 21){
+
+            defaussePouvoirs.push({
+                valeur: 21,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: 21,
+                joueur: joueur.nom
+            });
+
+            actionEnCours = "double21";
+
+            afficherJeu();
+
+            return;
+
+        }
+
+        if(valeurDouble === "Joker"){
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            defaussePouvoirs.push({
+                valeur: valeurDouble,
+                joueur: joueur.nom
+            });
+
+            // Le joueur devra passer ses 2 prochains tours
+            toursJoker[joueurActuel] = 2;
+
+            actionEnCours = "doubleJoker";
+
+            historique +=
+            `${joueur.nom} joue un double Joker et devra passer ses 2 prochains tours<br>`;
+
+            // Pioche 1 carte
+
+            piocherCarte(joueur);
+
+            // Tour suivant
+
+            actionEnCours = null;
+
+            if(!gererFinTourMultijoueur()){
+                passerJoueur();
+            }
+
+            carteChoisie = null;
+
+            afficherJeu();
+
+            return;
+
+        }
+
     }
 
-    // Pas de pioche pour le double 7
+    // Fin normale d'un double pair
 
-    passerJoueur();
+    piocherCarte(joueur);
+
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -1735,488 +1939,294 @@ if(valeurDouble === 7){
 
 }
 
-if(valeurDouble === 9){
+// Carte simple paire
 
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
+if(typeof carte === "number" && carte % 2 === 0){
 
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
+    // Carte à points
 
-// Pioche 1 carte immédiatement
+    joueur.score += carte;
 
-piocherCarte(joueur);
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Ensuite, voir les mains adverses
+    cartesTable.push({
 
-actionEnCours = "double9";
+        valeur: carte,
+        proprietaire: joueur.nom,
+        liee: false
 
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 11){
-
-    defaussePouvoirs.push({
-        valeur: 11,
-        joueur: joueur.nom
     });
 
-    defaussePouvoirs.push({
-        valeur: 11,
-        joueur: joueur.nom
-    });
-
-    actionEnCours = "double11";
-  
-    afficherJeu();
-
-    return;
-
-}
-
-if(valeurDouble === 13){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double13";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 15){
-
-defaussePouvoirs.push({
-    valeur: 15,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: 15,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double15";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 17){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double17";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 19){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-actionEnCours = "double19";
-
-afficherJeu();
-
-return;
-
-}
-
-if(valeurDouble === 21){
-
-    defaussePouvoirs.push({
-        valeur: 21,
-        joueur: joueur.nom
-    });
-
-    defaussePouvoirs.push({
-        valeur: 21,
-        joueur: joueur.nom
-    });
-
-    actionEnCours = "double21";
-
-    afficherJeu();
-
-    return;
-
-}
-
-if(valeurDouble === "Joker"){
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-defaussePouvoirs.push({
-    valeur: valeurDouble,
-    joueur: joueur.nom
-});
-
-// Le joueur devra passer ses 2 prochains tours
-toursJoker[joueurActuel] = 2;
-
-actionEnCours = "doubleJoker";
-
-historique +=
-`${joueur.nom} joue un double Joker et devra passer ses 2 prochains tours<br>`;
-
-// Pioche 1 carte
-
-piocherCarte(joueur);
-
-// Tour suivant
-
-actionEnCours = null;
-
-passerJoueur();
-
-carteChoisie = null;
-
-afficherJeu();
-
-return;
-
-}
-
-}
-  
-piocherCarte(joueur);
-
-passerJoueur();
-
-carteChoisie = null;
-
-afficherJeu();
-
-return;
-
-}
-
-if(typeof carte==="number" && carte%2===0){
-
-// Carte à points
-
-joueur.score += carte;
-
-if(verifierFinPartie()){
-    return;
-}
-
-cartesTable.push({
-
-valeur: carte,
-proprietaire: joueur.nom,
-liee: false
-
-});
-
-historique +=
-`${joueur.nom} joue ${carte} (+${carte})<br>`;
+    historique +=
+    `${joueur.nom} joue ${carte} (+${carte})<br>`;
 
 }else{
 
-// Cartes pouvoirs
+    // Cartes pouvoirs
 
-if(carte === 1){
+    if(carte === 1){
 
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
 
-actionEnCours = "vol1";
+        actionEnCours = "vol1";
 
-afficherJeu();
+        afficherJeu();
 
-return;
+        return;
 
-}
-  
-if(carte === 3){
+    }
 
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
+    if(carte === 3){
 
-actionEnCours = "carte3";
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
 
-afficherJeu();
+        actionEnCours = "carte3";
 
-return;
+        afficherJeu();
 
-}
+        return;
 
-if(carte === 5){
+    }
 
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
+    if(carte === 5){
 
-let cartesPiochees = 0;
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
 
-while(cartesPiochees < 2 && paquet.length > 0){
+        let cartesPiochees = 0;
 
-joueur.main.push(paquet.pop());
-cartesPiochees++;
+        while(cartesPiochees < 2 && paquet.length > 0){
 
-}
+            joueur.main.push(paquet.pop());
+            cartesPiochees++;
 
-if(cartesPiochees === 2){
+        }
+
+        if(cartesPiochees === 2){
+
+            historique +=
+            `${joueur.nom} pioche 2 cartes avec le 5<br>`;
+
+        }
+        else if(cartesPiochees === 1){
+
+            historique +=
+            `${joueur.nom} pioche 1 carte avec le 5<br>`;
+
+        }
+        else{
+
+            historique +=
+            `${joueur.nom} joue 5, aucune carte disponible<br>`;
+
+        }
+
+        // Tour suivant
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 7){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        joueur.score += 20;
+
+        if(verifierFinPartie()){
+            return;
+        }
+
+        cartesTable.push({
+            valeur: 20,
+            proprietaire: joueur.nom,
+            liee: false,
+            historiqueCarte: [7]
+        });
+
+        historique +=
+        `${joueur.nom} joue 7 (+20)<br>`;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 9){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        // Le joueur pioche 1 carte avant l'échange
+
+        piocherCarte(joueur);
+
+        actionEnCours = "carte9";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 11){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte11";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 13){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte13";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 15){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte15";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 17){
+
+        joueur17 = joueurActuel;
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte17";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 19){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte19";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === 21){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "carte21";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    if(carte === "Joker"){
+
+        defaussePouvoirs.push({
+            valeur: carte,
+            joueur: joueur.nom
+        });
+
+        actionEnCours = "joker";
+
+        afficherJeu();
+
+        return;
+
+    }
+
+    defaussePouvoirs.push({
+
+        valeur: carte,
+        joueur: joueur.nom
+
+    });
 
     historique +=
-    `${joueur.nom} pioche 2 cartes avec le 5<br>`;
-
-}else if(cartesPiochees === 1){
-
-    historique +=
-    `${joueur.nom} pioche 1 carte avec le 5<br>`;
-
-}else{
-
-    historique +=
-    `${joueur.nom} joue 5, aucune carte disponible<br>`;
+    `${joueur.nom} joue ${carte}<br>`;
 
 }
 
-// Tour suivant
+// Pioche de fin de tour
 
-passerJoueur();
+if(paquet.length > 0){
 
-afficherJeu();
-
-return;
+    joueur.main.push(paquet.pop());
 
 }
 
-if(carte === 7){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-joueur.score += 20;
-
-if(verifierFinPartie()){
-    return;
+if(!gererFinTourMultijoueur()){
+    passerJoueur();
 }
 
-cartesTable.push({
-valeur: 20,
-proprietaire: joueur.nom,
-liee: false,
-historiqueCarte: [7]
-});
-
-historique +=
-`${joueur.nom} joue 7 (+20)<br>`;
-
-if(gererMainVideMultijoueur()){
-    return;
-}
-
-passerJoueur();
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 9){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-// Le joueur pioche 1 carte avant l'échange
-
-piocherCarte(joueur);
-
-actionEnCours = "carte9";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 11){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte11";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 13){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte13";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 15){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte15";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 17){
-
-joueur17 = joueurActuel;
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte17";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 19){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte19";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === 21){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "carte21";
-
-afficherJeu();
-
-return;
-
-}
-
-if(carte === "Joker"){
-
-defaussePouvoirs.push({
-valeur: carte,
-joueur: joueur.nom
-});
-
-actionEnCours = "joker";
-
-afficherJeu();
-
-return;
-
-}
-
-defaussePouvoirs.push({
-
-valeur: carte,
-joueur: joueur.nom
-
-});
-
-historique +=
-`${joueur.nom} joue ${carte}<br>`;
-
-}
-
-if(paquet.length>0){
-
-joueur.main.push(paquet.pop());
-
-}
-
-if(gererMainVideMultijoueur()){
-    return;
-}
-
-passerJoueur();
-
-carteChoisie=null;
+carteChoisie = null;
 
 afficherJeu();
 
