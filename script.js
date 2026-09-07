@@ -1024,7 +1024,9 @@ historique +=
 
 actionEnCours = null;
 
-passerJoueur();
+if(!gererFinTourMultijoueur()){
+        passerJoueur();
+}
 
 afficherJeu();
 
@@ -2829,227 +2831,235 @@ afficherJeu();
 
 function choisirAdversaireVol1(index){
 
-let cible = joueurs[index];
-let joueur = joueurs[joueurActuel];
-let carteVolee = null;
+    let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let carteVolee = null;
 
-// Recherche de la dernière carte à points de la cible
+    // Recherche de la dernière carte à points de la cible
 
-for(let i = cartesTable.length - 1; i >= 0; i--){
+    for(let i = cartesTable.length - 1; i >= 0; i--){
 
-if(cartesTable[i].proprietaire === cible.nom){
+        if(cartesTable[i].proprietaire === cible.nom){
 
-carteVolee = cartesTable[i];
-cartesTable.splice(i,1);
+            carteVolee = cartesTable[i];
+            cartesTable.splice(i,1);
 
-break;
+            break;
 
-}
+        }
 
-}
+    }
 
-// Si une carte est trouvée
+    // Si une carte est trouvée
 
-if(carteVolee !== null){
+    if(carteVolee !== null){
 
-cible.score -= carteVolee.valeur;
+        cible.score -= carteVolee.valeur;
 
-joueur.score += carteVolee.valeur;
+        joueur.score += carteVolee.valeur;
 
-carteVolee.proprietaire = joueur.nom;
+        carteVolee.proprietaire = joueur.nom;
 
-cartesTable.push(carteVolee);
+        cartesTable.push(carteVolee);
 
-if(verifierFinPartie()){
+        if(verifierFinPartie()){
+            afficherJeu();
+            return;
+        }
+
+        historique +=
+        `${joueur.nom} vole la dernière carte de ${cible.nom} avec le 1<br>`;
+
+    }else{
+
+        historique +=
+        `${joueur.nom} ne trouve aucune carte à voler avec le 1<br>`;
+
+    }
+
+    // Si le 1 vient du double 17,
+    // on ne pioche pas encore et on ne change pas de joueur
+
+    if(double17EnCours){
+
+        actionEnCours = null;
+
+        reprendreDouble17();
+
+        return;
+
+    }
+
+    // Fonctionnement normal du 1
+
+    piocherCarte(joueur);
+
+    actionEnCours = null;
+
+    // Tour suivant
+
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+
+    // Actualiser l'affichage
     afficherJeu();
-    return;
-}
-
-historique +=
-`${joueur.nom} vole la dernière carte de ${cible.nom} avec le 1<br>`;
-
-}else{
-
-historique +=
-`${joueur.nom} ne trouve aucune carte à voler avec le 1<br>`;
-
-}
-
-// Si le 1 vient du double 17,
-// on ne pioche pas encore et on ne change pas de joueur
-
-if(double17EnCours){
-
-actionEnCours = null;
-
-reprendreDouble17();
-
-return;
-
-}
-
-// Fonctionnement normal du 1
-
-piocherCarte(joueur);
-
-actionEnCours = null;
-
-// Tour suivant
-
-passerJoueur();
-
-// Actualiser l'affichage
-afficherJeu();
 
 }
 
 function choisirAdversaireCarte3(index){
 
-let cible = joueurs[index];
+    let cible = joueurs[index];
 
-cible.score -= 20;
+    cible.score -= 20;
 
-cartesTable.push({
-    valeur: -20,
-    proprietaire: cible.nom,
-    liee: false,
-    historiqueCarte: [3]
-});
+    cartesTable.push({
+        valeur: -20,
+        proprietaire: cible.nom,
+        liee: false,
+        historiqueCarte: [3]
+    });
 
-if(verifierFinPartie()){
+    if(verifierFinPartie()){
+        afficherJeu();
+        return;
+    }
+
+    historique +=
+    `${joueurs[joueurActuel].nom} inflige -20 à ${cible.nom} avec le 3<br>`;
+
+    // Si le 3 vient du double 17,
+    // on revient à la deuxième carte
+
+    if(double17EnCours){
+
+        actionEnCours = null;
+
+        carteChoisie = null;
+
+        reprendreDouble17();
+
+        return;
+
+    }
+
+    // Fonctionnement normal du 3
+
+    piocherCarte(joueurs[joueurActuel]);
+
+    actionEnCours = null;
+
+    // Passage au joueur suivant
+
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+
+    carteChoisie = null;
+
     afficherJeu();
-    return;
-}
-
-historique +=
-`${joueurs[joueurActuel].nom} inflige -20 à ${cible.nom} avec le 3<br>`;
-
-// Si le 3 vient du double 17,
-// on revient à la deuxième carte
-
-if(double17EnCours){
-
-actionEnCours = null;
-
-carteChoisie = null;
-
-reprendreDouble17();
-
-return;
-
-}
-
-// Fonctionnement normal du 3
-
-piocherCarte(joueurs[joueurActuel]);
-
-actionEnCours = null;
-
-// Passage au joueur suivant
-
-passerJoueur();
-
-carteChoisie = null;
-
-afficherJeu();
 
 }
 
 function choisirAdversaireCarte9(index){
 
-let cible = joueurs[index];
-let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
 
-// Échange des mains
+    // Échange des mains
 
-let mainTemporaire = joueur.main;
+    let mainTemporaire = joueur.main;
 
-joueur.main = cible.main;
+    joueur.main = cible.main;
 
-cible.main = mainTemporaire;
+    cible.main = mainTemporaire;
 
-historique +=
-`${joueur.nom} échange sa main avec ${cible.nom} avec le 9<br>`;
+    historique +=
+    `${joueur.nom} échange sa main avec ${cible.nom} avec le 9<br>`;
 
-// Si le 9 vient du double 17,
-// on continue avec la deuxième carte
+    // Si le 9 vient du double 17,
+    // on continue avec la deuxième carte
 
-if(double17EnCours){
+    if(double17EnCours){
 
-actionEnCours = null;
+        actionEnCours = null;
 
-carteChoisie = null;
+        carteChoisie = null;
 
-reprendreDouble17();
+        reprendreDouble17();
 
-return;
+        return;
 
-}
+    }
 
-// Fonctionnement normal du 9
+    // Fonctionnement normal du 9
 
-actionEnCours = null;
+    actionEnCours = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-carteChoisie = null;
+    carteChoisie = null;
 
-afficherJeu();
+    afficherJeu();
 
 }
 
 function effetCarte11(valeur){
 
-let joueur = joueurs[joueurActuel];
+    let joueur = joueurs[joueurActuel];
 
-joueur.score += valeur;
+    joueur.score += valeur;
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-cartesTable.push({
-valeur: valeur,
-proprietaire: joueur.nom,
-liee: false,
-historiqueCarte: [11]
-});
+    cartesTable.push({
+        valeur: valeur,
+        proprietaire: joueur.nom,
+        liee: false,
+        historiqueCarte: [11]
+    });
 
-historique +=
-`${joueur.nom} choisit ${valeur > 0 ? "+" : ""}${valeur} avec le 11<br>`;
+    historique +=
+    `${joueur.nom} choisit ${valeur > 0 ? "+" : ""}${valeur} avec le 11<br>`;
 
-// Si le 11 vient du double 17,
-// on continue avec la deuxième carte
+    // Si le 11 vient du double 17,
+    // on continue avec la deuxième carte
 
-if(double17EnCours){
+    if(double17EnCours){
 
-actionEnCours = null;
+        actionEnCours = null;
 
-carteChoisie = null;
+        carteChoisie = null;
 
-reprendreDouble17();
+        reprendreDouble17();
 
-return;
+        return;
 
-}
+    }
 
-// Fonctionnement normal du 11
+    // Fonctionnement normal du 11
 
-// Pioche 1 carte
+    // Pioche 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
+    actionEnCours = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-carteChoisie = null;
+    carteChoisie = null;
 
-afficherJeu();
+    afficherJeu();
 
 }
 
@@ -3143,7 +3153,9 @@ function volerCarte13(carteIndex){
     actionEnCours = null;
 
     // Joueur suivant
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -3215,7 +3227,9 @@ function doublerCarte15(carteIndex){
 
     // Tour suivant
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -3229,13 +3243,13 @@ function choisirAdversaireCarte17(index){
     let cible = joueurs[index];
 
     joueur17 = joueurActuel;
-  
+
     // VÉRIFIER QU'IL RESTE UNE CARTE
 
     if(cible.main.length === 0){
 
         historique +=
-`${joueur.nom} joue 17, aucune carte disponible<br>`;
+        `${joueur.nom} joue 17, aucune carte disponible<br>`;
 
         afficherJeu();
 
@@ -3251,20 +3265,23 @@ function choisirAdversaireCarte17(index){
         cible.main.splice(indexAleatoire, 1)[0];
 
     if(cartePiochee === undefined){
-    return;
-    }
-    
-    if(gererMainVideMultijoueur()){
-    return;
+        return;
     }
 
+    // IMPORTANT :
+    // Si la cible arrive à 0 carte, on ne termine pas
+    // l'action du 17. Le joueur actif doit continuer
+    // son action normalement.
+
     // Mémoriser la carte volée
+
     carte17EnAttente = cartePiochee;
 
     historique +=
-`${joueur.nom} vole 1 carte dans la main de ${cible.nom} avec le 17<br>`;
+    `${joueur.nom} vole 1 carte dans la main de ${cible.nom} avec le 17<br>`;
 
     // Afficher la carte avant de la jouer
+
     actionEnCours = "carte17revelee";
 
     afficherJeu();
@@ -3273,146 +3290,144 @@ function choisirAdversaireCarte17(index){
 
 function jouerCarte17(){
 
-let joueur = joueurs[joueur17];
-let carte = carte17EnAttente;
+    let joueur = joueurs[joueur17];
+    let carte = carte17EnAttente;
 
-carte17EnAttente = null;
+    carte17EnAttente = null;
 
-joueurActuel = joueur17;
+    joueurActuel = joueur17;
 
-// Carte paire : elle marque simplement sa valeur
+    // Carte paire : elle marque simplement sa valeur
 
-if(carte % 2 === 0){
+    if(carte % 2 === 0){
 
-joueur.score += carte;
+        joueur.score += carte;
 
-  if(verifierFinPartie()){
-    return;
-}
+        if(verifierFinPartie()){
+            return;
+        }
 
-historique +=
-`${joueur.nom} joue ${carte} obtenue avec le 17 (+${carte})<br>`;
+        historique +=
+        `${joueur.nom} joue ${carte} obtenue avec le 17 (+${carte})<br>`;
 
-// Pioche finale
+        // Pioche finale
 
-piocherCarte(joueur);
+        piocherCarte(joueur);
 
-actionEnCours = null;
+        actionEnCours = null;
 
-joueurActuel = joueur17 + 1;
+        // L'action du 17 est maintenant complètement terminée.
+        // En multijoueur, si le joueur est à 0, on passe
+        // au prochain joueur ayant encore des cartes.
 
-if(joueurActuel >= joueurs.length){
-    joueurActuel = 0;
-}
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
-joueur17 = null;
+        joueur17 = null;
+        carteChoisie = null;
 
-carteChoisie = null;
+        afficherJeu();
 
-afficherJeu();
+        return;
+    }
 
-return;
+    // Carte impaire : lancer son pouvoir
 
-}
+    if(carte === 1){
+        actionEnCours = "vol1";
+    }
 
-// Carte impaire : lancer son pouvoir
+    else if(carte === 3){
+        actionEnCours = "carte3";
+    }
 
-if(carte === 1){
-    actionEnCours = "vol1";
-}
+    else if(carte === 5){
 
-else if(carte === 3){
-    actionEnCours = "carte3";
-}
+        let cartesPiochees = 0;
 
-else if(carte === 5){
+        while(cartesPiochees < 2 && paquet.length > 0){
 
-    let cartesPiochees = 0;
+            joueur.main.push(paquet.pop());
+            cartesPiochees++;
 
-    while(cartesPiochees < 2 && paquet.length > 0){
+        }
 
-        joueur.main.push(paquet.pop());
-        cartesPiochees++;
+        historique +=
+        `${joueur.nom} joue 5 obtenue avec le 17 et pioche ${cartesPiochees} carte(s)<br>`;
+
+        actionEnCours = null;
+
+        // L'action du 17 est terminée.
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        joueur17 = null;
+        carteChoisie = null;
 
     }
 
-    historique +=
-    `${joueur.nom} joue 5 obtenue avec le 17 et pioche ${cartesPiochees} carte(s)<br>`;
+    else if(carte === 7){
 
-    actionEnCours = null;
+        joueur.score += 20;
 
-    joueurActuel = joueur17 + 1;
+        cartesTable.push({
+            valeur: 20,
+            proprietaire: joueur.nom,
+            liee: false
+        });
 
-    if(joueurActuel >= joueurs.length){
-        joueurActuel = 0;
+        historique +=
+        `${joueur.nom} joue 7 obtenue avec le 17 (+20)<br>`;
+
+        actionEnCours = null;
+
+        // L'action du 17 est terminée.
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        joueur17 = null;
+        carteChoisie = null;
+
     }
 
-    joueur17 = null;
-
-  carteChoisie = null;
-
-}
-
-else if(carte === 7){
-
-    joueur.score += 20;
-
-    cartesTable.push({
-        valeur: 20,
-        proprietaire: joueur.nom,
-        liee: false
-    });
-
-    historique +=
-    `${joueur.nom} joue 7 obtenue avec le 17 (+20)<br>`;
-
-    actionEnCours = null;
-
-    joueurActuel = joueur17 + 1;
-
-    if(joueurActuel >= joueurs.length){
-        joueurActuel = 0;
+    else if(carte === 9){
+        actionEnCours = "carte9";
     }
 
-    joueur17 = null;
+    else if(carte === 11){
+        actionEnCours = "carte11";
+    }
 
-  carteChoisie = null;
+    else if(carte === 13){
+        actionEnCours = "carte13";
+    }
 
-}
+    else if(carte === 15){
+        actionEnCours = "carte15";
+    }
 
-else if(carte === 9){
-    actionEnCours = "carte9";
-}
+    else if(carte === 17){
+        actionEnCours = "carte17";
+    }
 
-else if(carte === 11){
-    actionEnCours = "carte11";
-}
+    else if(carte === 19){
+        actionEnCours = "carte19";
+    }
 
-else if(carte === 13){
-    actionEnCours = "carte13";
-}
+    else if(carte === 21){
+        actionEnCours = "carte21";
+    }
 
-else if(carte === 15){
-    actionEnCours = "carte15";
-}
+    else if(carte === "Joker"){
+        actionEnCours = "joker";
+    }
 
-else if(carte === 17){
-    actionEnCours = "carte17";
-}
-
-else if(carte === 19){
-    actionEnCours = "carte19";
-}
-
-else if(carte === 21){
-    actionEnCours = "carte21";
-}
-
-else if(carte === "Joker"){
-    actionEnCours = "joker";
-}
-
-afficherJeu();
+    afficherJeu();
 
 }
 
@@ -3458,14 +3473,17 @@ function continuerCarte17(){
         // Si le 17 venait d'un double 17,
         // on revient jouer la carte restante du double 17
         if(double17EnCours){
-        joueur17 = null;
-        reprendreDouble17();
-        return;
+            joueur17 = null;
+            reprendreDouble17();
+            return;
         }
 
         // 17 normal : fin du tour
         joueur17 = null;
-        passerJoueur();
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         afficherJeu();
 
@@ -3509,32 +3527,35 @@ function continuerCarte17(){
 
         if(cartesPiochees === 2){
 
-    historique +=
-    `${joueur.nom} joue 5 obtenue avec le 17 et pioche 2 cartes<br>`;
+            historique +=
+            `${joueur.nom} joue 5 obtenue avec le 17 et pioche 2 cartes<br>`;
 
-}else if(cartesPiochees === 1){
+        }else if(cartesPiochees === 1){
 
-    historique +=
-    `${joueur.nom} joue 5 obtenue avec le 17 et pioche 1 carte<br>`;
+            historique +=
+            `${joueur.nom} joue 5 obtenue avec le 17 et pioche 1 carte<br>`;
 
-}else{
+        }else{
 
-    historique +=
-    `${joueur.nom} joue 5 obtenue avec le 17, aucune carte disponible<br>`;
+            historique +=
+            `${joueur.nom} joue 5 obtenue avec le 17, aucune carte disponible<br>`;
 
-}
+        }
 
         actionEnCours = null;
         carteChoisie = null;
 
         if(double17EnCours){
-        joueur17 = null;
-        reprendreDouble17();
-        return;
-    }
+            joueur17 = null;
+            reprendreDouble17();
+            return;
+        }
 
         joueur17 = null;
-        passerJoueur();
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         afficherJeu();
 
@@ -3566,13 +3587,16 @@ function continuerCarte17(){
         carteChoisie = null;
 
         if(double17EnCours){
-        joueur17 = null;
-        reprendreDouble17();
-        return;
+            joueur17 = null;
+            reprendreDouble17();
+            return;
         }
 
         joueur17 = null;
-        passerJoueur();
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         afficherJeu();
 
@@ -3681,7 +3705,9 @@ function choisirAdversaireCarte19(index){
 
         actionEnCours = null;
 
-        passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         carteChoisie = null;
 
@@ -3735,7 +3761,9 @@ function choisirAdversaireCarte19(index){
 
     // Tour suivant
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -3790,8 +3818,12 @@ function effetCarte21(valeur){
         actionEnCours = null;
 
         // Tour suivant
+        // En multijoueur, si le joueur est à 0,
+        // on cherche directement le prochain joueur ayant des cartes.
 
-        passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         carteChoisie = null;
 
@@ -3856,8 +3888,12 @@ function cibleCarte21(index){
     actionEnCours = null;
 
     // Tour suivant
+    // En multijoueur, si le joueur actif est à 0,
+    // on passe au prochain joueur ayant des cartes.
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -3908,7 +3944,9 @@ function effetJoker(choix){
 
         actionEnCours = null;
 
-        passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         carteChoisie = null;
 
@@ -3955,7 +3993,9 @@ function effetJoker(choix){
 
         actionEnCours = null;
 
-        passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
         carteChoisie = null;
 
@@ -4023,7 +4063,7 @@ function echangeJoker(index){
 
         return;
     }
-  
+
     // JOKER NORMAL
 
     piocherCarte(joueur);
@@ -4032,7 +4072,9 @@ function echangeJoker(index){
 
     // Tour suivant
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -4417,8 +4459,12 @@ function terminerActionPouvoir(){
     }
 
     // Tour suivant
+    // En multijoueur, si le joueur actif est à 0,
+    // on passe au prochain joueur ayant des cartes.
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
     cibleChoisie = null;
@@ -4593,192 +4639,200 @@ function cartesDoublesAffichables(main){
 
 function choisirAdversaireDouble1(index){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
 
-cibleChoisie = index;
+    cibleChoisie = index;
 
-volerDouble1();
+    volerDouble1();
 
 }
 
 function volerDouble1(){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[cibleChoisie];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[cibleChoisie];
 
-let cartesVolees = [];
+    let cartesVolees = [];
 
-// Chercher les 2 dernières cartes à points
+    // Chercher les 2 dernières cartes à points
 
-for(let i = cartesTable.length - 1; i >= 0 && cartesVolees.length < 2; i--){
+    for(let i = cartesTable.length - 1; i >= 0 && cartesVolees.length < 2; i--){
 
-if(cartesTable[i].proprietaire === cible.nom &&
-   cartesTable[i].valeur !== 0){
+        if(cartesTable[i].proprietaire === cible.nom &&
+           cartesTable[i].valeur !== 0){
 
-cartesVolees.push(cartesTable[i]);
+            cartesVolees.push(cartesTable[i]);
 
-}
+        }
 
-}
+    }
 
-// Transférer les cartes
+    // Transférer les cartes
 
-cartesVolees.forEach(carte => {
+    cartesVolees.forEach(carte => {
 
-cible.score -= carte.valeur;
-joueur.score += carte.valeur;
+        cible.score -= carte.valeur;
+        joueur.score += carte.valeur;
 
-carte.proprietaire = joueur.nom;
+        carte.proprietaire = joueur.nom;
 
-// Retirer la carte de sa position actuelle
-let indexCarte = cartesTable.indexOf(carte);
+        // Retirer la carte de sa position actuelle
+        let indexCarte = cartesTable.indexOf(carte);
 
-if(indexCarte !== -1){
-    cartesTable.splice(indexCarte, 1);
-}
+        if(indexCarte !== -1){
+            cartesTable.splice(indexCarte, 1);
+        }
 
-// La remettre à la fin des Points marqués
-cartesTable.push(carte);
+        // La remettre à la fin des Points marqués
+        cartesTable.push(carte);
 
-});
+    });
 
-if(cartesVolees.length === 2){
+    if(cartesVolees.length === 2){
 
-    historique +=
-    `${joueur.nom} vole les deux dernières cartes de ${cible.nom} avec le double 1<br>`;
+        historique +=
+        `${joueur.nom} vole les deux dernières cartes de ${cible.nom} avec le double 1<br>`;
 
-}
-else if(cartesVolees.length === 1){
+    }
+    else if(cartesVolees.length === 1){
 
-    historique +=
-    `${joueur.nom} vole la dernière carte de ${cible.nom} avec le double 1<br>`;
+        historique +=
+        `${joueur.nom} vole la dernière carte de ${cible.nom} avec le double 1<br>`;
 
-}
-else{
+    }
+    else{
 
-    historique +=
-    `${joueur.nom} joue double 1, aucune carte disponible<br>`;
+        historique +=
+        `${joueur.nom} joue double 1, aucune carte disponible<br>`;
 
-}
+    }
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Pioche 1 carte
+    // Pioche 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
+    actionEnCours = null;
+    cibleChoisie = null;
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-carteChoisie = null;
+    carteChoisie = null;
 
-afficherJeu();
+    afficherJeu();
 
 }
 
 function choisirAdversaireDouble3(index){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
 
-cible.score -= 40;
+    cible.score -= 40;
 
-cartesTable.push({
-    valeur: -40,
-    proprietaire: cible.nom,
-    liee: false
-});
+    cartesTable.push({
+        valeur: -40,
+        proprietaire: cible.nom,
+        liee: false
+    });
 
-historique +=
-`${joueurs[joueurActuel].nom} inflige -40 à ${cible.nom} avec le double 3<br>`;
+    historique +=
+    `${joueurs[joueurActuel].nom} inflige -40 à ${cible.nom} avec le double 3<br>`;
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Pioche 1 carte
+    // Pioche 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
-carteChoisie = null;
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-afficherJeu();
+    afficherJeu();
 
 }
 
 function choisirAdversaireDouble9(index){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
 
-// Échange des mains
+    // Échange des mains
 
-let mainTemporaire = joueur.main;
+    let mainTemporaire = joueur.main;
 
-joueur.main = cible.main;
-cible.main = mainTemporaire;
+    joueur.main = cible.main;
+    cible.main = mainTemporaire;
 
-historique +=
-`${joueur.nom} échange sa main avec ${cible.nom} avec le double 9<br>`;
+    historique +=
+    `${joueur.nom} échange sa main avec ${cible.nom} avec le double 9<br>`;
 
-// Fin du pouvoir
+    // Fin du pouvoir
 
-actionEnCours = null;
-cibleChoisie = null;
-carteChoisie = null;
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-afficherJeu();
+    afficherJeu();
 
 }
 
 function effetDouble11(valeur){
 
-let joueur = joueurs[joueurActuel];
+    let joueur = joueurs[joueurActuel];
 
-joueur.score += valeur;
+    joueur.score += valeur;
 
-cartesTable.push({
-    valeur: valeur,
-    proprietaire: joueur.nom,
-    liee: false,
-    historiqueCarte: [11, 11]
-});
+    cartesTable.push({
+        valeur: valeur,
+        proprietaire: joueur.nom,
+        liee: false,
+        historiqueCarte: [11, 11]
+    });
 
-historique +=
-`${joueur.nom} choisit ${valeur > 0 ? "+20" : "-20"} avec le double 11<br>`;
+    historique +=
+    `${joueur.nom} choisit ${valeur > 0 ? "+20" : "-20"} avec le double 11<br>`;
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Pioche 1 carte
+    // Pioche 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
-carteChoisie = null;
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-afficherJeu();
+    afficherJeu();
 
 }
 
@@ -4825,100 +4879,102 @@ afficherJeu();
 
 function volerCartesDouble13(){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[cibleChoisie];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[cibleChoisie];
 
-// Si aucune carte à points
+    // Si aucune carte à points
 
-let cartesDisponibles = cartesTable.filter(carte =>
-    carte.proprietaire === cible.nom &&
-    carte.valeur !== 0
-);
+    let cartesDisponibles = cartesTable.filter(carte =>
+        carte.proprietaire === cible.nom &&
+        carte.valeur !== 0
+    );
 
-if(cartesDisponibles.length === 0){
+    if(cartesDisponibles.length === 0){
 
-historique +=
-`${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+        historique +=
+        `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
 
-}else{
+    }else{
 
-// Récupérer les cartes sélectionnées
+        // Récupérer les cartes sélectionnées
 
-let cartesVolees = carteChoisie.map(index =>
-    cartesTable[index]
-);
+        let cartesVolees = carteChoisie.map(index =>
+            cartesTable[index]
+        );
 
-// Retirer les cartes de la table
+        // Retirer les cartes de la table
 
-cartesVolees.forEach(carte => {
+        cartesVolees.forEach(carte => {
 
-let index = cartesTable.indexOf(carte);
+            let index = cartesTable.indexOf(carte);
 
-if(index !== -1){
-    cartesTable.splice(index,1);
-}
+            if(index !== -1){
+                cartesTable.splice(index,1);
+            }
 
-});
+        });
 
-// Ajouter les cartes volées à la fin
+        // Ajouter les cartes volées à la fin
 
-cartesVolees.forEach(carte => {
+        cartesVolees.forEach(carte => {
 
-carte.proprietaire = joueur.nom;
+            carte.proprietaire = joueur.nom;
 
-cartesTable.push(carte);
+            cartesTable.push(carte);
 
-});
+        });
 
-// Mise à jour des scores
+        // Mise à jour des scores
 
-cartesVolees.forEach(carte => {
+        cartesVolees.forEach(carte => {
 
-joueur.score += carte.valeur;
-cible.score -= carte.valeur;
+            joueur.score += carte.valeur;
+            cible.score -= carte.valeur;
 
-});
+        });
 
-if(cartesVolees.length === 2){
+        if(cartesVolees.length === 2){
 
-    historique +=
-    `${joueur.nom} vole deux cartes à ${cible.nom} avec le double 13<br>`;
+            historique +=
+            `${joueur.nom} vole deux cartes à ${cible.nom} avec le double 13<br>`;
 
-}
-else if(cartesVolees.length === 1){
+        }
+        else if(cartesVolees.length === 1){
 
-    historique +=
-    `${joueur.nom} vole une carte à ${cible.nom} avec le double 13<br>`;
+            historique +=
+            `${joueur.nom} vole une carte à ${cible.nom} avec le double 13<br>`;
 
-}
-else{
+        }
+        else{
 
-    historique +=
-    `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+            historique +=
+            `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
 
-}
-  
-}
+        }
 
-if(verifierFinPartie()){
-    return;
-}
+    }
 
-// Pioche 1 carte
+    if(verifierFinPartie()){
+        return;
+    }
 
-piocherCarte(joueur);
+    // Pioche 1 carte
 
-// Réinitialisation
+    piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
-carteChoisie = null;
+    // Réinitialisation
 
-// Tour suivant
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
-passerJoueur();
+    // Tour suivant
 
-afficherJeu();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+
+    afficherJeu();
 
 }
 
@@ -4936,7 +4992,9 @@ function terminerDouble13(){
     cibleChoisie = null;
     carteChoisie = null;
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     afficherJeu();
 
@@ -4994,7 +5052,9 @@ function triplerCarte15(carteIndex){
 
     // Joueur suivant
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     afficherJeu();
 
@@ -5002,92 +5062,96 @@ function triplerCarte15(carteIndex){
 
 function terminerDouble15(){
 
-let joueur = joueurs[joueurActuel];
+    let joueur = joueurs[joueurActuel];
 
-historique +=
-`${joueur.nom} ne peut pas utiliser le double 15 car il n'a aucune carte à points.<br>`;
+    historique +=
+    `${joueur.nom} ne peut pas utiliser le double 15 car il n'a aucune carte à points.<br>`;
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Pioche quand même 1 carte
+    // Pioche quand même 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
-carteChoisie = null;
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
-// Tour suivant
+    // Tour suivant
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-afficherJeu();
+    afficherJeu();
 
 }
 
 function choisirAdversaireDouble17(index){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
 
-cibleChoisie = index;
+    cibleChoisie = index;
 
-let nombreCartes =
-Math.min(2, cible.main.length);
+    let nombreCartes =
+    Math.min(2, cible.main.length);
 
-if(nombreCartes === 0){
+    if(nombreCartes === 0){
 
-historique +=
-`${joueur.nom} joue le double 17, aucune carte disponible dans la main de ${cible.nom}<br>`;
+        historique +=
+        `${joueur.nom} joue le double 17, aucune carte disponible dans la main de ${cible.nom}<br>`;
 
-piocherCarte(joueur);
+        piocherCarte(joueur);
 
-actionEnCours = null;
-cibleChoisie = null;
+        actionEnCours = null;
+        cibleChoisie = null;
 
-passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
-afficherJeu();
+        afficherJeu();
 
-return;
+        return;
 
-}
+    }
 
-// Tirer les cartes au hasard
+    // Tirer les cartes au hasard
 
-cartesDouble17 = [];
+    cartesDouble17 = [];
 
-for(let i = 0; i < nombreCartes; i++){
+    for(let i = 0; i < nombreCartes; i++){
 
-let indexAleatoire =
-Math.floor(Math.random() * cible.main.length);
+        let indexAleatoire =
+        Math.floor(Math.random() * cible.main.length);
 
-cartesDouble17.push(
-    cible.main.splice(indexAleatoire, 1)[0]
-);
+        cartesDouble17.push(
+            cible.main.splice(indexAleatoire, 1)[0]
+        );
 
-}
+    }
 
-if(cartesDouble17.length === 2){
+    if(cartesDouble17.length === 2){
 
-    historique +=
-    `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le double 17<br>`;
+        historique +=
+        `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le double 17<br>`;
 
-}
-else if(cartesDouble17.length === 1){
+    }
+    else if(cartesDouble17.length === 1){
 
-    historique +=
-    `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le 17<br>`;
+        historique +=
+        `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le 17<br>`;
 
-}
+    }
 
-double17EnCours = true;
+    double17EnCours = true;
 
-actionEnCours = "double17revelee";
+    actionEnCours = "double17revelee";
 
-afficherJeu();
+    afficherJeu();
 
 }
 
@@ -5326,7 +5390,9 @@ function terminerDouble17(){
     cartesDouble17 = [];
     carteChoisie = null;
 
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     afficherJeu();
 
@@ -5376,13 +5442,20 @@ function terminer17SansCarte(){
 
     // Si ce 17 faisait partie d'un double 17,
     // on revient jouer la carte restante.
+
     if(double17EnCours){
-    reprendreDouble17();
-    return;
+
+        reprendreDouble17();
+
+        return;
     }
 
     // 17 normal : tour suivant
-    passerJoueur();
+
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+
     afficherJeu();
 
 }
@@ -5423,6 +5496,7 @@ function effectuerEchangeDouble19(){
 
         let carteJoueur =
             cartesJoueur[cartesJoueur.length - 1 - i];
+
         let carteCible =
             cartesCible[cartesCible.length - 1 - i];
 
@@ -5441,26 +5515,26 @@ function effectuerEchangeDouble19(){
 
     if(nombreEchange >= 2){
 
-    historique +=
-    `${joueur.nom} échange avec ${cible.nom} les deux dernières cartes jouées avec le double 19<br>`;
+        historique +=
+        `${joueur.nom} échange avec ${cible.nom} les deux dernières cartes jouées avec le double 19<br>`;
 
-}
-else if(nombreEchange === 1){
+    }
+    else if(nombreEchange === 1){
 
-    historique +=
-    `${joueur.nom} échange avec ${cible.nom} la dernière carte jouée avec le double 19<br>`;
+        historique +=
+        `${joueur.nom} échange avec ${cible.nom} la dernière carte jouée avec le double 19<br>`;
 
-}
-else{
+    }
+    else{
 
-    historique +=
-    `${joueur.nom} joue le double 19, aucune carte disponible<br>`;
+        historique +=
+        `${joueur.nom} joue le double 19, aucune carte disponible<br>`;
 
-}
+    }
 
-  if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
     // Le joueur ayant joué le double 19 pioche 1 carte
     piocherCarte(joueur);
@@ -5470,7 +5544,9 @@ else{
     actionEnCours = null;
 
     // Joueur suivant
-    passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
     carteChoisie = null;
 
@@ -5480,90 +5556,94 @@ else{
 
 function effetDouble21(valeur){
 
-let joueur = joueurs[joueurActuel];
+    let joueur = joueurs[joueurActuel];
 
-// +40 POUR SOI
+    // +40 POUR SOI
 
-if(valeur === 40){
+    if(valeur === 40){
 
-joueur.score += 40;
+        joueur.score += 40;
 
-cartesTable.push({
-    valeur: 40,
-    proprietaire: joueur.nom,
-    liee: false,
-    historiqueCarte: [21, 21]
-});
+        cartesTable.push({
+            valeur: 40,
+            proprietaire: joueur.nom,
+            liee: false,
+            historiqueCarte: [21, 21]
+        });
 
-historique +=
-`${joueur.nom} +40 points avec le double 21<br>`;
+        historique +=
+        `${joueur.nom} +40 points avec le double 21<br>`;
 
-if(verifierFinPartie()){
-    return;
-}
+        if(verifierFinPartie()){
+            return;
+        }
 
-// Pioche 1 carte
+        // Pioche 1 carte
 
-piocherCarte(joueur);
+        piocherCarte(joueur);
 
-actionEnCours = null;
+        actionEnCours = null;
 
-passerJoueur();
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
-afficherJeu();
+        afficherJeu();
 
-return;
+        return;
 
-}
+    }
 
-// -40 À UN ADVERSAIRE
+    // -40 À UN ADVERSAIRE
 
-if(valeur === -40){
+    if(valeur === -40){
 
-actionEnCours = "double21cible";
+        actionEnCours = "double21cible";
 
-afficherJeu();
+        afficherJeu();
 
-return;
+        return;
 
-}
+    }
 
 }
 
 function cibleDouble21(index){
 
-let joueur = joueurs[joueurActuel];
-let cible = joueurs[index];
+    let joueur = joueurs[joueurActuel];
+    let cible = joueurs[index];
 
-cible.score -= 40;
+    cible.score -= 40;
 
-// Ajouter le -40 aux Points marqués de la cible
+    // Ajouter le -40 aux Points marqués de la cible
 
-cartesTable.push({
-    valeur: -40,
-    proprietaire: cible.nom,
-    liee: false,
-    historiqueCarte: [21, 21]
-});
+    cartesTable.push({
+        valeur: -40,
+        proprietaire: cible.nom,
+        liee: false,
+        historiqueCarte: [21, 21]
+    });
 
-historique +=
-`${joueur.nom} inflige -40 points à ${cible.nom} avec le double 21.<br>`;
+    historique +=
+    `${joueur.nom} inflige -40 points à ${cible.nom} avec le double 21.<br>`;
 
-// Vérifier la fin de partie
+    // Vérifier la fin de partie
 
-if(verifierFinPartie()){
-    return;
-}
+    if(verifierFinPartie()){
+        return;
+    }
 
-// Le joueur pioche 1 carte
+    // Le joueur pioche 1 carte
 
-piocherCarte(joueur);
+    piocherCarte(joueur);
 
-actionEnCours = null;
+    actionEnCours = null;
 
-passerJoueur();
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
 
-afficherJeu();
+    afficherJeu();
 
 }
 
