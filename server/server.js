@@ -423,6 +423,18 @@ room.engine.setPlayerIndex(
 
 room.engine.apply(fn,args);
 
+ const debugApresAction = room.engine.stateFor(player.index);
+
+console.log(
+  "[DEBUG APRES ACTION]",
+  "fn =", fn,
+  "joueur =", player.index,
+  "currentPlayer =", debugApresAction.currentPlayer,
+  "action =", debugApresAction.action,
+  "main =", debugApresAction.players[player.index]?.main,
+  "cardCount =", debugApresAction.players[player.index]?.cardCount
+);
+
 player.selection=null;
 
 const state = room.engine.stateFor(player.index);
