@@ -377,6 +377,15 @@ if(m.type==="game:select"){
 
 if(m.type==="game:action"){
 
+ console.log(
+  "[DEBUG GAME ACTION REÇUE]",
+  m.fn,
+  "player.index =",
+  player?.index,
+  "tour serveur =",
+  room?.engine?.currentIndex?.()
+);
+
  if(!room.started)
   throw Error("La partie n'a pas commencé.");
 
