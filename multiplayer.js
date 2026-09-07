@@ -180,8 +180,8 @@
         return;
       }
 
-      if (m.type === "error")
-        return status("⚠️ " + m.message);
+      if (m.type === "error" || m.type === "fail")
+    return status("⚠️ " + (m.message || "Erreur serveur."));
 
       if (m.playerId) {
         myId = m.playerId;
