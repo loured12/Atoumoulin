@@ -308,8 +308,6 @@
 
     window[name] = function(...args) {
 
-       console.log("[DEBUG HOOK APPEL]", name, args);
-
   if (!started)
     return original.apply(this,args);
 
