@@ -1050,3 +1050,37 @@ label {
     padding: 12px 8px;
   }
 }
+
+/* =========================
+   NOUVEAU STYLE DES CARTES
+   ========================= */
+
+.carte {
+  position: relative;
+
+  width: 62px;
+  height: 92px;
+
+  padding: 0;
+
+  border: 2px solid #d7b72f;
+  border-radius: 8px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fff8df,
+      #ead9a5
+    );
+
+  color: #183d22;
+
+  font-family: "Palatino Linotype", Georgia, serif;
+  font-size: 1.4em;
+  font-weight: bold;
+
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.45);
+
+  cursor: pointer;
+}
