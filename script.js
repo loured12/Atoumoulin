@@ -2454,29 +2454,43 @@ function gererActionBot(){
 
     if(actionEnCours === "carte13choix"){
 
-        let cible = joueurs[cibleChoisie];
+    let cible = joueurs[cibleChoisie];
 
-        let cartesDisponibles = cartesTable
-            .map((carte,index) => ({carte,index}))
-            .filter(element =>
-                element.carte.proprietaire === cible.nom &&
-                element.carte.valeur !== 0
-            );
+    let cartesDisponibles = cartesTable
+        .map((carte,index) => ({carte,index}))
+        .filter(element =>
+            element.carte.proprietaire === cible.nom &&
+            element.carte.valeur !== 0
+        );
 
-        if(cartesDisponibles.length === 0){
-            return;
+    if(cartesDisponibles.length === 0){
+
+        historique +=
+            `${joueur.nom} ne trouve aucune carte à voler avec le 13.<br>`;
+
+        actionEnCours = null;
+        cibleChoisie = null;
+        carteChoisie = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
         }
 
-        let choix =
-            cartesDisponibles[
-                Math.floor(Math.random() * cartesDisponibles.length)
-            ];
-
-        volerCarte13(choix.index);
+        afficherJeu();
 
         return;
     }
 
+    let choix =
+        cartesDisponibles[
+            Math.floor(Math.random() * cartesDisponibles.length)
+        ];
+
+    volerCarte13(choix.index);
+
+    return;
+}
+    
     // DOUBLE 13
 
     if(actionEnCours === "double13"){
@@ -2530,26 +2544,40 @@ function gererActionBot(){
  
     if(actionEnCours === "carte15"){
 
-        let cartesDisponibles = cartesTable
-            .map((carte,index) => ({carte,index}))
-            .filter(element =>
-                element.carte.proprietaire === joueur.nom &&
-                element.carte.valeur !== 0
-            );
+    let cartesDisponibles = cartesTable
+        .map((carte,index) => ({carte,index}))
+        .filter(element =>
+            element.carte.proprietaire === joueur.nom &&
+            element.carte.valeur !== 0
+        );
 
-        if(cartesDisponibles.length === 0){
-            return;
+    if(cartesDisponibles.length === 0){
+
+        historique +=
+            `${joueur.nom} ne trouve aucune carte à doubler avec le 15.<br>`;
+
+        actionEnCours = null;
+        cibleChoisie = null;
+        carteChoisie = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
         }
 
-        let choix =
-            cartesDisponibles[
-                Math.floor(Math.random() * cartesDisponibles.length)
-            ];
-
-        doublerCarte15(choix.index);
+        afficherJeu();
 
         return;
     }
+
+    let choix =
+        cartesDisponibles[
+            Math.floor(Math.random() * cartesDisponibles.length)
+        ];
+
+    doublerCarte15(choix.index);
+
+    return;
+}
 
     // DOUBLE 15
 
