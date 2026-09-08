@@ -402,10 +402,10 @@ if(m.type==="game:action"){
    [nouveauMode]
   );
 
-  console.log(
-   "DEBUG NOUVELLE PARTIE - VICTOIRES :",
-   room.engine.stateFor(player.index).victories
-);
+  room.engine.apply(
+   "reinitialiserVictoires",
+   []
+  );
 
   sendState(room);
 
