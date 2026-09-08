@@ -4638,6 +4638,16 @@ function nouvelleManche(nouveauMode){
 
 }
 
+function reinitialiserVictoires(){
+
+    victoires = [];
+
+    joueurs.forEach(joueur => {
+        victoires.push(0);
+    });
+
+}
+
 function preparerNouvelleManche(nouveauMode){
 
     nouvelleManche(nouveauMode);
