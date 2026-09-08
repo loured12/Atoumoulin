@@ -522,15 +522,15 @@ let joueurTour = joueurs[joueurActuel];
 
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
-    setTimeout(() => {
+    if(actionEnCours === null){
 
-        if(actionEnCours === null){
-            jouerTourBot();
-        }else{
-            gererActionBot();
-        }
+        jouerTourBot();
 
-    }, 0);
+    }else{
+
+        gererActionBot();
+
+    }
 
     return;
 }
