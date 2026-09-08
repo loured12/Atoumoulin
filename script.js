@@ -984,7 +984,6 @@ if(actionEnCours === "double13choix"){
         `;
     }
 
-    return;
 }
 
 if(actionEnCours === "carte13"){
@@ -1100,7 +1099,6 @@ if(actionEnCours === "double15"){
 
     });
 
-    return;
 }
 
 if(actionEnCours === "carte15"){
