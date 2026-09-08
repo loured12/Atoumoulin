@@ -170,7 +170,8 @@ export class AtoumoulinEngine {
       double17Cards: raw.cartesDouble17,
       double17Active: !!raw.double17EnCours,
       player19: raw.joueur19,
-      victories: raw.victoires
+      victories: raw.victoires,
+      modeJeu: raw.modeJeu
     };
   }
 
@@ -231,7 +232,8 @@ export class AtoumoulinEngine {
       double17Cards: raw.cartesDouble17,
       double17Active: !!raw.double17EnCours,
       player19: raw.joueur19,
-      victories: raw.victoires
+      victories: raw.victoires,
+      modeJeu: raw.modeJeu
     };
   }
 
