@@ -4642,13 +4642,6 @@ function preparerNouvelleManche(nouveauMode){
 
     nouvelleManche(nouveauMode);
 
-    // En multijoueur : Nouvelle partie = remise à zéro des victoires.
-    if(globalThis.__atoumoulinRemote){
-        victoires = joueurs.map(() => 0);
-    }
-
-    afficherJeu();
-
 }
 
 function trouverDoubles(main){
