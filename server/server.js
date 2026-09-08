@@ -402,11 +402,6 @@ if(m.type==="game:action"){
    [nouveauMode]
   );
 
-  room.engine.apply(
-   "reinitialiserVictoires",
-   []
-  );
-
   sendState(room);
 
   return;
