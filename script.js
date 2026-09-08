@@ -4612,6 +4612,11 @@ function nouvelleManche(nouveauMode){
 
 function preparerNouvelleManche(nouveauMode){
 
+    // En multijoueur : Nouvelle partie = remise à zéro des victoires.
+    if(globalThis.__atoumoulinRemote){
+        victoires = joueurs.map(() => 0);
+    }
+
     nouvelleManche(nouveauMode);
 
 }
