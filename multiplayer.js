@@ -48,12 +48,12 @@
       return;
 
     send({
-  type:"game:action",
-  fn:"preparerNouvelleManche",
-  args:[
-  Number(document.getElementById("modeJeu").value || 1)
-  ]
-});
+      type:"game:action",
+      fn:"nouvellePartieMultijoueur",
+      args:[
+      Number(document.getElementById("modeJeu").value || 1)
+      ]
+    });
 
   }, true);
   }
