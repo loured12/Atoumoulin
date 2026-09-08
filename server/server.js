@@ -387,6 +387,31 @@ if(m.type==="game:action"){
   ? m.args.slice(0,3)
   : [];
 
+ if(fn==="nouvellePartieMultijoueur"){
+
+  if(player.id!==room.hostId)
+    throw Error("Seul l'hôte peut lancer une nouvelle partie.");
+
+  const nouveauMode=
+    Number(args[0])||room.mode||1;
+
+  room.mode=nouveauMode;
+
+  room.engine.apply(
+    "preparerNouvelleManche",
+    [nouveauMode]
+  );
+
+  room.engine.apply(
+    "reinitialiserVictoires",
+    []
+  );
+
+  sendState(room);
+
+  return;
+ }
+
  if(fn==="preparerNouvelleManche"){
 
   if(player.id!==room.hostId)
