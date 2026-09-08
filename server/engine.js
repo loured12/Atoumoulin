@@ -333,7 +333,7 @@ export class AtoumoulinEngine {
     "effectuerEchangeDouble19",
     "cibleDouble21",
     "terminer17SansCarte",
-    "preparerNouvelleManche"
+    "preparerNouvelleManche",
     "reinitialiserVictoires"
   ]);
 
