@@ -690,6 +690,13 @@ if(monIndex === joueurActuel &&
 
 }
 
+const afficherActions =
+    !globalThis.__atoumoulinRemote ||
+    Number(globalThis.__atoumoulinPlayerIndex) ===
+    Number(joueurActuel);
+
+if(afficherActions){
+
 if(actionEnCours === "double1"){
 
 zoneJeu.innerHTML +=
@@ -1441,6 +1448,8 @@ ${adversaire.nom}
 }
 
 });
+
+}
 
 }
 
