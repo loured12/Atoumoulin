@@ -334,6 +334,7 @@ export class AtoumoulinEngine {
     "cibleDouble21",
     "terminer17SansCarte",
     "preparerNouvelleManche"
+    "reinitialiserVictoires"
   ]);
 
   if (!allowed.has(fn)) {
