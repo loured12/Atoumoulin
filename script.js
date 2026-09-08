@@ -4606,9 +4606,7 @@ function nouvelleManche(nouveauMode){
 
     });
 
-    setTimeout(() => {
     afficherJeu();
-}, 0);
 
 }
 
