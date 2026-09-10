@@ -1,0 +1,16 @@
+{
+  "name": "Atoumoulin",
+  "short_name": "Atoumoulin",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#245331",
+  "theme_color": "#285c35",
+  "icons": [
+    {
+      "src": "1789034496969.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
