@@ -3313,7 +3313,7 @@ function choisirAdversaireCarte17(index){
     carte17EnAttente = cartePiochee;
 
     historique +=
-    `${joueur.nom} vole 1 carte dans la main de ${cible.nom} avec le 17<br>`;
+    `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le 17<br>`;
 
     // Afficher la carte avant de la jouer
 
