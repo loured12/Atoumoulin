@@ -1,4 +1,4 @@
-const CACHE_NAME = "atoumoulin-v2";
+const CACHE_NAME = "atoumoulin-cache-v1";
 
 const FILES_TO_CACHE = [
   "./",
@@ -12,9 +12,7 @@ const FILES_TO_CACHE = [
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(FILES_TO_CACHE))
   );
 
   self.skipWaiting();
@@ -38,11 +36,13 @@ self.addEventListener("fetch", event => {
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const responseClone = response.clone();
+        if (response && response.status === 200) {
+          const copy = response.clone();
 
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseClone);
-        });
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, copy);
+          });
+        }
 
         return response;
       })
