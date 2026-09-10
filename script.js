@@ -3061,7 +3061,7 @@ function effetCarte11(valeur){
     });
 
     historique +=
-    `${joueur.nom} choisit ${valeur > 0 ? "+" : ""}${valeur} avec le 11<br>`;
+    `${joueur.nom} ${valeur > 0 ? "+" : ""}${valeur} avec le 11<br>`;
 
     // Si le 11 vient du double 17,
     // on continue avec la deuxième carte
@@ -3980,7 +3980,7 @@ function effetJoker(choix){
         }
 
         historique +=
-        `${joueur.nom} choisit +10 avec le Joker<br>`;
+        `${joueur.nom} +10 avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
@@ -4029,7 +4029,7 @@ function effetJoker(choix){
         }
 
         historique +=
-        `${joueur.nom} choisit +22 avec le Joker<br>`;
+        `${joueur.nom} +22 avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
@@ -4878,7 +4878,7 @@ function effetDouble11(valeur){
     });
 
     historique +=
-    `${joueur.nom} choisit ${valeur > 0 ? "+20" : "-20"} avec le double 11<br>`;
+    `${joueur.nom} ${valeur > 0 ? "+20" : "-20"} avec le double 11<br>`;
 
     if(verifierFinPartie()){
         return;
