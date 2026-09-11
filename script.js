@@ -674,7 +674,7 @@ maMain.main.forEach((carte,index)=>{
         }"
         ${selectionnable ? `onclick="selectionnerCarte(${index})"` : ""}
     >
-    ${carte}
+    <img src="cartes/${carte === "Joker" ? "joker" : String(carte).padStart(2, "0")}.png" class="image-carte" alt="Carte">
     </button>
     `;
 });
