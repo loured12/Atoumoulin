@@ -100,7 +100,6 @@ button:active {
     0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
-
 /* =========================
    CARTES
    ========================= */
@@ -108,24 +107,20 @@ button:active {
 .carte {
   display: inline-block;
 
-  width: 62px;
-  height: 92px;
+  width: 68px;
+  height: 100px;
 
   margin: 4px;
 
-  background: linear-gradient(
-    145deg,
-    #ffffff,
-    #eeeeea
-  );
+  background: transparent;
 
   color: #171717;
 
-  border: 2px solid #e0bf35;
+  border: none;
   border-radius: 9px;
 
   font-size: 31px;
-  line-height: 92px;
+  line-height: 100px;
 
   box-shadow:
     0 5px 11px rgba(0, 0, 0, 0.45);
@@ -146,15 +141,12 @@ button:active {
 .selectionnee {
   transform: translateY(-13px) scale(1.07);
 
-  border-color: #ffe066;
-
   box-shadow:
     0 12px 22px rgba(0, 0, 0, 0.55),
     0 0 14px rgba(255, 216, 77, 0.35);
 
   transition: 0.2s ease;
 }
-
 
 /* =========================
    BOUTONS-CARTES
