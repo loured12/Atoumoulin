@@ -615,7 +615,7 @@ if(monIndex !== joueurActuel){
     for(let i = 0; i < Number(joueurTour.cardCount || joueurTour.main.length); i++){
         zoneJeu.innerHTML +=
         `
-        <div class="carte carte-dos-adversaire"></div>
+        <img src="cartes/dos.png" class="carte-dos-adversaire" alt="Dos de carte">
         `;
     }
 }
