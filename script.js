@@ -56,7 +56,7 @@ let mancheTerminee = false;
 
 const couleursJoueurs = [
     { couleur: "#FBC02D", rond: "🟡" }, // Joueur 1
-    { couleur: "#F44336", rond: "🇨🇩" }, // Joueur 2
+    { couleur: "#F44336", rond: "🔴" }, // Joueur 2
     { couleur: "#4CAF50", rond: "🟢" }, // Joueur 3
     { couleur: "#2196F3", rond: "🔵" }, // Joueur 4
     { couleur: "#FF9800", rond: "🟠" }, // Joueur 5
