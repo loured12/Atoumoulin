@@ -155,8 +155,9 @@ button:active {
 button.carte {
   background: transparent;
   color: #111;
-  border: 2px solid #d8b82f;
+  border: none;
   padding: 0;
+  margin: 4px;
   overflow: hidden;
 }
 
