@@ -65,6 +65,19 @@ const couleursJoueurs = [
     { couleur: "#000000", rond: "⚫" }  // Joueur 8
 ];
 
+const imagesCartes = [
+    ...Array.from({length: 21}, (_, i) =>
+        `cartes/${String(i + 1).padStart(2, "0")}.png`
+    ),
+    "cartes/joker.png",
+    "cartes/dos.png"
+];
+
+imagesCartes.forEach(src => {
+    const img = new Image();
+    img.src = src;
+});
+
 function couleurJoueur(index){
 
     if(index === -1){
