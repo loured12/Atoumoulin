@@ -107,8 +107,8 @@ button:active {
 .carte {
   display: inline-block;
 
-  width: 74px;
-  height: 109px;
+  width: 78px;
+  height: 115px;
 
   margin: 4px;
 
@@ -1012,11 +1012,11 @@ label {
   }
 
   .carte {
-    width: 54px;
-    height: 82px;
-    line-height: 82px;
-    font-size: 27px;
-    margin: 3px;
+    width:62px;
+    height:92px;
+    line-height:92px;
+    font-size:27px;
+    margin:3px;
   }
 
   .selectionnee {
