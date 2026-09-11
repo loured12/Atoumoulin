@@ -990,10 +990,13 @@ label {
 .carte-dos-adversaire {
   width: 42px;
   height: 60px;
-  border: 2px solid #d4af37;
+  border: none;
   border-radius: 6px;
-  background: linear-gradient(145deg, #d93434, #8f1515);
+  background: transparent;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+  padding: 0;
+  object-fit: fill;
+  display: block;
 }
 
 /* =========================
