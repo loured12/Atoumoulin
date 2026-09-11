@@ -161,17 +161,12 @@ button:active {
    ========================= */
 
 button.carte {
-  background: linear-gradient(
-    145deg,
-    #ffffff,
-    #eeeeea
-  );
-
+  background: transparent;
   color: #111;
-
   border: 2px solid #d8b82f;
+  padding: 0;
+  overflow: hidden;
 }
-
 
 /* =========================
    FENÊTRE DES RÈGLES
