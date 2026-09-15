@@ -135,54 +135,60 @@
 
   document.body.insertBefore(box, document.body.firstChild);
 
-const chatBulle = document.createElement("div");
+  function afficherBulleChat() {
 
-chatBulle.id = "chatBulle";
-chatBulle.textContent = "💬";
+  if (document.getElementById("chatBulle"))
+    return;
 
-Object.assign(chatBulle.style, {
-  position: "fixed",
-  right: "20px",
-  bottom: "20px",
-  width: "55px",
-  height: "55px",
-  borderRadius: "50%",
-  background: "#222",
-  color: "white",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "28px",
-  cursor: "pointer",
-  zIndex: "10000",
-  boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
-  userSelect: "none"
-});
+  const chatBulle = document.createElement("div");
 
-document.body.appendChild(chatBulle);
+  chatBulle.id = "chatBulle";
+  chatBulle.textContent = "💬";
 
-const chatInfo = document.createElement("div");
+  Object.assign(chatBulle.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "20px",
+    width: "55px",
+    height: "55px",
+    borderRadius: "50%",
+    background: "#222",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "28px",
+    cursor: "pointer",
+    zIndex: "10000",
+    boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
+    userSelect: "none"
+  });
 
-chatInfo.textContent = "💬 Chat — déplace-moi si besoin";
+  document.body.appendChild(chatBulle);
 
-Object.assign(chatInfo.style, {
-  position: "fixed",
-  right: "20px",
-  bottom: "85px",
-  padding: "8px 12px",
-  borderRadius: "8px",
-  background: "#222",
-  color: "white",
-  fontSize: "14px",
-  zIndex: "10000",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.25)"
-});
+  const chatInfo = document.createElement("div");
 
-document.body.appendChild(chatInfo);
+  chatInfo.textContent = "💬 Chat — déplace-moi si besoin";
 
-setTimeout(() => {
-  chatInfo.remove();
-}, 5000);
+  Object.assign(chatInfo.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "85px",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    background: "#222",
+    color: "white",
+    fontSize: "14px",
+    zIndex: "10000",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.25)"
+  });
+
+  document.body.appendChild(chatInfo);
+
+  setTimeout(() => {
+    chatInfo.remove();
+  }, 5000);
+}
   
   function renderRoom(r) {
     room = r;
@@ -291,6 +297,8 @@ setTimeout(() => {
       if (m.type === "game:start") {
         started = true;
         status("Partie lancée");
+
+        afficherBulleChat();
 
         setTimeout(() => {
         window.scrollTo({
