@@ -476,9 +476,12 @@ document.addEventListener("click", e => {
 
       d.textContent = `${x.playerName} : ${x.text}`;
 
-      $("chatFenetreMessages").appendChild(d);
-      $("chatFenetreMessages").scrollTop =
-      $("chatFenetreMessages").scrollHeight;
+      const zoneChat = $("chatFenetreMessages");
+
+      if (zoneChat) {
+      zoneChat.appendChild(d);
+      zoneChat.scrollTop = zoneChat.scrollHeight;
+      }
      }
     };
 
