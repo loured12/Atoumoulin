@@ -151,6 +151,9 @@
       r.players.length < 2 ||
       r.started;
 
+    $("mpStart").style.display =
+      myId === r.hostId && !r.started ? "" : "none";
+
     if(boutonNouvellePartie){
     boutonNouvellePartie.style.display =
         myId === r.hostId ? "" : "none";
