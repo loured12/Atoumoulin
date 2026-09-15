@@ -212,7 +212,7 @@ chatFenetre.innerHTML = `
     <input
       id="chatFenetreTexte"
       maxlength="300"
-      placeholder="Ton message..."
+      placeholder="Écris ici..."
       style="flex:1;min-width:0;padding:7px;"
     >
 
