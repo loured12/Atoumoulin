@@ -243,10 +243,12 @@
         started = true;
         status("Partie lancée");
 
+        setTimeout(() => {
         window.scrollTo({
         top: document.documentElement.scrollHeight,
         behavior: "smooth"
         });
+       }, 300);
       }
 
       if (m.type === "game:state") {
