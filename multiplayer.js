@@ -224,6 +224,15 @@ chatFenetre.innerHTML = `
 
 document.body.appendChild(chatFenetre);
 
+    $("chatFenetreEnvoyer").onclick = () => {
+  const i = $("chatFenetreTexte");
+
+  if (i.value.trim())
+    send({type:"chat:send",text:i.value});
+
+  i.value = "";
+  };
+
   const chatInfo = document.createElement("div");
 
   chatInfo.textContent = "💬 Chat — déplace-moi si besoin";
@@ -533,8 +542,8 @@ document.addEventListener("click", e => {
   mode: Number($("modeJeu").value)
   });
 
-  $("chatFenetreEnvoyer").onclick = () => {
-  const i = $("chatFenetreTexte");
+  $("mpSend").onclick = () => {
+  const i = $("mpText");
 
   if (i.value.trim())
     send({type:"chat:send",text:i.value});
