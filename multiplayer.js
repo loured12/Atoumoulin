@@ -242,6 +242,15 @@
       if (m.type === "game:start") {
         started = true;
         status("Partie lancée");
+
+      const zoneJeu = document.getElementById("zoneJeu");
+
+      if (zoneJeu) {
+        zoneJeu.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+        });
+       }
       }
 
       if (m.type === "game:state") {
