@@ -162,7 +162,8 @@
     cursor: "pointer",
     zIndex: "10000",
     boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
-    userSelect: "none"
+    userSelect: "none",
+    touchAction: "none"
   });
 
   document.body.appendChild(chatBulle);
