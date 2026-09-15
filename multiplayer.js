@@ -7,6 +7,42 @@
     "wss://atoumoulin.onrender.com";
 
   const SAVED_NAME = localStorage.getItem("atoumoulin_name") || "Joueur";
+
+    let messageConnexion = null;
+
+  function afficherMessageConnexion(message) {
+    if (!messageConnexion) {
+      messageConnexion = document.createElement("div");
+      messageConnexion.id = "messageConnexion";
+
+      Object.assign(messageConnexion.style, {
+        position: "fixed",
+        top: "20px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: "9999",
+        padding: "12px 20px",
+        borderRadius: "8px",
+        background: "#222",
+        color: "white",
+        fontSize: "16px",
+        textAlign: "center",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+      });
+
+      document.body.appendChild(messageConnexion);
+    }
+
+    messageConnexion.textContent = message;
+  }
+
+  function cacherMessageConnexion() {
+    if (messageConnexion) {
+      messageConnexion.remove();
+      messageConnexion = null;
+    }
+  }
+  
   let ws = null, myId = localStorage.getItem("atoumoulin_player_id") || null, sessionToken = localStorage.getItem("atoumoulin_player_token") || null, room = null, started = false, lastSeq = 0, reconnectTimer = null;
 
   // Action à envoyer dès que la connexion WebSocket est ouverte
@@ -145,6 +181,7 @@
      ) return true;
 
     try {
+      afficherMessageConnexion("Connexion au serveur… veuillez patienter.");
       ws = new WebSocket(SERVER_URL);
     } catch(e) {
       status("Adresse serveur invalide.");
@@ -152,6 +189,7 @@
     }
 
     ws.onopen = () => {
+      cacherMessageConnexion();
       status("Connecté au serveur");
 
       // Envoie l'action demandée au premier clic
