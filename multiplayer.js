@@ -168,6 +168,62 @@
 
   document.body.appendChild(chatBulle);
 
+const chatFenetre = document.createElement("div");
+
+chatFenetre.id = "chatFenetre";
+
+Object.assign(chatFenetre.style, {
+  position: "fixed",
+  right: "20px",
+  bottom: "90px",
+  width: "280px",
+  maxWidth: "calc(100vw - 40px)",
+  height: "320px",
+  background: "white",
+  border: "1px solid #aaa",
+  borderRadius: "12px",
+  boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+  zIndex: "9999",
+  display: "none",
+  overflow: "hidden"
+});
+
+chatFenetre.innerHTML = `
+  <div style="
+    padding:10px;
+    background:#222;
+    color:white;
+    font-weight:bold;
+  ">
+    💬 Chat
+  </div>
+
+  <div id="chatFenetreMessages" style="
+    height:230px;
+    overflow-y:auto;
+    padding:8px;
+  "></div>
+
+  <div style="
+    display:flex;
+    padding:6px;
+    gap:4px;
+  ">
+    <input
+      id="chatFenetreTexte"
+      maxlength="300"
+      placeholder="Ton message..."
+      style="flex:1;min-width:0;padding:7px;"
+    >
+
+    <button id="chatFenetreEnvoyer">
+      Envoyer
+    </button>
+  </div>
+`;
+
+document.body.appendChild(chatFenetre);
+
   const chatInfo = document.createElement("div");
 
   chatInfo.textContent = "💬 Chat — déplace-moi si besoin";
@@ -187,26 +243,31 @@
 
   document.body.appendChild(chatInfo);
 
- let chatOuvert = false;
+     let chatOuvert = false;
 
-  chatBulle.addEventListener("click", e => {
-    if (deplacement)
-      return;
+chatBulle.addEventListener("click", e => {
+  if (deplacement)
+    return;
 
-    chatOuvert = !chatOuvert;
+  chatOuvert = !chatOuvert;
 
-    const chat = document.getElementById("multiChat");
+  chatFenetre.style.display = chatOuvert ? "block" : "none";
+});
 
-    if (chat) {
-      chat.style.display = chatOuvert ? "block" : "none";
-    }
+document.addEventListener("click", e => {
 
-    const saisie = document.getElementById("mpText");
-    const bouton = document.getElementById("mpSend");
+  if (!chatOuvert)
+    return;
 
-    if (saisie) saisie.style.display = chatOuvert ? "" : "none";
-    if (bouton) bouton.style.display = chatOuvert ? "" : "none";
-  });
+  if (
+    !chatFenetre.contains(e.target) &&
+    e.target !== chatBulle
+  ) {
+    chatOuvert = false;
+    chatFenetre.style.display = "none";
+  }
+
+});
 
   let deplacement = false;
   let debutX = 0;
