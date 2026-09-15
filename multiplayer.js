@@ -129,8 +129,9 @@
     <div>Salon : <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
     <button id="mpStart">Lancer la partie</button>
-    <h3>💬 Chat</h3><div id="multiChat"></div>
-    <input id="mpText" maxlength="300" placeholder="Message"><button id="mpSend">Envoyer</button>
+    <div id="multiChat" style="display:none"></div>
+    <input id="mpText" maxlength="300" placeholder="Message" style="display:none">
+    <button id="mpSend" style="display:none">Envoyer</button>
   </div>`;
 
   document.body.insertBefore(box, document.body.firstChild);
@@ -184,6 +185,73 @@
   });
 
   document.body.appendChild(chatInfo);
+
+ let chatOuvert = false;
+
+  chatBulle.addEventListener("click", e => {
+    if (deplacement)
+      return;
+
+    chatOuvert = !chatOuvert;
+
+    const chat = document.getElementById("multiChat");
+
+    if (chat) {
+      chat.style.display = chatOuvert ? "block" : "none";
+    }
+
+    const saisie = document.getElementById("mpText");
+    const bouton = document.getElementById("mpSend");
+
+    if (saisie) saisie.style.display = chatOuvert ? "" : "none";
+    if (bouton) bouton.style.display = chatOuvert ? "" : "none";
+  });
+
+  let deplacement = false;
+  let debutX = 0;
+  let debutY = 0;
+  let positionX = 0;
+  let positionY = 0;
+
+  chatBulle.addEventListener("pointerdown", e => {
+    deplacement = true;
+
+    debutX = e.clientX;
+    debutY = e.clientY;
+
+    const rect = chatBulle.getBoundingClientRect();
+
+    positionX = rect.left;
+    positionY = rect.top;
+
+    chatBulle.setPointerCapture(e.pointerId);
+
+    chatInfo.remove();
+  });
+
+  chatBulle.addEventListener("pointermove", e => {
+    if (!deplacement)
+      return;
+
+    positionX += e.clientX - debutX;
+    positionY += e.clientY - debutY;
+
+    debutX = e.clientX;
+    debutY = e.clientY;
+
+    chatBulle.style.left = `${positionX}px`;
+    chatBulle.style.top = `${positionY}px`;
+    chatBulle.style.right = "auto";
+    chatBulle.style.bottom = "auto";
+  });
+
+  chatBulle.addEventListener("pointerup", () => {
+    deplacement = false;
+  });
+
+  chatBulle.addEventListener("pointercancel", () => {
+    deplacement = false;
+  });
 
   setTimeout(() => {
     chatInfo.remove();
