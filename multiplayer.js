@@ -471,14 +471,15 @@ document.addEventListener("click", e => {
         status(`${m.name} est maintenant contrôlé par un bot`);
 
       if (m.type === "chat:message") {
-        const x = m.message;
-        const d = document.createElement("div");
+      const x = m.message;
+      const d = document.createElement("div");
 
-        d.textContent = `${x.playerName} : ${x.text}`;
+      d.textContent = `${x.playerName} : ${x.text}`;
 
-        $("multiChat").appendChild(d);
-        $("multiChat").scrollTop = $("multiChat").scrollHeight;
-      }
+      $("chatFenetreMessages").appendChild(d);
+      $("chatFenetreMessages").scrollTop =
+      $("chatFenetreMessages").scrollHeight;
+     }
     };
 
     return true;
