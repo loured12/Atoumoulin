@@ -533,13 +533,13 @@ document.addEventListener("click", e => {
   mode: Number($("modeJeu").value)
   });
 
-  $("mpSend").onclick = () => {
-    const i = $("mpText");
+  $("chatFenetreEnvoyer").onclick = () => {
+  const i = $("chatFenetreTexte");
 
-    if (i.value.trim())
-      send({type:"chat:send",text:i.value});
+  if (i.value.trim())
+    send({type:"chat:send",text:i.value});
 
-    i.value = "";
+  i.value = "";
   };
 
   $("mpText").addEventListener("keydown", e => {
