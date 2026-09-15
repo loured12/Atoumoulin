@@ -243,22 +243,18 @@
         started = true;
         status("Partie lancée");
 
-      const zoneJeu = document.getElementById("zoneJeu");
-
-      if (zoneJeu) {
-        zoneJeu.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+        window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "smooth"
         });
-       }
       }
 
       if (m.type === "game:state") {
 
-  started = true;
+        started = true;
 
-  applyGameState(m.state, m.seq || 0, m.playerIndex);
-}
+        applyGameState(m.state, m.seq || 0, m.playerIndex);
+      }
 
       if (m.type === "player:bot")
         status(`${m.name} est maintenant contrôlé par un bot`);
