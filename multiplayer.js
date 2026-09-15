@@ -129,9 +129,6 @@
     <div>Salon : <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
     <button id="mpStart">Lancer la partie</button>
-    <div id="multiChat" style="display:none"></div>
-    <input id="mpText" maxlength="300" placeholder="Message" style="display:none">
-    <button id="mpSend" style="display:none">Envoyer</button>
   </div>`;
 
   document.body.insertBefore(box, document.body.firstChild);
@@ -544,20 +541,6 @@ document.addEventListener("click", e => {
   $("mpStart").onclick = () => send({
   type:"room:start",
   mode: Number($("modeJeu").value)
-  });
-
-  $("mpSend").onclick = () => {
-  const i = $("mpText");
-
-  if (i.value.trim())
-    send({type:"chat:send",text:i.value});
-
-  i.value = "";
-  };
-
-  $("mpText").addEventListener("keydown", e => {
-    if (e.key === "Enter")
-      $("mpSend").click();
   });
 
   // Intercepte les fonctions de mutation du jeu uniquement quand une partie
