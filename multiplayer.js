@@ -240,6 +240,19 @@
     debutX = e.clientX;
     debutY = e.clientY;
 
+    const largeur = chatBulle.offsetWidth;
+    const hauteur = chatBulle.offsetHeight;
+
+    positionX = Math.max(
+    0,
+    Math.min(positionX, window.innerWidth - largeur)
+    );
+
+    positionY = Math.max(
+    0,
+    Math.min(positionY, window.innerHeight - hauteur)
+    );
+
     chatBulle.style.left = `${positionX}px`;
     chatBulle.style.top = `${positionY}px`;
     chatBulle.style.right = "auto";
