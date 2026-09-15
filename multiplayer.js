@@ -135,6 +135,55 @@
 
   document.body.insertBefore(box, document.body.firstChild);
 
+const chatBulle = document.createElement("div");
+
+chatBulle.id = "chatBulle";
+chatBulle.textContent = "💬";
+
+Object.assign(chatBulle.style, {
+  position: "fixed",
+  right: "20px",
+  bottom: "20px",
+  width: "55px",
+  height: "55px",
+  borderRadius: "50%",
+  background: "#222",
+  color: "white",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "28px",
+  cursor: "pointer",
+  zIndex: "10000",
+  boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
+  userSelect: "none"
+});
+
+document.body.appendChild(chatBulle);
+
+const chatInfo = document.createElement("div");
+
+chatInfo.textContent = "💬 Chat — déplace-moi si besoin";
+
+Object.assign(chatInfo.style, {
+  position: "fixed",
+  right: "20px",
+  bottom: "85px",
+  padding: "8px 12px",
+  borderRadius: "8px",
+  background: "#222",
+  color: "white",
+  fontSize: "14px",
+  zIndex: "10000",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.25)"
+});
+
+document.body.appendChild(chatInfo);
+
+setTimeout(() => {
+  chatInfo.remove();
+}, 5000);
+  
   function renderRoom(r) {
     room = r;
     $("mpRoom").hidden = false;
