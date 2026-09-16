@@ -219,6 +219,7 @@ chatFenetre.innerHTML = `
     overflow-y:auto;
     padding:8px;
     color:#17351f;
+    text-align:left;
   "></div>
 
   <div style="
