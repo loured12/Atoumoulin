@@ -199,6 +199,7 @@ chatFenetre.innerHTML = `
     height:230px;
     overflow-y:auto;
     padding:8px;
+    color:#222;
   "></div>
 
   <div style="
