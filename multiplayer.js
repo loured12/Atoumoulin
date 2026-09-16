@@ -195,8 +195,8 @@ Object.assign(chatFenetre.style, {
   width: "280px",
   maxWidth: "calc(100vw - 40px)",
   height: "320px",
-  background: "white",
-  border: "1px solid #aaa",
+  background: "linear-gradient(145deg, #fff1a8, #d4af37)",
+  border: "2px solid #9e1717",
   borderRadius: "12px",
   boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
   zIndex: "9999",
@@ -218,7 +218,7 @@ chatFenetre.innerHTML = `
     height:230px;
     overflow-y:auto;
     padding:8px;
-    color:#222;
+    color:#17351f;
   "></div>
 
   <div style="
