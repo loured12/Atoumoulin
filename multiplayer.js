@@ -236,7 +236,7 @@ chatFenetre.innerHTML = `
         padding:7px;
         border:1px solid #9e1717;
         border-radius:8px;
-        background:#dcebdc !important;
+        background:#b8d8bd !important;
         color:#17351f;
         outline:none;
       "
