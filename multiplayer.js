@@ -468,6 +468,9 @@ document.addEventListener("click", e => {
         status(`${m.name} est maintenant contrôlé par un bot`);
 
       if (m.type === "chat:message") {
+
+console.log("MESSAGE CHAT REÇU :", m);
+        
       const x = m.message;
       const d = document.createElement("div");
 
