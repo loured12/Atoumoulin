@@ -215,7 +215,7 @@ chatFenetre.innerHTML = `
   </div>
 
   <div id="chatFenetreMessages" style="
-    height:200px;
+    height:220px;
     overflow-y:auto;
     padding:8px;
     color:#17351f;
@@ -233,7 +233,7 @@ chatFenetre.innerHTML = `
       style="
         flex:1;
         min-width:0;
-        padding:7px;
+        padding:5px 7px;
         border:1px solid #9e1717;
         border-radius:8px;
         background:#b8d8bd !important;
