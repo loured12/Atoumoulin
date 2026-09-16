@@ -165,6 +165,23 @@
 
   document.body.appendChild(chatBulle);
 
+    const chatBadge = document.createElement("div");
+
+chatBadge.id = "chatBadge";
+
+Object.assign(chatBadge.style, {
+  position: "absolute",
+  top: "2px",
+  right: "2px",
+  width: "10px",
+  height: "10px",
+  borderRadius: "50%",
+  background: "red",
+  display: "none"
+});
+
+chatBulle.appendChild(chatBadge);
+
 const chatFenetre = document.createElement("div");
 
 chatFenetre.id = "chatFenetre";
@@ -230,6 +247,12 @@ document.body.appendChild(chatFenetre);
 
   i.value = "";
   };
+
+    $("chatFenetreTexte").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    $("chatFenetreEnvoyer").click();
+  }
+});
 
   const chatInfo = document.createElement("div");
 
