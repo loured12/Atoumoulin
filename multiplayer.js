@@ -195,7 +195,7 @@ Object.assign(chatFenetre.style, {
   width: "280px",
   maxWidth: "calc(100vw - 40px)",
   height: "320px",
-  background: "linear-gradient(145deg, #fff1a8, #d4af37)",
+  background: "#d4af37",
   border: "2px solid #9e1717",
   borderRadius: "12px",
   boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
@@ -207,7 +207,7 @@ Object.assign(chatFenetre.style, {
 chatFenetre.innerHTML = `
   <div style="
     padding:10px;
-    background:#222;
+    background:#9e1717;
     color:white;
     font-weight:bold;
   ">
@@ -230,10 +230,29 @@ chatFenetre.innerHTML = `
       id="chatFenetreTexte"
       maxlength="300"
       placeholder="Écris ici..."
-      style="flex:1;min-width:0;padding:7px;"
+      style="
+        flex:1;
+        min-width:0;
+        padding:7px;
+        border:1px solid #9e1717;
+        border-radius:8px;
+        background:#fffdf2;
+        color:#17351f;
+        outline:none;
+      "
     >
 
-    <button id="chatFenetreEnvoyer">
+    <button
+      id="chatFenetreEnvoyer"
+      style="
+        padding:7px 10px;
+        border-radius:8px;
+        background:linear-gradient(145deg,#245c31,#12381c);
+        color:#fff1a8;
+        border:1px solid #c5a72c;
+        cursor:pointer;
+      "
+    >
       Envoyer
     </button>
   </div>
