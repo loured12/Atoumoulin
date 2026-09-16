@@ -236,7 +236,7 @@ chatFenetre.innerHTML = `
         padding:7px;
         border:1px solid #9e1717;
         border-radius:8px;
-        background:#fffdf2;
+        background:#e7f0e8;
         color:#17351f;
         outline:none;
       "
@@ -249,7 +249,7 @@ chatFenetre.innerHTML = `
         border-radius:8px;
         background:linear-gradient(145deg,#245c31,#12381c);
         color:#fff1a8;
-        border:1px solid #c5a72c;
+        border:1px solid #9e1717;
         cursor:pointer;
       "
     >
@@ -518,7 +518,11 @@ document.addEventListener("click", e => {
       const x = m.message;
       const d = document.createElement("div");
 
-      d.textContent = `${x.playerName} : ${x.text}`;
+      const nom = document.createElement("strong");
+        nom.textContent = `${x.playerName} : `;
+
+        d.appendChild(nom);
+        d.appendChild(document.createTextNode(x.text));
 
       const zoneChat = $("chatFenetreMessages");
 
