@@ -282,6 +282,10 @@ chatBulle.addEventListener("click", e => {
   chatOuvert = !chatOuvert;
 
   chatFenetre.style.display = chatOuvert ? "block" : "none";
+
+  if (chatOuvert && chatBadge) {
+    chatBadge.style.display = "none";
+  }
 });
 
 document.addEventListener("click", e => {
@@ -503,6 +507,10 @@ document.addEventListener("click", e => {
       zoneChat.appendChild(d);
       zoneChat.scrollTop = zoneChat.scrollHeight;
       }
+
+      if (!chatOuvert && chatBadge) {
+      chatBadge.style.display = "block";
+      }       
      }
     };
 
