@@ -408,7 +408,14 @@ document.addEventListener("click", e => {
     if(boutonNouvellePartie){
     boutonNouvellePartie.style.display =
         myId === r.hostId ? "" : "none";
-  }
+    }
+
+    const configurationJeu = document.querySelector(".configuration-jeu");
+
+    if(configurationJeu){
+    configurationJeu.style.display =
+    myId === r.hostId ? "" : "none";
+    }
   }
 
     function applyGameState(state, seq = 0, playerIndex) {
