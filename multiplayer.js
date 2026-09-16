@@ -42,7 +42,9 @@
       messageConnexion = null;
     }
   }
-  
+
+  let chatBadge = null;
+  let chatOuvert = false;
   let ws = null, myId = localStorage.getItem("atoumoulin_player_id") || null, sessionToken = localStorage.getItem("atoumoulin_player_token") || null, room = null, started = false, lastSeq = 0, reconnectTimer = null;
 
   // Action à envoyer dès que la connexion WebSocket est ouverte
@@ -165,7 +167,7 @@
 
   document.body.appendChild(chatBulle);
 
-    const chatBadge = document.createElement("div");
+  chatBadge = document.createElement("div");
 
 chatBadge.id = "chatBadge";
 
@@ -272,8 +274,6 @@ document.body.appendChild(chatFenetre);
   });
 
   document.body.appendChild(chatInfo);
-
-     let chatOuvert = false;
 
 chatBulle.addEventListener("click", e => {
   if (deplacement)
