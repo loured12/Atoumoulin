@@ -261,6 +261,50 @@ chatFenetre.innerHTML = `
 
 document.body.appendChild(chatFenetre);
 
+  function positionnerFenetreChat() {
+
+  const bulle = chatBulle.getBoundingClientRect();
+
+  const largeur = chatFenetre.offsetWidth;
+  const hauteur = chatFenetre.offsetHeight;
+
+  const espace = 10;
+
+  let gauche = bulle.left;
+  let haut;
+
+  // Priorité : au-dessus de la bulle
+  if (bulle.top >= hauteur + espace) {
+    haut = bulle.top - hauteur - espace;
+  } else {
+    // Sinon, en dessous
+    haut = bulle.bottom + espace;
+  }
+
+  // Empêche la fenêtre de sortir à gauche ou à droite
+  gauche = Math.max(
+    espace,
+    Math.min(
+      gauche,
+      window.innerWidth - largeur - espace
+    )
+  );
+
+  // Sécurité supplémentaire pour le haut et le bas
+  haut = Math.max(
+    espace,
+    Math.min(
+      haut,
+      window.innerHeight - hauteur - espace
+    )
+  );
+
+  chatFenetre.style.left = `${gauche}px`;
+  chatFenetre.style.top = `${haut}px`;
+  chatFenetre.style.right = "auto";
+  chatFenetre.style.bottom = "auto";
+}
+
     $("chatFenetreEnvoyer").onclick = () => {
   const i = $("chatFenetreTexte");
 
