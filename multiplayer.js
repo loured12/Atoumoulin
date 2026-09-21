@@ -513,27 +513,30 @@ document.addEventListener("click", e => {
 
   if (choixBotsMultijoueur) {
 
-    const valeurActuelle =
-      Number(choixBotsMultijoueur.value) || 0;
-
-    choixBotsMultijoueur.innerHTML = "";
-
     const maximumBots =
       Math.max(0, 8 - r.players.length);
 
-    for (let i = 0; i <= maximumBots; i++) {
+    if (choixBotsMultijoueur.options.length !== maximumBots + 1) {
 
-      const option = document.createElement("option");
+      const valeurActuelle =
+        Number(choixBotsMultijoueur.value) || 0;
 
-      option.value = i;
-      option.textContent =
-        `${i} bot${i === 1 ? "" : "s"}`;
+      choixBotsMultijoueur.innerHTML = "";
 
-      choixBotsMultijoueur.appendChild(option);
+      for (let i = 0; i <= maximumBots; i++) {
+
+        const option = document.createElement("option");
+
+        option.value = i;
+        option.textContent =
+          `${i} bot${i === 1 ? "" : "s"}`;
+
+        choixBotsMultijoueur.appendChild(option);
+      }
+
+      choixBotsMultijoueur.value =
+        String(Math.min(valeurActuelle, maximumBots));
     }
-
-    choixBotsMultijoueur.value =
-      String(Math.min(valeurActuelle, maximumBots));
   }
 }
 
