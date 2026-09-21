@@ -676,11 +676,23 @@ document.addEventListener("click", e => {
   }
 };
 
-  $("mpStart").onclick = () => send({
-  type:"room:start",
-  mode: Number($("modeJeu").value),
-  bots: Number(document.getElementById("nombreBots")?.value || 0)
-});
+  $("mpStart").onclick = () => {
+
+  const selectBots = document.getElementById("nombreBots");
+
+  console.log(
+    "BOTS AVANT ENVOI :",
+    selectBots,
+    selectBots ? selectBots.value : "INTROUVABLE"
+  );
+
+  send({
+    type:"room:start",
+    mode: Number($("modeJeu").value),
+    bots: Number(selectBots?.value || 0)
+  });
+
+};
 
 };
 
