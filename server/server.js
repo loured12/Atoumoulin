@@ -36,7 +36,7 @@ function roomCreate(n,max){
   hostId:null,
   players:[],
   engine:null,
-  mode:1
+  mode:1,
   chatMessages:[]
  };
 
