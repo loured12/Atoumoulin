@@ -429,6 +429,10 @@ document.addEventListener("click", e => {
     configurationJeu.style.display =
     myId === r.hostId ? "" : "none";
     }
+
+    if (r.started && !document.getElementById("chatBulle")) {
+    afficherBulleChat();
+    }    
   }
 
     function applyGameState(state, seq = 0, playerIndex) {
