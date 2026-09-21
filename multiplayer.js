@@ -679,7 +679,7 @@ document.addEventListener("click", e => {
   $("mpStart").onclick = () => send({
   type:"room:start",
   mode: Number($("modeJeu").value),
-  bots: Number(globalThis.__atoumoulinNombreBots || 0)
+  bots: Number(document.getElementById("nombreBots")?.value || 0)
 });
 
 };
