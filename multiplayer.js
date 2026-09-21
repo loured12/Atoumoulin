@@ -124,6 +124,15 @@
   <div id="multiStatus">${SERVER_URL ? "Prêt à se connecter" : "Version solo disponible"}</div>
   <input id="mpName" maxlength="24" value="${SAVED_NAME.replace(/"/g,"&quot;")}" placeholder="Ton nom">
   <select id="mpMax">${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} joueurs max</option>`).join("")}</select>
+  <select id="mpBots">
+   <option value="0">0 bot</option>
+   <option value="1">1 bot</option>
+   <option value="2">2 bots</option>
+   <option value="3">3 bots</option>
+   <option value="4">4 bots</option>
+   <option value="5">5 bots</option>
+   <option value="6">6 bots</option>
+  </select>
   <button id="mpCreate">Créer un salon</button>
   <input id="mpCode" maxlength="6" placeholder="CODE">
   <button id="mpJoin">Rejoindre</button>
