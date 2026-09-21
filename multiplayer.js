@@ -716,11 +716,13 @@ document.addEventListener("click", e => {
     Number($("nombreBots").value || 0);
 
   console.log(
-    "CONFIGURATION LANCEMENT :",
-    "joueurs =", $("nombreJoueurs").value,
-    "bots =", $("nombreBots").value,
-    "mode =", $("modeJeu").value
-  );
+  "CONFIGURATION LANCEMENT :",
+  "joueurs =", $("nombreJoueurs").value,
+  "texte =", $("nombreJoueurs").selectedOptions[0]?.textContent,
+  "options =", [...$("nombreJoueurs").options].map(o => o.value + ":" + o.textContent).join(" | "),
+  "bots =", $("nombreBots").value,
+  "mode =", $("modeJeu").value
+);
 
   send({
     type:"room:start",
