@@ -710,7 +710,7 @@ document.addEventListener("click", e => {
   $("mpStart").onclick = () => {
 
   const nombreJoueursMultijoueur =
-    Number($("nombreJoueurs").value || 2);
+  Number($("nombreJoueurs").selectedOptions[0].value);
 
   const nombreBotsMultijoueur =
     Number($("nombreBots").value || 0);
