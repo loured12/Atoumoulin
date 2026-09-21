@@ -725,17 +725,15 @@ document.addEventListener("click", e => {
   $("mpStart").onclick = () => {
 
   const nombreJoueursMultijoueur =
-  Number(document.getElementById("nombreJoueurs").value);
+  mpNombreJoueursChoisi;
 
   const nombreBotsMultijoueur =
-    Number($("nombreBots").value || 0);
+  mpNombreBotsChoisi;
 
   console.log(
   "CONFIGURATION LANCEMENT :",
-  "joueurs =", $("nombreJoueurs").value,
-  "texte =", $("nombreJoueurs").selectedOptions[0]?.textContent,
-  "options =", [...$("nombreJoueurs").options].map(o => o.value + ":" + o.textContent).join(" | "),
-  "bots =", $("nombreBots").value,
+  "joueurs mémorisés =", mpNombreJoueursChoisi,
+  "bots mémorisés =", mpNombreBotsChoisi,
   "mode =", $("modeJeu").value
 );
 
