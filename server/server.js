@@ -320,33 +320,53 @@ wss.on("connection",ws=>{
 }
 
  if(m.type==="room:start"){
-
   if(player.id!==room.hostId)
-   throw Error("Seul l'hôte peut lancer la partie.");
+    throw Error("Seul l'hôte peut lancer la partie.");
 
-  if(room.players.length<2)
-   throw Error("Il faut au moins 2 joueurs.");
+  const nombreBots = Math.max(
+    0,
+    Math.min(
+      8 - room.players.length,
+      Number(m.bots) || 0
+    )
+  );
+
+  if(room.players.length + nombreBots < 2)
+    throw Error("Il faut au moins 2 joueurs.");
 
   room.mode=Number(m.mode)||1;
 
-  room.started=true;
+// Ajout des bots demandés par l'hôte
+for(let i=0;i<nombreBots;i++){
 
-  room.engine=new AtoumoulinEngine(
-   room.players.map(p=>p.name),
-   room.players.map(p=>p.bot),
-   room.mode
-  );
-
-  broadcast(room,{
-   type:"game:start",
-   room:view(room)
+  room.players.push({
+    id:id(),
+    token:id(),
+    name:`Bot ${i+1}`,
+    bot:true,
+    connected:true,
+    ws:null,
+    index:room.players.length,
+    selection:null
   });
+
+}
+
+room.started=true;
+
+room.engine=new AtoumoulinEngine(
+  room.players.map(p=>p.name),
+  room.players.map(p=>p.bot),
+  room.mode
+);
+
+  broadcast(room,{type:"game:start",room:view(room)});
+
+  runBots(room);
 
   sendState(room);
   lobby(room);
-
   return;
- }
 
 if(m.type==="game:select"){
 
