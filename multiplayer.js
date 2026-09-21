@@ -123,16 +123,7 @@
   box.innerHTML = `<h2>🌐 Multijoueur</h2>
   <div id="multiStatus">${SERVER_URL ? "Prêt à se connecter" : "Version solo disponible"}</div>
   <input id="mpName" maxlength="24" value="${SAVED_NAME.replace(/"/g,"&quot;")}" placeholder="Ton nom">
-  <select id="mpMax">${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} joueurs max</option>`).join("")}</select>
-  <select id="mpBots">
-   <option value="0">0 bot</option>
-   <option value="1">1 bot</option>
-   <option value="2">2 bots</option>
-   <option value="3">3 bots</option>
-   <option value="4">4 bots</option>
-   <option value="5">5 bots</option>
-   <option value="6">6 bots</option>
-  </select>
+  <select id="mpMax">${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} joueurs max</option>`).join("")}</select>  
   <button id="mpCreate">Créer un salon</button>
   <input id="mpCode" maxlength="6" placeholder="CODE">
   <button id="mpJoin">Rejoindre</button>
@@ -498,6 +489,37 @@ document.addEventListener("click", e => {
     myId === r.hostId ? "" : "none";
     }
 
+    if (myId === r.hostId) {
+
+  const choixBotsMultijoueur =
+    document.getElementById("nombreBots");
+
+  if (choixBotsMultijoueur) {
+
+    const valeurActuelle =
+      Number(choixBotsMultijoueur.value) || 0;
+
+    choixBotsMultijoueur.innerHTML = "";
+
+    const maximumBots =
+      Math.max(0, 8 - r.players.length);
+
+    for (let i = 0; i <= maximumBots; i++) {
+
+      const option = document.createElement("option");
+
+      option.value = i;
+      option.textContent =
+        `${i} bot${i === 1 ? "" : "s"}`;
+
+      choixBotsMultijoueur.appendChild(option);
+    }
+
+    choixBotsMultijoueur.value =
+      String(Math.min(valeurActuelle, maximumBots));
+  }
+}
+
     if (r.started && !document.getElementById("chatBulle")) {
     afficherBulleChat();
     }    
@@ -687,12 +709,16 @@ document.addEventListener("click", e => {
 
   $("mpStart").onclick = () => {
 
+  const nombreJoueursMultijoueur =
+    Number($("nombreJoueurs").value || 2);
+
   const nombreBotsMultijoueur =
-    Number($("mpBots").value || 0);
+    Number($("nombreBots").value || 0);
 
   send({
     type:"room:start",
     mode: Number($("modeJeu").value),
+    players: nombreJoueursMultijoueur,
     bots: nombreBotsMultijoueur
   });
 
