@@ -50,10 +50,12 @@
   document.addEventListener("change", e => {
 
   if (e.target.id === "nombreJoueurs") {
+    e.target.dataset.mpChoix = e.target.value;
     mpNombreJoueursChoisi = Number(e.target.value);
   }
 
   if (e.target.id === "nombreBots") {
+    e.target.dataset.mpChoix = e.target.value;
     mpNombreBotsChoisi = Number(e.target.value);
   }
 
