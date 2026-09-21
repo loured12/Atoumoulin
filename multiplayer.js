@@ -678,10 +678,13 @@ document.addEventListener("click", e => {
 
   $("mpStart").onclick = () => {
 
+  const nombreBotsMultijoueur =
+    Number($("nombreBots")?.value || 0);
+
   send({
     type:"room:start",
     mode: Number($("modeJeu").value),
-    bots: Number(document.getElementById("nombreBots")?.value || 0)
+    bots: nombreBotsMultijoueur
   });
 
 };
