@@ -37,6 +37,7 @@ function roomCreate(n,max){
   players:[],
   engine:null,
   mode:1
+  chatMessages:[]
  };
 
  const p={
@@ -244,11 +245,17 @@ wss.on("connection",ws=>{
       room:view(room)
     });
 
+    room.chatMessages.forEach(message=>{
+      send(ws,{
+       type:"chat:message",
+       message
+      });
+    });
+
     if(room.engine)
       sendState(room);
 
     lobby(room);
-
     return;
   }
 
@@ -293,22 +300,24 @@ wss.on("connection",ws=>{
   throw Error("Rejoignez d'abord un salon.");
 
  if(m.type==="chat:send"){
-
   const t=String(m.text||"").trim().slice(0,300);
-
   if(!t)return;
 
-  broadcast(room,{
-   type:"chat:message",
-   message:{
+  const message={
     playerName:player.name,
     text:t,
     at:Date.now()
-   }
+  };
+
+  room.chatMessages.push(message);
+
+  broadcast(room,{
+    type:"chat:message",
+    message
   });
 
   return;
- }
+}
 
  if(m.type==="room:start"){
 
