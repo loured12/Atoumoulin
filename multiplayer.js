@@ -389,6 +389,18 @@ document.addEventListener("click", e => {
   
   function renderRoom(r) {
     room = r;
+
+    if (r.players.some(p => p.id === myId && !p.bot)) {
+    const message = $("multiStatus");
+
+    if (
+    message &&
+    message.textContent.includes("est maintenant contrôlé par un bot")
+    ) {
+    message.textContent = "Connecté au serveur";
+    }
+  }
+    
     $("mpRoom").hidden = false;
     $("mpRoomCode").textContent = r.code;
 
