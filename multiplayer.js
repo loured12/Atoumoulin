@@ -681,7 +681,7 @@ document.addEventListener("click", e => {
   send({
     type:"room:start",
     mode: Number($("modeJeu").value),
-    bots: Number(globalThis.__atoumoulinNombreBots || 0)
+    bots: Number(document.getElementById("nombreBots")?.value || 0)
   });
 
 };
