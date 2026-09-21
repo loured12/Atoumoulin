@@ -345,7 +345,12 @@ chatBulle.addEventListener("click", e => {
 
   chatOuvert = !chatOuvert;
 
-  chatFenetre.style.display = chatOuvert ? "block" : "none";
+  if (chatOuvert) {
+  chatFenetre.style.display = "block";
+  positionnerFenetreChat();
+} else {
+  chatFenetre.style.display = "none";
+  }
 
   if (chatOuvert && chatBadge) {
     chatBadge.style.display = "none";
@@ -431,8 +436,14 @@ document.addEventListener("click", e => {
   });
 
   setTimeout(() => {
-    chatInfo.remove();
+  chatInfo.remove();
   }, 5000);
+
+  window.addEventListener("resize", () => {
+  if (chatOuvert) {
+    positionnerFenetreChat();
+  }
+  });
 }
   
   function renderRoom(r) {
