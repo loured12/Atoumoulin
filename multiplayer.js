@@ -694,8 +694,6 @@ document.addEventListener("click", e => {
 
 };
 
-};
-
   // Intercepte les fonctions de mutation du jeu uniquement quand une partie
   // réseau est réellement démarrée. Hors réseau, le jeu original est inchangé.
   function hook(name) {
