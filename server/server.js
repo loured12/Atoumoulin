@@ -367,6 +367,7 @@ room.engine=new AtoumoulinEngine(
   sendState(room);
   lobby(room);
   return;
+}
 
 if(m.type==="game:select"){
 
