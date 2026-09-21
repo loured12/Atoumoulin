@@ -3,6 +3,8 @@ const zoneJeu = document.getElementById("jeu");
 const choixJoueurs = document.getElementById("nombreJoueurs");
 const choixBots = document.getElementById("nombreBots");
 
+globalThis.__atoumoulinNombreBots = 0;
+
 function mettreAJourNombreBots(){
 
     let nombreJoueurs = Number(choixJoueurs.value);
@@ -20,6 +22,9 @@ function mettreAJourNombreBots(){
         choixBots.appendChild(option);
 
     }
+
+    globalThis.__atoumoulinNombreBots =
+    Number(choixBots.value) || 0;
 
 }
 
