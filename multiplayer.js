@@ -44,6 +44,17 @@
   }
 
   let chatBadge = null;
+  let mpNombreJoueursChoisi = 2;
+  let mpNombreBotsChoisi = 0;
+
+  document.getElementById("nombreJoueurs")?.addEventListener("change", e => {
+    mpNombreJoueursChoisi = Number(e.target.value);
+  });
+
+  document.getElementById("nombreBots")?.addEventListener("change", e => {
+    mpNombreBotsChoisi = Number(e.target.value);
+  });
+  
   let chatOuvert = false;
   let ws = null, myId = localStorage.getItem("atoumoulin_player_id") || null, sessionToken = localStorage.getItem("atoumoulin_player_token") || null, room = null, started = false, lastSeq = 0, reconnectTimer = null;
 
