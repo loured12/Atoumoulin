@@ -678,8 +678,9 @@ document.addEventListener("click", e => {
 
   $("mpStart").onclick = () => send({
   type:"room:start",
-  mode: Number($("modeJeu").value)
-  });
+  mode: Number($("modeJeu").value),
+  bots: Number(document.getElementById("nombreBots").value || 0)
+});
 
   // Intercepte les fonctions de mutation du jeu uniquement quand une partie
   // réseau est réellement démarrée. Hors réseau, le jeu original est inchangé.
