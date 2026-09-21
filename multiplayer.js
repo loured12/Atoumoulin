@@ -47,13 +47,17 @@
   let mpNombreJoueursChoisi = 2;
   let mpNombreBotsChoisi = 0;
 
-  document.getElementById("nombreJoueurs")?.addEventListener("change", e => {
-    mpNombreJoueursChoisi = Number(e.target.value);
-  });
+  document.addEventListener("change", e => {
 
-  document.getElementById("nombreBots")?.addEventListener("change", e => {
+  if (e.target.id === "nombreJoueurs") {
+    mpNombreJoueursChoisi = Number(e.target.value);
+  }
+
+  if (e.target.id === "nombreBots") {
     mpNombreBotsChoisi = Number(e.target.value);
-  });
+  }
+
+});
   
   let chatOuvert = false;
   let ws = null, myId = localStorage.getItem("atoumoulin_player_id") || null, sessionToken = localStorage.getItem("atoumoulin_player_token") || null, room = null, started = false, lastSeq = 0, reconnectTimer = null;
