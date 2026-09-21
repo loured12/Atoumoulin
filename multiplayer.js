@@ -715,6 +715,13 @@ document.addEventListener("click", e => {
   const nombreBotsMultijoueur =
     Number($("nombreBots").value || 0);
 
+  console.log(
+    "CONFIGURATION LANCEMENT :",
+    "joueurs =", $("nombreJoueurs").value,
+    "bots =", $("nombreBots").value,
+    "mode =", $("modeJeu").value
+  );
+
   send({
     type:"room:start",
     mode: Number($("modeJeu").value),
