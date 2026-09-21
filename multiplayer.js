@@ -688,7 +688,7 @@ document.addEventListener("click", e => {
   $("mpStart").onclick = () => {
 
   const nombreBotsMultijoueur =
-    Number($("nombreBots")?.value || 0);
+    Number($("mpBots").value || 0);
 
   send({
     type:"room:start",
