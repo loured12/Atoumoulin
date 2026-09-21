@@ -28,7 +28,16 @@ function mettreAJourNombreBots(){
 
 }
 
-choixJoueurs.addEventListener("change", mettreAJourNombreBots);
+choixJoueurs.addEventListener("change", function(){
+
+    console.log(
+        "CHANGEMENT NOMBRE JOUEURS :",
+        choixJoueurs.value
+    );
+
+    mettreAJourNombreBots();
+
+});
 
 choixBots.addEventListener("change", () => {
     globalThis.__atoumoulinNombreBots =
