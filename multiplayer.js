@@ -390,33 +390,37 @@ document.addEventListener("click", e => {
   });
 
   chatBulle.addEventListener("pointermove", e => {
-    if (!deplacement)
-      return;
+  if (!deplacement)
+    return;
 
-    positionX += e.clientX - debutX;
-    positionY += e.clientY - debutY;
+  positionX += e.clientX - debutX;
+  positionY += e.clientY - debutY;
 
-    debutX = e.clientX;
-    debutY = e.clientY;
+  debutX = e.clientX;
+  debutY = e.clientY;
 
-    const largeur = chatBulle.offsetWidth;
-    const hauteur = chatBulle.offsetHeight;
+  const largeur = chatBulle.offsetWidth;
+  const hauteur = chatBulle.offsetHeight;
 
-    positionX = Math.max(
+  positionX = Math.max(
     0,
     Math.min(positionX, window.innerWidth - largeur)
-    );
+  );
 
-    positionY = Math.max(
+  positionY = Math.max(
     0,
     Math.min(positionY, window.innerHeight - hauteur)
-    );
+  );
 
-    chatBulle.style.left = `${positionX}px`;
-    chatBulle.style.top = `${positionY}px`;
-    chatBulle.style.right = "auto";
-    chatBulle.style.bottom = "auto";
-  });
+  chatBulle.style.left = `${positionX}px`;
+  chatBulle.style.top = `${positionY}px`;
+  chatBulle.style.right = "auto";
+  chatBulle.style.bottom = "auto";
+
+  if (chatOuvert) {
+    positionnerFenetreChat();
+  }
+});
 
   chatBulle.addEventListener("pointerup", () => {
     deplacement = false;
