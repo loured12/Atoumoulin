@@ -323,51 +323,51 @@ wss.on("connection",ws=>{
   if(player.id!==room.hostId)
     throw Error("Seul l'hôte peut lancer la partie.");
 
-  const nombreBots = Math.max(
-    0,
-    Math.min(
-      8 - room.players.length,
-      Number(m.bots) || 0
-    )
+  const nombreJoueurs = Math.max(
+    2,
+    Math.min(8, Number(m.players) || room.players.length)
   );
 
-  console.log(
-  "LANCEMENT :",
-  "joueurs humains =", room.players.length,
-  "bots demandés =", m.bots,
-  "bots créés =", nombreBots
-);
+  const nombreBots = Math.max(
+    0,
+    Math.min(8 - nombreJoueurs, Number(m.bots) || 0)
+  );
 
-  if(room.players.length + nombreBots < 2)
-    throw Error("Il faut au moins 2 joueurs.");
+  if(room.players.length > nombreJoueurs)
+    throw Error(
+      `Il y a déjà ${room.players.length} joueurs humains dans le salon.`
+    );  
 
-  room.mode=Number(m.mode)||1;
+  room.mode = Number(m.mode) || 1;
 
-// Ajout des bots demandés par l'hôte
-for(let i=0;i<nombreBots;i++){
+  // Ajout des bots pour compléter la configuration choisie
+  for(let i=0;i<nombreBots;i++){
 
-  room.players.push({
-    id:id(),
-    token:id(),
-    name:`Bot ${i+1}`,
-    bot:true,
-    connected:true,
-    ws:null,
-    index:room.players.length,
-    selection:null
+    room.players.push({
+      id:id(),
+      token:id(),
+      name:`Bot ${i+1}`,
+      bot:true,
+      connected:true,
+      ws:null,
+      index:room.players.length,
+      selection:null
+    });
+
+  }
+
+  room.started=true;
+
+  room.engine=new AtoumoulinEngine(
+    room.players.map(p=>p.name),
+    room.players.map(p=>p.bot),
+    room.mode
+  );
+
+  broadcast(room,{
+    type:"game:start",
+    room:view(room)
   });
-
-}
-
-room.started=true;
-
-room.engine=new AtoumoulinEngine(
-  room.players.map(p=>p.name),
-  room.players.map(p=>p.bot),
-  room.mode
-);
-
-  broadcast(room,{type:"game:start",room:view(room)});
 
   runBots(room);
 
