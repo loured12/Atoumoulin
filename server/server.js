@@ -331,6 +331,13 @@ wss.on("connection",ws=>{
     )
   );
 
+  console.log(
+  "LANCEMENT :",
+  "joueurs humains =", room.players.length,
+  "bots demandés =", m.bots,
+  "bots créés =", nombreBots
+);
+
   if(room.players.length + nombreBots < 2)
     throw Error("Il faut au moins 2 joueurs.");
 
