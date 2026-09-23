@@ -62,6 +62,7 @@ let toursJoker = {};
 let gagnantPartie = null;
 let gagnantManche = null;
 let mancheTerminee = false;
+let niveauBots = "facile";
 
 const couleursJoueurs = [
     { couleur: "#FBC02D", rond: "🟡" }, // Joueur 1
@@ -112,6 +113,9 @@ function lancerNouvellePartie(){
 let nombreJoueurs = Number(choixJoueurs.value);
 
 modeJeu = Number(document.getElementById("modeJeu").value);
+
+niveauBots =
+    document.getElementById("niveauBots")?.value || "facile";
 
 let nombreBots = Number(choixBots.value);
 
