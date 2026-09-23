@@ -340,6 +340,8 @@ wss.on("connection",ws=>{
 
   room.mode = Number(m.mode) || 1;
 
+  room.botLevel = m.botLevel || "facile";
+
   // Ajout des bots pour compléter la configuration choisie
   for(let i=0;i<nombreBots;i++){
 
@@ -361,7 +363,8 @@ wss.on("connection",ws=>{
   room.engine=new AtoumoulinEngine(
     room.players.map(p=>p.name),
     room.players.map(p=>p.bot),
-    room.mode
+    room.mode,
+    room.botLevel
   );
 
   broadcast(room,{
