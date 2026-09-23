@@ -129,6 +129,7 @@ toursJoker = {};
 
 gagnantPartie = null;
 gagnantManche = null;
+mancheTerminee = false;
 
 // Nombre de paquets
 let nombrePaquets;
