@@ -468,6 +468,62 @@ document.addEventListener("click", e => {
   function renderRoom(r) {
     room = r;
 
+    const humainsDansLeSalon =
+    r.players.filter(p => !p.bot).length;
+
+    const choixJoueursMulti =
+    document.getElementById("nombreJoueurs");
+
+    const choixBotsMulti =
+    document.getElementById("nombreBots");
+
+   if (choixJoueursMulti && choixBotsMulti) {
+
+    const valeurActuelle =
+    Number(choixJoueursMulti.value);
+
+  choixJoueursMulti.innerHTML = "";
+
+  for (
+    let total = humainsDansLeSalon;
+    total <= 8;
+    total++
+  ) {
+
+    const option =
+      document.createElement("option");
+
+    option.value = total;
+    option.textContent =
+      `${total} joueur${total === 1 ? "" : "s"}`;
+
+    choixJoueursMulti.appendChild(option);
+  }
+
+  const nouveauTotal =
+    Math.max(
+      humainsDansLeSalon,
+      Math.min(8, valeurActuelle || humainsDansLeSalon)
+    );
+
+  choixJoueursMulti.value =
+    nouveauTotal;
+
+  choixBotsMulti.innerHTML = "";
+
+  const nombreBots =
+    nouveauTotal - humainsDansLeSalon;
+
+  const optionBot =
+    document.createElement("option");
+
+  optionBot.value = nombreBots;
+  optionBot.textContent =
+    `${nombreBots} bot${nombreBots === 1 ? "" : "s"}`;
+
+  choixBotsMulti.appendChild(optionBot);
+}
+
     if (r.players.some(p => p.id === myId && !p.bot)) {
     const message = $("multiStatus");
 
