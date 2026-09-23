@@ -109,22 +109,6 @@ function couleurJoueur(index){
 
 bouton.onclick = function(){
 
-if(mancheTerminee){
-
-    const confirmer =
-        confirm(
-            "⚠️ Une partie est en cours.\n\n" +
-            "Si vous voulez continuer la partie en cours, " +
-            "appuyez sur « Annuler », puis cliquez sur « 🎴 Distribuer les nouvelles cartes ».\n\n" +
-            "Si vous souhaitez commencer une autre partie, appuyez sur « OK »."
-        );
-
-    if(!confirmer){
-        return;
-    }
-
-}
-
 let nombreJoueurs = Number(choixJoueurs.value);
 
 modeJeu = Number(document.getElementById("modeJeu").value);
