@@ -797,26 +797,19 @@ for(let bots = 0; bots <= nombreBots; bots++){
   const tousLesBots =
     document.querySelectorAll("#nombreBots");
 
-  console.log(
-    "VERIFICATION MENUS :",
-    "nombreJoueurs trouvés =", tousLesJoueurs.length,
-    "valeurs joueurs =", [...tousLesJoueurs].map(e => e.value),
-    "nombreBots trouvés =", tousLesBots.length,
-    "valeurs bots =", [...tousLesBots].map(e => e.value)
-  );
-
   const nombreJoueursMultijoueur =
     Number(tousLesJoueurs[0]?.value || 2);
 
   const nombreBotsMultijoueur =
     Number(tousLesBots[0]?.value || 0);
 
-  send({
-    type:"room:start",
-    mode: Number($("modeJeu").value),
-    players: nombreJoueursMultijoueur,
-    bots: nombreBotsMultijoueur
-  });
+    send({
+     type:"room:start",
+     mode: Number($("modeJeu").value),
+     players: nombreJoueursMultijoueur,
+     bots: nombreBotsMultijoueur,
+     botLevel: document.getElementById("niveauBots")?.value || "facile"
+    });
 
 };
 
