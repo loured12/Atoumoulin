@@ -171,6 +171,39 @@
     </div>
 </div>
 
+  <div id="fenetreConfirmationNouvellePartie"
+     class="fenetre-regles"
+     onclick="fermerConfirmationNouvellePartie(event)">
+
+    <div class="contenu-regles"
+         onclick="event.stopPropagation()">
+
+        <h2>⚠️ Une partie est en cours.</h2>
+
+        <p>
+            Si vous voulez continuer la partie en cours,
+            appuyez sur <strong>« Annuler »</strong>, puis cliquez sur
+            <strong>« Distribuer nouvelles cartes »</strong>.
+        </p>
+
+        <p>
+            Si vous souhaitez commencer une autre partie,
+            appuyez sur <strong>« OK »</strong>.
+        </p>
+
+        <div>
+            <button onclick="annulerNouvellePartie()">
+                Annuler
+            </button>
+
+            <button onclick="confirmerNouvellePartie()">
+                OK
+            </button>
+        </div>
+
+    </div>
+</div>
+
   <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
