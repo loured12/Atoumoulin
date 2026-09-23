@@ -437,21 +437,19 @@ if(fn==="nouvellePartieMultijoueur"){
     Math.min(8, Number(args[1]) || room.players.filter(p => !p.bot).length)
   );
 
-  const nombreBots = Math.max(
-    0,
-    Math.min(
-      8 - nombreJoueurs,
-      Number(args[2]) || 0
-    )
+  const joueursHumains =
+  room.players.filter(p => !p.bot);
+
+  const nombreHumains =
+  joueursHumains.length;
+
+if(nombreJoueurs < nombreHumains)
+  throw Error(
+    `Le nombre de joueurs ne peut pas être inférieur à ${nombreHumains}.`
   );
 
-  const joueursHumains =
-    room.players.filter(p => !p.bot);
-
-  if(joueursHumains.length > nombreJoueurs)
-    throw Error(
-      `Il y a déjà ${joueursHumains.length} joueurs humains dans le salon.`
-    );
+  const nombreBots =
+  nombreJoueurs - nombreHumains;
 
   // On supprime les anciens bots
   room.players = joueursHumains;
