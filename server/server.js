@@ -424,7 +424,7 @@ if(m.type==="game:action"){
   ? m.args.slice(0,3)
   : [];
 
- if(fn==="nouvellePartieMultijoueur"){
+if(fn==="nouvellePartieMultijoueur"){
 
   if(player.id!==room.hostId)
     throw Error("Seul l'hôte peut lancer une nouvelle partie.");
@@ -432,22 +432,73 @@ if(m.type==="game:action"){
   const nouveauMode=
     Number(args[0])||room.mode||1;
 
+  const nombreJoueurs = Math.max(
+    2,
+    Math.min(8, Number(args[1]) || room.players.filter(p => !p.bot).length)
+  );
+
+  const nombreBots = Math.max(
+    0,
+    Math.min(
+      8 - nombreJoueurs,
+      Number(args[2]) || 0
+    )
+  );
+
+  const joueursHumains =
+    room.players.filter(p => !p.bot);
+
+  if(joueursHumains.length > nombreJoueurs)
+    throw Error(
+      `Il y a déjà ${joueursHumains.length} joueurs humains dans le salon.`
+    );
+
+  // On supprime les anciens bots
+  room.players = joueursHumains;
+
+  // On remet les index des joueurs humains
+  room.players.forEach((p,i)=>{
+    p.index=i;
+    p.selection=null;
+  });
+
+  // On crée les nouveaux bots
+  for(let i=0;i<nombreBots;i++){
+
+    room.players.push({
+      id:id(),
+      token:id(),
+      name:`Bot ${i+1}`,
+      bot:true,
+      connected:true,
+      ws:null,
+      index:room.players.length,
+      selection:null
+    });
+
+  }
+
   room.mode=nouveauMode;
 
-  room.engine.apply(
-    "preparerNouvelleManche",
-    [nouveauMode]
+  room.engine=new AtoumoulinEngine(
+    room.players.map(p=>p.name),
+    room.players.map(p=>p.bot),
+    room.mode
   );
 
-  room.engine.apply(
-    "reinitialiserVictoires",
-    []
-  );
+  broadcast(room,{
+    type:"game:start",
+    room:view(room)
+  });
+
+  runBots(room);
 
   sendState(room);
 
+  lobby(room);
+
   return;
- }
+}
 
  if(fn==="preparerNouvelleManche"){
 
