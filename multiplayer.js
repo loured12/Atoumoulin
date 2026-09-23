@@ -485,7 +485,7 @@ document.addEventListener("click", e => {
     $("multiPlayers").innerHTML =
     `<strong>${joueursHumains.length}/${r.maxPlayers} joueurs</strong>` +
     joueursHumains.map(p =>
-    `<div>${p.name}${p.id === r.hostId ? " 👑" : ""}</div>`
+    `<div>👤 ${p.name}${p.id === r.hostId ? " 👑" : ""}</div>`
     ).join("");
 
     $("mpStart").disabled =
