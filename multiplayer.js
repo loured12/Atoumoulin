@@ -481,7 +481,7 @@ document.addEventListener("click", e => {
     $("mpRoomCode").textContent = r.code;
 
     $("multiPlayers").innerHTML =
-      `<strong>${r.players.length}/${r.maxPlayers} joueurs</strong>` +
+    `<strong>${r.players.filter(p => !p.bot).length}/${r.maxPlayers} joueurs humains</strong>` +
       r.players.map(p =>
         `<div class="mp-player">${p.bot?"🤖":"👤"} ${p.name}${p.id===r.hostId?" 👑":""}</div>`
       ).join("");
