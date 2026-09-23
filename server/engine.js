@@ -84,8 +84,9 @@ function makeSandbox() {
 }
 
 export class AtoumoulinEngine {
-  constructor(names, bots = [], mode = 1) {
+  constructor(names, bots = [], mode = 1, botLevel = "facile") {
     this.sandbox = makeSandbox();
+    this.sandbox.niveauBots = botLevel;
     this.double9PlayerIndex = null;
 
     this.sandbox.globalThis = this.sandbox;
