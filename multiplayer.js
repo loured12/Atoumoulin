@@ -512,17 +512,24 @@ document.addEventListener("click", e => {
   choixBotsMulti.innerHTML = "";
 
   const nombreBots =
-    nouveauTotal - humainsDansLeSalon;
+  nouveauTotal - humainsDansLeSalon;
+
+  choixBotsMulti.innerHTML = "";
+
+for(let bots = 0; bots <= nombreBots; bots++){
 
   const optionBot =
     document.createElement("option");
 
-  optionBot.value = nombreBots;
+  optionBot.value = bots;
   optionBot.textContent =
-    `${nombreBots} bot${nombreBots === 1 ? "" : "s"}`;
+    `${bots} bot${bots === 1 ? "" : "s"}`;
 
   choixBotsMulti.appendChild(optionBot);
 }
+
+choixBotsMulti.value =
+  nombreBots;
 
     if (r.players.some(p => p.id === myId && !p.bot)) {
     const message = $("multiStatus");
@@ -534,6 +541,7 @@ document.addEventListener("click", e => {
     message.textContent = "Connecté au serveur";
     }
   }
+}
     
     $("mpRoom").hidden = false;
     $("mpRoomCode").textContent = r.code;
