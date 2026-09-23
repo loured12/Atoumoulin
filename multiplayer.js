@@ -480,11 +480,13 @@ document.addEventListener("click", e => {
     $("mpRoom").hidden = false;
     $("mpRoomCode").textContent = r.code;
 
+    const joueursHumains = r.players.filter(p => !p.bot);
+
     $("multiPlayers").innerHTML =
-    `<strong>${r.players.filter(p => !p.bot).length}/${r.maxPlayers} joueurs humains</strong>` +
-      r.players.map(p =>
-        `<div class="mp-player">${p.bot?"🤖":"👤"} ${p.name}${p.id===r.hostId?" 👑":""}</div>`
-      ).join("");
+    `<strong>${joueursHumains.length}/${r.maxPlayers} joueurs</strong>` +
+    joueursHumains.map(p =>
+    `<div>${p.name}${p.id === r.hostId ? " 👑" : ""}</div>`
+    ).join("");
 
     $("mpStart").disabled =
       myId !== r.hostId ||
