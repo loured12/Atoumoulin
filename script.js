@@ -5942,7 +5942,13 @@ function confirmerNouvellePartie(){
 
     fermerConfirmationNouvellePartie();
 
-    lancerNouvellePartie();
+    mancheTerminee = false;
+
+    bouton.onclick = function(){
+        lancerNouvellePartie();
+    };
+
+    bouton.click();
 
 }
 
