@@ -482,7 +482,7 @@ document.addEventListener("click", e => {
     const valeurActuelle =
     Number(choixJoueursMulti.value);
 
-  choixJoueursMulti.innerHTML = "";
+   choixJoueursMulti.innerHTML = "";
 
   for (
     let total = humainsDansLeSalon;
@@ -528,8 +528,36 @@ for(let bots = 0; bots <= nombreBots; bots++){
   choixBotsMulti.appendChild(optionBot);
 }
 
-choixBotsMulti.value =
-  nombreBots;
+  choixBotsMulti.value =
+    nombreBots;
+
+  choixBotsMulti.disabled = true;
+
+  choixJoueursMulti.onchange = () => {
+
+  const humains =
+    r.players.filter(p => !p.bot).length;
+
+  const total =
+    Number(choixJoueursMulti.value);
+
+  const bots =
+    total - humains;
+
+  choixBotsMulti.innerHTML = "";
+
+  const optionBot =
+    document.createElement("option");
+
+  optionBot.value = bots;
+  optionBot.textContent =
+    `${bots} bot${bots === 1 ? "" : "s"}`;
+
+  choixBotsMulti.appendChild(optionBot);
+
+  choixBotsMulti.value =
+    bots;
+};
 
     if (r.players.some(p => p.id === myId && !p.bot)) {
     const message = $("multiStatus");
