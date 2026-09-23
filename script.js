@@ -5944,11 +5944,7 @@ function confirmerNouvellePartie(){
 
     mancheTerminee = false;
 
-    bouton.onclick = function(){
-        lancerNouvellePartie();
-    };
-
-    bouton.click();
+    lancerNouvellePartie();
 
 }
 
