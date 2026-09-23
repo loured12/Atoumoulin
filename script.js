@@ -2458,7 +2458,7 @@ function gererActionBot(){
 
     if(actionEnCours === "vol1"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireVol1(cible);
@@ -2471,7 +2471,7 @@ function gererActionBot(){
 
     if(actionEnCours === "double1"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireDouble1(cible);
@@ -2484,7 +2484,7 @@ function gererActionBot(){
 
     if(actionEnCours === "carte3"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireCarte3(cible);
@@ -2497,7 +2497,7 @@ function gererActionBot(){
 
     if(actionEnCours === "double3"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireDouble3(cible);
@@ -2510,8 +2510,8 @@ function gererActionBot(){
 
     if(actionEnCours === "carte9"){
 
-        let cible = choisirAdversaireAleatoire();
-
+        let cible=niveauBots==="normal"?choisirCible9Bot():choisirAdversaireAleatoire();
+        
         if(cible !== null){
             choisirAdversaireCarte9(cible);
         }
@@ -2523,7 +2523,7 @@ function gererActionBot(){
 
     if(actionEnCours === "double9"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCible9Bot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireDouble9(cible);
@@ -2558,7 +2558,7 @@ function gererActionBot(){
 
     if(actionEnCours === "carte13"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireCarte13(cible);
@@ -2612,7 +2612,7 @@ function gererActionBot(){
 
     if(actionEnCours === "double13"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireDouble13(cible);
@@ -2738,10 +2738,12 @@ function gererActionBot(){
             return;
         }
 
-        let cible =
-            adversaires[
-                Math.floor(Math.random() * adversaires.length)
-            ];
+        let cible=niveauBots==="normal"
+            ?adversaires.reduce((meilleur,index)=>
+              joueurs[index].score>joueurs[meilleur].score?index:meilleur,
+              adversaires[0]
+            )
+            :adversaires[Math.floor(Math.random()*adversaires.length)];
 
         choisirAdversaireCarte17(cible);
 
@@ -2772,10 +2774,12 @@ function gererActionBot(){
             return;
         }
 
-        let cible =
-            adversaires[
-                Math.floor(Math.random() * adversaires.length)
-            ];
+        let cible=niveauBots==="normal"
+            ?adversaires.reduce((meilleur,index)=>
+              joueurs[index].score>joueurs[meilleur].score?index:meilleur,
+              adversaires[0]
+            )
+            :adversaires[Math.floor(Math.random()*adversaires.length)];
 
         choisirAdversaireDouble17(cible);
 
@@ -2811,7 +2815,7 @@ function gererActionBot(){
 
     if(actionEnCours === "carte19"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireCarte19(cible);
@@ -2824,7 +2828,7 @@ function gererActionBot(){
 
     if(actionEnCours === "double19"){
 
-        let cible = choisirAdversaireAleatoire();
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
 
         if(cible !== null){
             choisirAdversaireDouble19(cible);
@@ -2848,8 +2852,8 @@ function gererActionBot(){
 
     if(actionEnCours === "carte21cible"){
 
-        let cible = choisirAdversaireAleatoire();
-
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
+        
         if(cible !== null){
             cibleCarte21(cible);
         }
@@ -2872,8 +2876,8 @@ function gererActionBot(){
 
     if(actionEnCours === "double21cible"){
 
-        let cible = choisirAdversaireAleatoire();
-
+        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
+        
         if(cible !== null){
             cibleDouble21(cible);
         }
@@ -2905,16 +2909,15 @@ function gererActionBot(){
     }
 
     // JOKER : CHOIX DE LA CIBLE
-
-    if(actionEnCours === "jokerCible"){
-
-        let cible = choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            echangeJoker(cible);
-        }
-
-        return;
+    if(actionEnCours==="jokerCible"){
+      let cible=choisirCibleJokerBot();
+        
+    if(cible!==null){
+        echangeJoker(cible);
+    }
+        
+    return;
+        
     }
 
 }
@@ -2938,6 +2941,32 @@ function choisirCibleBot(){
         return meilleur;
 
     }, adversaires[0]);
+}
+
+function choisirCible9Bot(){
+    
+    let adversaires=joueurs.map((joueur,index)=>index).filter(index=>index!==joueurActuel);
+    if(adversaires.length===0)return null;
+
+    return adversaires.reduce((meilleur,index)=>
+        joueurs[index].main.length>joueurs[meilleur].main.length?index:meilleur,
+        adversaires[0]
+    );
+}
+
+function choisirCibleJokerBot(){
+    let adversaires=joueurs.map((joueur,index)=>index).filter(index=>index!==joueurActuel);
+    if(adversaires.length===0)return null;
+
+    let scoreRequis=obtenirScoreVictoire();
+    let candidats=adversaires.filter(index=>joueurs[index].score<scoreRequis);
+
+    if(candidats.length===0)return null;
+
+    return candidats.reduce((meilleur,index)=>
+        joueurs[index].score>joueurs[meilleur].score?index:meilleur,
+        candidats[0]
+    );
 }
 
 function afficherChoixCible(){
