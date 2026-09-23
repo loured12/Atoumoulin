@@ -2294,51 +2294,109 @@ afficherJeu();
 }
 
 function jouerTourBot(){
+    let joueur=joueurs[joueurActuel];
+    if(!joueur.bot)return;
 
-    let joueur = joueurs[joueurActuel];
-
-    // Vérifier que le joueur actuel est bien un bot
-    if(!joueur.bot){
+    // Le 7 est prioritaire
+    let indexSept=joueur.main.findIndex(carte=>carte===7);
+    if(indexSept!==-1){
+        carteChoisie=indexSept;
+        jouerCarte();
         return;
     }
 
-    // Chercher les doubles dans la main
-    let doubles = trouverDoubles(joueur.main);
-
-    // Le joueur doit obligatoirement jouer un double
-    if(doubles.length > 0){
-
-        let valeurDouble =
-            doubles[Math.floor(Math.random() * doubles.length)];
-
-        carteChoisie = [];
-
-        let nombreSelectionnees = 0;
-
+    // Un double doit être joué
+    let doubles=trouverDoubles(joueur.main);
+    if(doubles.length>0){
+        let valeurDouble=doubles[Math.floor(Math.random()*doubles.length)];
+        carteChoisie=[];
+        let n=0;
         joueur.main.forEach((carte,index)=>{
-
-            if(carte === valeurDouble && nombreSelectionnees < 2){
-
+            if(carte===valeurDouble&&n<2){
                 carteChoisie.push(index);
-                nombreSelectionnees++;
-
+                n++;
             }
+        });
+        jouerCarte();
+        return;
+    }
 
+    // Mode facile
+    if(niveauBots==="facile"){
+        carteChoisie=Math.floor(Math.random()*joueur.main.length);
+        jouerCarte();
+        return;
+    }
+
+    // Mode normal
+    let scoreRequis=obtenirScoreVictoire();
+    let scoreActuel=joueur.score;
+
+    if(scoreActuel<scoreRequis){
+        let manque=scoreRequis-scoreActuel;
+
+        // Chercher le score exact
+        let indexExact=joueur.main.findIndex(carte=>typeof carte==="number"&&carte===manque);
+        if(indexExact!==-1){
+            carteChoisie=indexExact;
+            jouerCarte();
+            return;
+        }
+
+        // Chercher la plus grande valeur sans dépasser
+        let meilleurIndex=-1;
+        let meilleureValeur=-Infinity;
+        joueur.main.forEach((carte,index)=>{
+            if(typeof carte==="number"&&carte>0&&carte<=manque&&carte>meilleureValeur){
+                meilleureValeur=carte;
+                meilleurIndex=index;
+            }
         });
 
-        jouerCarte();
+        if(meilleurIndex!==-1){
+            carteChoisie=meilleurIndex;
+            jouerCarte();
+            return;
+        }
 
-        return;
+        // Sinon prendre la plus forte valeur
+        let indexForte=-1;
+        let valeurForte=-Infinity;
+        joueur.main.forEach((carte,index)=>{
+            if(typeof carte==="number"&&carte>valeurForte){
+                valeurForte=carte;
+                indexForte=index;
+            }
+        });
+
+        if(indexForte!==-1){
+            carteChoisie=indexForte;
+            jouerCarte();
+            return;
+        }
     }
 
-    // Aucun double : choisir une carte simple
-    let index =
-        Math.floor(Math.random() * joueur.main.length);
+    // Au-dessus du score : chercher à réduire
+    if(scoreActuel>=scoreRequis){
+        let indexReduction=-1;
+        let meilleureReduction=Infinity;
+        joueur.main.forEach((carte,index)=>{
+            if(typeof carte==="number"&&carte<0&&carte<meilleureReduction){
+                meilleureReduction=carte;
+                indexReduction=index;
+            }
+        });
 
-    carteChoisie = index;
+        if(indexReduction!==-1){
+            carteChoisie=indexReduction;
+            jouerCarte();
+            return;
+        }
+    }
 
+    // Choix de secours
+    carteChoisie=Math.floor(Math.random()*joueur.main.length);
     jouerCarte();
-
 }
 
 function gererActionBot(){
