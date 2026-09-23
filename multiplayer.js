@@ -729,18 +729,25 @@ document.addEventListener("click", e => {
 
   $("mpStart").onclick = () => {
 
-  const nombreJoueursMultijoueur =
-  mpNombreJoueursChoisi;
+  const tousLesJoueurs =
+    document.querySelectorAll("#nombreJoueurs");
 
-  const nombreBotsMultijoueur =
-  mpNombreBotsChoisi;
+  const tousLesBots =
+    document.querySelectorAll("#nombreBots");
 
   console.log(
-  "CONFIGURATION LANCEMENT :",
-  "joueurs mémorisés =", mpNombreJoueursChoisi,
-  "bots mémorisés =", mpNombreBotsChoisi,
-  "mode =", $("modeJeu").value
-);
+    "VERIFICATION MENUS :",
+    "nombreJoueurs trouvés =", tousLesJoueurs.length,
+    "valeurs joueurs =", [...tousLesJoueurs].map(e => e.value),
+    "nombreBots trouvés =", tousLesBots.length,
+    "valeurs bots =", [...tousLesBots].map(e => e.value)
+  );
+
+  const nombreJoueursMultijoueur =
+    Number(tousLesJoueurs[0]?.value || 2);
+
+  const nombreBotsMultijoueur =
+    Number(tousLesBots[0]?.value || 0);
 
   send({
     type:"room:start",
