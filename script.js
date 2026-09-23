@@ -107,7 +107,7 @@ function couleurJoueur(index){
     return couleursJoueurs[index].rond;
 }
 
-bouton.onclick = function(){
+function lancerNouvellePartie(){
 
 let nombreJoueurs = Number(choixJoueurs.value);
 
@@ -189,6 +189,20 @@ joueurs.forEach(joueur=>{
 });
 
 afficherJeu();
+
+}
+
+bouton.onclick = function(){
+
+    if(mancheTerminee){
+
+        afficherConfirmationNouvellePartie();
+
+        return;
+
+    }
+
+    lancerNouvellePartie();
 
 };
 
@@ -5898,6 +5912,36 @@ function fermerRolesCartes(event){
     }
 
     document.getElementById("fenetreRolesCartes").style.display = "none";
+
+}
+
+function afficherConfirmationNouvellePartie(){
+
+    document.getElementById(
+        "fenetreConfirmationNouvellePartie"
+    ).style.display = "flex";
+
+}
+
+function fermerConfirmationNouvellePartie(){
+
+    document.getElementById(
+        "fenetreConfirmationNouvellePartie"
+    ).style.display = "none";
+
+}
+
+function annulerNouvellePartie(){
+
+    fermerConfirmationNouvellePartie();
+
+}
+
+function confirmerNouvellePartie(){
+
+    fermerConfirmationNouvellePartie();
+
+    lancerNouvellePartie();
 
 }
 
