@@ -974,6 +974,12 @@ label {
     margin-top: 25px;
 }
 
+#fenetreConfirmationNouvellePartie .contenu-regles button {
+    position: static !important;
+    display: block;
+    margin: 0;
+}
+
 .main-adversaire {
   margin: 12px auto;
   padding: 10px;
