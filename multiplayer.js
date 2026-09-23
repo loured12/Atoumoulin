@@ -574,40 +574,6 @@ choixBotsMulti.value =
     myId === r.hostId ? "" : "none";
     }
 
-    if (myId === r.hostId) {
-
-  const choixBotsMultijoueur =
-    document.getElementById("nombreBots");
-
-  if (choixBotsMultijoueur) {
-
-    const maximumBots =
-      Math.max(0, 8 - r.players.length);
-
-    if (choixBotsMultijoueur.options.length !== maximumBots + 1) {
-
-      const valeurActuelle =
-        Number(choixBotsMultijoueur.value) || 0;
-
-      choixBotsMultijoueur.innerHTML = "";
-
-      for (let i = 0; i <= maximumBots; i++) {
-
-        const option = document.createElement("option");
-
-        option.value = i;
-        option.textContent =
-          `${i} bot${i === 1 ? "" : "s"}`;
-
-        choixBotsMultijoueur.appendChild(option);
-      }
-
-      choixBotsMultijoueur.value =
-        String(Math.min(valeurActuelle, maximumBots));
-    }
-  }
-}
-
     if (r.started && !document.getElementById("chatBulle")) {
     afficherBulleChat();
     }    
