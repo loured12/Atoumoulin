@@ -103,14 +103,16 @@
       return;
 
     send({
-      type:"game:action",
-      fn:"nouvellePartieMultijoueur",
-      args:[
-      Number(document.getElementById("modeJeu").value || 1)
-      ]
+     type:"game:action",
+     fn:"nouvellePartieMultijoueur",
+     args:[
+      Number(document.getElementById("modeJeu").value || 1),
+      Number(document.getElementById("nombreJoueurs").value || 2),
+      Number(document.getElementById("nombreBots").value || 0)
+     ]
     });
 
-  }, true);
+   }, true);
   }
 
   const send = m => {
