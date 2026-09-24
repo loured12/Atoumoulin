@@ -30,32 +30,18 @@ body {
    ========================= */
 
 h1 {
-  display: inline-block;
-
-  font-size: 40px;
-  margin: 12px 0 20px;
-  padding: 10px 30px;
+  font-size: 46px;
+  margin: 10px 0 20px;
 
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
 
   color: #ffe066;
 
-  background: linear-gradient(
-    145deg,
-    #173d20,
-    #0b2412
-  );
-
-  border: 3px solid #d7b72f;
-  border-radius: 18px;
-
   text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.7);
-
-  box-shadow:
-    0 6px 15px rgba(0, 0, 0, 0.45),
-    0 0 8px rgba(215, 183, 47, 0.2);
+    0 3px 0 #9a7c12,
+    0 5px 10px rgba(0, 0, 0, 0.7),
+    0 0 18px rgba(255, 216, 77, 0.25);
 }
 
 h2,
