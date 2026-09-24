@@ -359,7 +359,7 @@ wss.on("connection",ws=>{
   }
 
   // Seul le 2e humain change de position
-  if(room.players.length>1){
+    if(room.players.length>1){
 
     const deuxiemeHumain=room.players[1];
 
@@ -369,7 +369,7 @@ wss.on("connection",ws=>{
     room.players.splice(1,1);
     room.players.splice(position,0,deuxiemeHumain);
 
-  }
+}
 
   // Mise à jour des positions
   room.players.forEach((p,i)=>{
