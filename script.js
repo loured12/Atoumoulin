@@ -4279,37 +4279,27 @@ function echangeJoker(index){
 
 function verifierFinDeManche(){
 
-    // Si un pouvoir est encore en cours,
-    // on laisse d'abord ce pouvoir se terminer.
     if(actionEnCours !== null){
         return false;
     }
 
-    // S'il reste des cartes dans la pioche,
-    // la manche peut encore continuer.
-    if(paquet.length > 0){
-        return false;
+    // La manche se termine uniquement si tous les joueurs
+    // n'ont plus aucune carte.
+    const tousSansCarte =
+        joueurs.every(joueur => joueur.main.length === 0);
+
+    if(tousSansCarte){
+
+        historique +=
+        `🏁 Tous les joueurs n'ont plus de cartes. Fin de la manche.<br>`;
+
+        verifierFinPartie();
+
+        return true;
     }
 
-    // Vérifier si au moins un joueur possède encore des cartes
-    let joueurAvecCarte = joueurs.some(joueur =>
-    joueur.main.length > 0
-    );
-
-    // Tant qu'un seul joueur possède encore
-    // une carte, la manche continue.
-    if(joueurAvecCarte){
+    // Au moins un joueur possède encore des cartes.
     return false;
-    }
-
-    // Plus de pioche ET plus aucune carte en main :
-    // la manche est terminée.
-    historique +=
-    `🏁 Plus aucune carte n'est disponible. Fin de la manche.<br>`;
-
-    verifierFinPartie();
-
-    return true;
 }
 
 function verifierFinPartie(){
