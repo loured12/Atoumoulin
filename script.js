@@ -4283,23 +4283,27 @@ function verifierFinDeManche(){
         return false;
     }
 
-    // La manche se termine uniquement si tous les joueurs
-    // n'ont plus aucune carte.
-    const tousSansCarte =
-        joueurs.every(joueur => joueur.main.length === 0);
-
-    if(tousSansCarte){
-
-        historique +=
-        `🏁 Tous les joueurs n'ont plus de cartes. Fin de la manche.<br>`;
-
-        verifierFinPartie();
-
-        return true;
+    if(paquet.length > 0){
+        return false;
     }
 
-    // Au moins un joueur possède encore des cartes.
-    return false;
+    // Vérifier si au moins un joueur possède encore des cartes
+    let joueurAvecCarte = joueurs.some(joueur =>
+        joueur.main.length > 0
+    );
+
+    // Tant qu'un joueur possède encore une carte, la manche continue.
+    if(joueurAvecCarte){
+        return false;
+    }
+
+    // Plus de pioche et plus aucune carte en main.
+    historique +=
+        `🏁 Plus aucune carte n'est disponible. Fin de la manche.<br>`;
+
+    verifierFinPartie();
+
+    return true;
 }
 
 function verifierFinPartie(){
@@ -4316,13 +4320,11 @@ function verifierFinPartie(){
         joueur.score === scoreVictoire
     );
 
-    // Si personne n'a atteint exactement le score,
-    // vérifier si toutes les cartes sont épuisées
+    // Si personne n'a atteint exactement le score, vérifier si toutes les cartes sont épuisées
 
     if(!gagnant){
 
         let toutesCartesEpuisees =
-            paquet.length === 0 &&
             joueurs.every(joueur => joueur.main.length === 0);
 
         if(!toutesCartesEpuisees){
@@ -4489,8 +4491,7 @@ if(modeJeu === 1){
 
 }
 
-  // Vérifier si le joueur a atteint
-  // le nombre de victoires nécessaire
+  // Vérifier si le joueur a atteint le nombre de victoires nécessaire
 
 if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
 
@@ -4621,14 +4622,12 @@ function terminerActionPouvoir(){
     // Le pouvoir est complètement terminé
     actionEnCours = null;
 
-    // Vérifier maintenant si le score provoque
-    // la fin de la partie.
+    // Vérifier maintenant si le score provoque la fin de la partie.
     if(verifierFinPartie()){
         return;
     }
 
-    // Le joueur doit normalement piocher 1 carte
-    // après avoir terminé son pouvoir.
+    // Le joueur doit normalement piocher 1 carte après avoir terminé son pouvoir.
 
     if(paquet.length > 0){
 
@@ -4636,16 +4635,14 @@ function terminerActionPouvoir(){
 
     }else{
 
-        // Plus aucune carte à piocher.
-        // On vérifie maintenant la fin de la manche.
+        // Plus aucune carte à piocher. On vérifie maintenant la fin de la manche.
 
         verifierFinPartie();
         return;
     }
 
     // Tour suivant
-    // En multijoueur, si le joueur actif est à 0,
-    // on passe au prochain joueur ayant des cartes.
+    // En multijoueur, si le joueur actif est à 0, on passe au prochain joueur ayant des cartes.
 
     if(!gererFinTourMultijoueur()){
         passerJoueur();
@@ -4659,8 +4656,7 @@ function terminerActionPouvoir(){
 
 function passerJoueur(){
 
-    // Si personne n'a plus de carte,
-    // on termine normalement la manche.
+    // Si personne n'a plus de carte, on termine normalement la manche.
     let joueursAvecCartes = joueurs.filter(
         joueur => joueur.main.length > 0
     );
@@ -5216,8 +5212,7 @@ function triplerCarte15(carteIndex){
 
     }
 
-    // Le double 15 ajoute DEUX 15
-    // mais multiplie la carte une seule fois par 3
+    // Le double 15 ajoute DEUX 15 mais multiplie la carte une seule fois par 3
 
     carte.historiqueCarte.push(15);
     carte.historiqueCarte.push(15);
@@ -5378,8 +5373,7 @@ let carte = carte17EnAttente;
 
 carte17EnAttente = null;
 
-// Une carte pouvoir volée avec le double 17
-// va dans la défausse des pouvoirs.
+// Une carte pouvoir volée avec le double 17 va dans la défausse des pouvoirs.
 if(
     carte === 1 ||
     carte === 3 ||
@@ -5644,8 +5638,7 @@ function terminer17SansCarte(){
         joueur: joueur.nom
     });
 
-    // Vérifier si la manche est terminée
-    // avant de changer de joueur
+    // Vérifier si la manche est terminée avant de changer de joueur
 
     if(verifierFinPartie()){
         return;
@@ -5656,8 +5649,7 @@ function terminer17SansCarte(){
     actionEnCours = null;
     carteChoisie = null;
 
-    // Si ce 17 faisait partie d'un double 17,
-    // on revient jouer la carte restante.
+    // Si ce 17 faisait partie d'un double 17, on revient jouer la carte restante.
 
     if(double17EnCours){
 
