@@ -377,6 +377,14 @@ wss.on("connection",ws=>{
     p.selection=null;
   });
 
+  console.log(
+  room.players.map(p => ({
+    name:p.name,
+    bot:p.bot,
+    index:p.index
+  }))
+);
+
   room.started=true;
 
   room.engine=new AtoumoulinEngine(
