@@ -333,12 +333,6 @@ wss.on("connection",ws=>{
     Math.min(nombreJoueurs - room.players.length, Number(m.bots) || 0)
   );
 
-  console.log("CONFIG", {
-  joueurs: nombreJoueurs,
-  bots: nombreBots,
-  messageBots: m.bots
-});
-
   if(room.players.length > nombreJoueurs)
     throw Error(
       `Il y a déjà ${room.players.length} joueurs humains dans le salon.`
@@ -382,14 +376,6 @@ wss.on("connection",ws=>{
     p.index=i;
     p.selection=null;
   });
-
-  console.log(
-  room.players.map(p => ({
-    name:p.name,
-    bot:p.bot,
-    index:p.index
-  }))
-);
 
   room.started=true;
 
@@ -511,6 +497,23 @@ if(nombreJoueurs < nombreHumains)
     });
 
   }
+
+ if(room.players.length>1){
+
+  const deuxiemeHumain=room.players[1];
+
+  const position=
+    1+Math.floor(Math.random()*(room.players.length-1));
+
+  room.players.splice(1,1);
+  room.players.splice(position,0,deuxiemeHumain);
+
+  }
+
+  room.players.forEach((p,i)=>{
+    p.index=i;
+    p.selection=null;
+  });
 
   room.mode=nouveauMode;
 
