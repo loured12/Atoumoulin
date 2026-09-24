@@ -36,12 +36,12 @@ h1 {
   font-weight: 900;
   letter-spacing: 4px;
 
-  color: #ffe066;
+  color: #fff06a;
 
   text-shadow:
     0 3px 0 #9a7c12,
     0 5px 10px rgba(0, 0, 0, 0.7),
-    0 0 18px rgba(255, 216, 77, 0.25);
+    0 0 22px rgba(255, 240, 106, 0.45);
 }
 
 h2,
