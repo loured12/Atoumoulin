@@ -330,7 +330,7 @@ wss.on("connection",ws=>{
 
   const nombreBots = Math.max(
     0,
-    Math.min(8 - nombreJoueurs, Number(m.bots) || 0)
+    Math.min(nombreJoueurs - room.players.length, Number(m.bots) || 0)
   );
 
   console.log("CONFIG", {
