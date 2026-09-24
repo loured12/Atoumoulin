@@ -333,6 +333,12 @@ wss.on("connection",ws=>{
     Math.min(8 - nombreJoueurs, Number(m.bots) || 0)
   );
 
+  console.log("CONFIG", {
+  joueurs: nombreJoueurs,
+  bots: nombreBots,
+  messageBots: m.bots
+});
+
   if(room.players.length > nombreJoueurs)
     throw Error(
       `Il y a déjà ${room.players.length} joueurs humains dans le salon.`
