@@ -811,76 +811,107 @@ if(afficherActions){
 
 if(actionEnCours === "double1"){
 
-zoneJeu.innerHTML +=
-`<h3>Choisir un adversaire :</h3>`;
+    let adversairesDisponibles = joueurs.filter((cible,index) => {
 
-joueurs.forEach((cible,index)=>{
+        if(index === joueurActuel){
+            return false;
+        }
 
-if(index !== joueurActuel){
+        return cartesTable.some(carte =>
+            carte.proprietaire === cible.nom &&
+            carte.valeur !== 0
+        );
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireDouble1(${index})">
-${cible.nom}
-</button>
-`;
+    });
 
-}
+    // Aucun adversaire avec une carte à points posée
 
-});
+    if(adversairesDisponibles.length === 0){
+
+        historique +=
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le Double 1<br>`;
+
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+    }
+    else{
+
+        zoneJeu.innerHTML +=
+        `<h3>Choisir un adversaire :</h3>`;
+
+        adversairesDisponibles.forEach(cible => {
+
+            let index = joueurs.indexOf(cible);
+
+            zoneJeu.innerHTML +=
+            `
+            <button onclick="choisirAdversaireDouble1(${index})">
+            ${cible.nom}
+            </button>
+            `;
+
+        });
+
+    }
 
 }
 
 if(actionEnCours === "vol1"){
 
-let adversairesDisponibles = joueurs.filter((adversaire,index) => {
+    let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-if(index === joueurActuel){
-return false;
-}
+        if(index === joueurActuel){
+            return false;
+        }
 
-return cartesTable.some(carte =>
-carte.proprietaire === adversaire.nom &&
-carte.valeur !== 0
-);
+        return cartesTable.some(carte =>
+            carte.proprietaire === adversaire.nom &&
+            carte.valeur !== 0
+        );
 
-});
+    });
 
-// Aucun adversaire avec une carte à points posée
+    // Aucun adversaire avec une carte à points posée
 
-if(adversairesDisponibles.length === 0){
+    if(adversairesDisponibles.length === 0){
 
-historique +=
-`${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 1<br>`;
+        historique +=
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 1<br>`;
 
-actionEnCours = null;
+        actionEnCours = null;
 
-if(!gererFinTourMultijoueur()){
-passerJoueur();
-}
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
 
-afficherJeu();
+        afficherJeu();
 
-}
-else{
+    }
+    else{
 
-zoneJeu.innerHTML +=
-"<h3>Choisir un adversaire :</h3>";
+        zoneJeu.innerHTML +=
+        "<h3>Choisir un adversaire :</h3>";
 
-adversairesDisponibles.forEach(adversaire => {
+        adversairesDisponibles.forEach(adversaire => {
 
-let index = joueurs.indexOf(adversaire);
+            let index = joueurs.indexOf(adversaire);
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireVol1(${index})">
-${adversaire.nom}
-</button>
-`;
+            zoneJeu.innerHTML +=
+            `
+            <button onclick="choisirAdversaireVol1(${index})">
+            ${adversaire.nom}
+            </button>
+            `;
 
-});
+        });
 
-}
+    }
 
 }
 
