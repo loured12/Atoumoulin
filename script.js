@@ -3998,7 +3998,7 @@ function choisirAdversaireCarte19(index){
     carteCible.proprietaire = joueur.nom;
 
     historique +=
-    `${joueur.nom} échange sa dernière carte jouée (${valeurJoueur}) avec la dernière carte jouée (${valeurCible}) de ${cible.nom} avec le 19<br>`;
+    `${joueur.nom} échange sa dernière carte jouée (${valeurJoueur}) avec la dernière (${valeurCible}) de ${cible.nom} avec le 19<br>`;
   
     // SI LE 19 VIENT DU DOUBLE 17
 
@@ -5787,13 +5787,13 @@ function effectuerEchangeDouble19(){
     if(nombreEchange >= 2){
 
         historique +=
-        `${joueur.nom} échange ses deux dernières cartes jouées (${cartesJoueur[cartesJoueur.length - 2].valeur}) (${cartesJoueur[cartesJoueur.length - 1].valeur}) avec les deux dernières cartes jouées (${cartesCible[cartesCible.length - 2].valeur}) (${cartesCible[cartesCible.length - 1].valeur}) de ${cible.nom} avec le Double 19<br>`;
+        `${joueur.nom} échange ses deux dernières cartes jouées (${cartesJoueur[cartesJoueur.length - 2].valeur}) (${cartesJoueur[cartesJoueur.length - 1].valeur}) avec les deux dernières (${cartesCible[cartesCible.length - 2].valeur}) (${cartesCible[cartesCible.length - 1].valeur}) de ${cible.nom} avec le Double 19<br>`;
    
     }
     else if(nombreEchange === 1){
 
         historique +=
-        `${joueur.nom} échange sa dernière carte jouée (${cartesJoueur[cartesJoueur.length - 1].valeur}) avec la dernière carte jouée (${cartesCible[cartesCible.length - 1].valeur}) de ${cible.nom} avec le Double 19<br>`;
+        `${joueur.nom} échange sa dernière carte jouée (${cartesJoueur[cartesJoueur.length - 1].valeur}) avec la dernière (${cartesCible[cartesCible.length - 1].valeur}) de ${cible.nom} avec le Double 19<br>`;
     }
     else{
 
