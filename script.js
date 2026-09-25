@@ -1169,23 +1169,54 @@ if(actionEnCours === "double13choix"){
 
 if(actionEnCours === "carte13"){
 
-zoneJeu.innerHTML +=
-"<h3>Choisir un adversaire :</h3>";
+    let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-joueurs.forEach((adversaire,index)=>{
+        if(index === joueurActuel){
+            return false;
+        }
 
-if(index !== joueurActuel){
+        return cartesTable.some(carte =>
+            carte.proprietaire === adversaire.nom &&
+            carte.valeur !== 0
+        );
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireCarte13(${index})">
-${adversaire.nom}
-</button>
-`;
+    });
 
-}
+    // Aucun adversaire avec une carte à points posée
 
-});
+    if(adversairesDisponibles.length === 0){
+
+        historique +=
+        `${joueurs[joueurActuel].nom} joue 13, aucune carte disponible<br>`;
+
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+    }
+    else{
+
+        zoneJeu.innerHTML +=
+        "<h3>Choisir un adversaire :</h3>";
+
+        adversairesDisponibles.forEach(adversaire => {
+
+            let index = joueurs.indexOf(adversaire);
+
+            zoneJeu.innerHTML +=
+            `
+            <button onclick="choisirAdversaireCarte13(${index})">
+            ${adversaire.nom}
+            </button>
+            `;
+
+        });
+
+    }
 
 }
 
