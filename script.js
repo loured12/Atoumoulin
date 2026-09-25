@@ -1068,23 +1068,49 @@ zoneJeu.innerHTML +=
 
 if(actionEnCours === "double13"){
 
-zoneJeu.innerHTML +=
-"<h3>Choisir un adversaire :</h3>";
+    let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-joueurs.forEach((adversaire,index)=>{
+        if(index === joueurActuel){
+            return false;
+        }
 
-if(index !== joueurActuel){
+        return cartesTable.some(carte =>
+            carte.proprietaire === adversaire.nom &&
+            carte.valeur !== 0
+        );
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireDouble13(${index})">
-${adversaire.nom}
-</button>
-`;
+    });
 
-}
+    // Aucun adversaire avec une carte à points posée
 
-});
+    if(adversairesDisponibles.length === 0){
+
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+    }
+    else{
+
+        zoneJeu.innerHTML +=
+        "<h3>Choisir un adversaire :</h3>";
+
+        adversairesDisponibles.forEach(adversaire => {
+
+            let index = joueurs.indexOf(adversaire);
+
+            zoneJeu.innerHTML +=
+            `
+            <button onclick="choisirAdversaireDouble13(${index})">
+            ${adversaire.nom}
+            </button>
+            `;
+
+        });
+
+    }
 
 }
 
@@ -1466,12 +1492,38 @@ Continuer
 
 if(actionEnCours === "double19"){
 
-    zoneJeu.innerHTML +=
-    "<h3>Choisir un adversaire pour le double 19 :</h3>";
+    let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-    joueurs.forEach((adversaire,index)=>{
+        if(index === joueurActuel){
+            return false;
+        }
 
-        if(index !== joueurActuel){
+        return cartesTable.some(carte =>
+            carte.proprietaire === adversaire.nom &&
+            carte.valeur !== 0
+        );
+
+    });
+
+    // Aucun adversaire avec une carte à points posée
+
+    if(adversairesDisponibles.length === 0){
+
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+    }
+    else{
+
+        zoneJeu.innerHTML +=
+        "<h3>Choisir un adversaire :</h3>";
+
+        adversairesDisponibles.forEach(adversaire => {
+
+            let index = joueurs.indexOf(adversaire);
 
             zoneJeu.innerHTML +=
             `
@@ -1480,31 +1532,57 @@ if(actionEnCours === "double19"){
             </button>
             `;
 
-        }
+        });
 
-    });
+    }
 
 }
 
 if(actionEnCours === "carte19"){
 
-zoneJeu.innerHTML +=
-"<h3>Choisir un adversaire :</h3>";
+    let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-joueurs.forEach((adversaire,index)=>{
+        if(index === joueurActuel){
+            return false;
+        }
 
-if(index !== joueurActuel){
+        return cartesTable.some(carte =>
+            carte.proprietaire === adversaire.nom &&
+            carte.valeur !== 0
+        );
 
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirAdversaireCarte19(${index})">
-${adversaire.nom}
-</button>
-`;
+    });
 
-}
+    // Aucun adversaire avec une carte à points posée
 
-});
+    if(adversairesDisponibles.length === 0){
+
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+    }
+    else{
+
+        zoneJeu.innerHTML +=
+        "<h3>Choisir un adversaire :</h3>";
+
+        adversairesDisponibles.forEach(adversaire => {
+
+            let index = joueurs.indexOf(adversaire);
+
+            zoneJeu.innerHTML +=
+            `
+            <button onclick="choisirAdversaireCarte19(${index})">
+            ${adversaire.nom}
+            </button>
+            `;
+
+        });
+
+    }
 
 }
 
