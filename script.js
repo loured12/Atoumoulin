@@ -1281,8 +1281,6 @@ ${adversaire.nom}
 
 });
 
-return;
-
 }
 
 if(actionEnCours === "double17revelee"){
@@ -1312,8 +1310,6 @@ zoneJeu.innerHTML +=
 <h3>Choisir quelle carte jouer en premier</h3>
 `;
 
-return;
-
 }
 
 if(actionEnCours === "double17jouer"){
@@ -1326,8 +1322,6 @@ zoneJeu.innerHTML +=
 Jouer cette carte
 </button>
 `;
-
-return;
 
 }
 
