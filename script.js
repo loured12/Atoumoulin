@@ -834,8 +834,12 @@ if(actionEnCours === "double1"){
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
-            passerJoueur();
+        passerJoueur();
         }
+
+        afficherJeu();
+
+        return;
 
     }
     else{
@@ -885,8 +889,12 @@ if(actionEnCours === "vol1"){
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
-            passerJoueur();
+        passerJoueur();
         }
+
+        afficherJeu();
+
+        return;
 
     }
     else{
@@ -1085,11 +1093,18 @@ if(actionEnCours === "double13"){
 
     if(adversairesDisponibles.length === 0){
 
+        historique +=
+        `${joueurs[joueurActuel].nom} joue Double 13, aucune carte disponible<br>`;
+
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
-            passerJoueur();
+        passerJoueur();
         }
+
+        afficherJeu();
+
+        return;
 
     }
     else{
@@ -1214,8 +1229,12 @@ if(actionEnCours === "carte13"){
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
-            passerJoueur();
+        passerJoueur();
         }
+
+        afficherJeu();
+
+        return;
 
     }
     else{
