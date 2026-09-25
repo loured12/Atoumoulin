@@ -1702,7 +1702,7 @@ if(cartesJouees.length === 2){
         });
 
         historique +=
-        `${joueur.nom} joue un Double ${valeurDouble} (+${resultat})<br>`;
+        `${joueur.nom} joue Double ${valeurDouble} (+${resultat})<br>`;
 
         if(verifierFinPartie()){
             return;
@@ -1842,7 +1842,7 @@ if(cartesJouees.length === 2){
             });
 
             historique +=
-            `${joueur.nom} joue un Double 7 (+40)<br>`;
+            `${joueur.nom} joue Double 7 (+40)<br>`;
 
             if(verifierFinPartie()){
                 return;
@@ -2026,7 +2026,7 @@ if(cartesJouees.length === 2){
             actionEnCours = "doubleJoker";
 
             historique +=
-            `${joueur.nom} joue un Double Joker et devra passer ses deux prochains tours<br>`;
+            `${joueur.nom} joue Double Joker et devra passer ses deux prochains tours<br>`;
 
             // Pioche 1 carte
 
