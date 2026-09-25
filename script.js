@@ -837,8 +837,6 @@ if(actionEnCours === "double1"){
             passerJoueur();
         }
 
-        afficherJeu();
-
     }
     else{
 
@@ -889,8 +887,6 @@ if(actionEnCours === "vol1"){
         if(!gererFinTourMultijoueur()){
             passerJoueur();
         }
-
-        afficherJeu();
 
     }
     else{
@@ -1194,8 +1190,6 @@ if(actionEnCours === "carte13"){
         if(!gererFinTourMultijoueur()){
             passerJoueur();
         }
-
-        afficherJeu();
 
     }
     else{
