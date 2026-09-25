@@ -1183,7 +1183,7 @@ if(actionEnCours === "double15"){
 
         zoneJeu.innerHTML +=
         `
-        <h3>${joueur.nom} n'a aucune carte à points à tripler.</h3>
+        <h3>${joueur.nom} n'a aucune carte à points à tripler avec le Double 15</h3>
 
         <button onclick="terminerDouble15()">
             Continuer
@@ -1229,7 +1229,7 @@ let cartesADoubler = cartesTable.filter(carte =>
 if(cartesADoubler.length === 0){
 
 historique +=
-`${joueur.nom} n'a aucune carte à points à doubler avec le 15.<br>`;
+`${joueur.nom} n'a aucune carte à points à doubler avec le 15<br>`;
 
 actionEnCours = null;
 
@@ -1354,7 +1354,7 @@ if(actionEnCours === "carte17"){
 
         zoneJeu.innerHTML +=
         `
-        <p>😔 Aucun adversaire n'a encore de carte à donner.</p>
+        <p>Aucun adversaire n'a encore de carte à donner</p>
         <button onclick="terminer17SansCarte()">
         Défausser le 17 et terminer
         </button>
@@ -1702,7 +1702,7 @@ if(cartesJouees.length === 2){
         });
 
         historique +=
-        `${joueur.nom} joue un double ${valeurDouble} (+${resultat})<br>`;
+        `${joueur.nom} joue un Double ${valeurDouble} (+${resultat})<br>`;
 
         if(verifierFinPartie()){
             return;
@@ -1778,19 +1778,31 @@ if(cartesJouees.length === 2){
             if(cartesPiochees === 0){
 
                 historique +=
-                `${joueur.nom} joue le double 5, aucune carte disponible<br>`;
+                `${joueur.nom} joue le Double 5, aucune carte disponible<br>`;
 
             }
             else if(cartesPiochees === 1){
 
                 historique +=
-                `${joueur.nom} pioche 1 carte avec le double 5<br>`;
+                `${joueur.nom} pioche une carte avec le Double 5<br>`;
 
             }
-            else{
+            else if(cartesPiochees === 2){
 
                 historique +=
-                `${joueur.nom} pioche ${cartesPiochees} cartes avec le double 5<br>`;
+                `${joueur.nom} pioche deux cartes avec le Double 5<br>`;
+
+            }
+            else if(cartesPiochees === 3){
+
+                historique +=
+                `${joueur.nom} pioche trois cartes avec le Double 5<br>`;
+
+            }
+            else if(cartesPiochees === 4){
+
+                historique +=
+                `${joueur.nom} pioche quatre cartes avec le Double 5<br>`;
 
             }
 
@@ -1830,7 +1842,7 @@ if(cartesJouees.length === 2){
             });
 
             historique +=
-            `${joueur.nom} joue un double 7 (+40)<br>`;
+            `${joueur.nom} joue un Double 7 (+40)<br>`;
 
             if(verifierFinPartie()){
                 return;
@@ -2014,7 +2026,7 @@ if(cartesJouees.length === 2){
             actionEnCours = "doubleJoker";
 
             historique +=
-            `${joueur.nom} joue un double Joker et devra passer ses 2 prochains tours<br>`;
+            `${joueur.nom} joue un Double Joker et devra passer ses deux prochains tours<br>`;
 
             // Pioche 1 carte
 
@@ -2130,13 +2142,13 @@ if(typeof carte === "number" && carte % 2 === 0){
         if(cartesPiochees === 2){
 
             historique +=
-            `${joueur.nom} pioche 2 cartes avec le 5<br>`;
+            `${joueur.nom} pioche deux cartes avec le 5<br>`;
 
         }
         else if(cartesPiochees === 1){
 
             historique +=
-            `${joueur.nom} pioche 1 carte avec le 5<br>`;
+            `${joueur.nom} pioche une carte avec le 5<br>`;
 
         }
         else{
@@ -2637,7 +2649,7 @@ function gererActionBot(){
     if(cartesDisponibles.length === 0){
 
         historique +=
-            `${joueur.nom} ne trouve aucune carte à voler avec le 13.<br>`;
+            `${joueur.nom} ne trouve aucune carte à voler avec le 13<br>`;
 
         actionEnCours = null;
         cibleChoisie = null;
@@ -2725,7 +2737,7 @@ function gererActionBot(){
     if(cartesDisponibles.length === 0){
 
         historique +=
-            `${joueur.nom} ne trouve aucune carte à doubler avec le 15.<br>`;
+            `${joueur.nom} ne trouve aucune carte à doubler avec le 15<br>`;
 
         actionEnCours = null;
         cibleChoisie = null;
@@ -3096,7 +3108,7 @@ function choisirAdversaireVol1(index){
         }
 
         historique +=
-        `${joueur.nom} vole la dernière carte de ${cible.nom} avec le 1<br>`;
+        `${joueur.nom} vole la dernière carte (${carte.valeur}) de ${cible.nom} avec le 1<br>`;
 
     }else{
 
@@ -3154,7 +3166,7 @@ function choisirAdversaireCarte3(index){
     }
 
     historique +=
-    `${joueurs[joueurActuel].nom} inflige -20 à ${cible.nom} avec le 3<br>`;
+    `${joueurs[joueurActuel].nom} inflige (-20) à ${cible.nom} avec le 3<br>`;
 
     // Si le 3 vient du double 17,
     // on revient à la deuxième carte
@@ -3254,7 +3266,7 @@ function effetCarte11(valeur){
     });
 
     historique +=
-    `${joueur.nom} ${valeur > 0 ? "+" : ""}${valeur} avec le 11<br>`;
+    `${joueur.nom} (${valeur > 0 ? "+" : ""}${valeur}) avec le 11<br>`;
 
     // Si le 11 vient du double 17,
     // on continue avec la deuxième carte
@@ -3325,7 +3337,7 @@ function volerCarte13(carteIndex){
     if(cible === joueur){
 
         historique +=
-        `${joueur.nom} ne peut pas voler sa propre carte avec le 13.<br>`;
+        `${joueur.nom} ne peut pas voler sa propre carte avec le 13<br>`;
 
         afficherJeu();
         return;
@@ -3353,7 +3365,7 @@ function volerCarte13(carteIndex){
     cartesTable.push(carte);
 
     historique +=
-    `${joueur.nom} vole ${carte.valeur} à ${cible.nom} avec le 13<br>`;
+    `${joueur.nom} vole (${carte.valeur}) à ${cible.nom} avec le 13<br>`;
 
     // FIN DE PARTIE
 
@@ -3424,7 +3436,7 @@ function doublerCarte15(carteIndex){
     carte.liee = true;
 
     historique +=
-    `${joueur.nom} double ${ancienneValeur} en ${nouvelleValeur} avec le 15<br>`;
+    `${joueur.nom} double (${ancienneValeur}) en (${nouvelleValeur}) avec le 15<br>`;
 
     // Vérifier la victoire
 
@@ -3986,8 +3998,8 @@ function choisirAdversaireCarte19(index){
     carteCible.proprietaire = joueur.nom;
 
     historique +=
-    `${joueur.nom} échange avec ${cible.nom} sa dernière carte jouée avec le 19<br>`;
-
+    `${joueur.nom} échange avec ${cible.nom} sa dernière carte (${valeurJoueur}) contre (${valeurCible}) avec le 19<br>`;
+  
     // SI LE 19 VIENT DU DOUBLE 17
 
     if(double17EnCours){
@@ -4039,7 +4051,7 @@ function effetCarte21(valeur){
 
         // Historique AVANT de continuer le Double 17
         historique +=
-        `${joueur.nom} +20 avec le 21<br>`;
+        `${joueur.nom} (+20) avec le 21<br>`;
 
         // Vérifier la victoire
         if(verifierFinPartie()){
@@ -4109,7 +4121,7 @@ function cibleCarte21(index){
 
     // Historique AVANT de continuer le Double 17
     historique +=
-    `${joueur.nom} inflige -20 à ${cible.nom} avec le 21<br>`;
+    `${joueur.nom} inflige (-20) à ${cible.nom} avec le 21<br>`;
 
     // Vérifier la victoire
     if(verifierFinPartie()){
@@ -4173,7 +4185,7 @@ function effetJoker(choix){
         }
 
         historique +=
-        `${joueur.nom} +10 avec le Joker<br>`;
+        `${joueur.nom} (+10) avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
@@ -4222,7 +4234,7 @@ function effetJoker(choix){
         }
 
         historique +=
-        `${joueur.nom} +22 avec le Joker<br>`;
+        `${joueur.nom} (+22) avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
@@ -4937,19 +4949,19 @@ function volerDouble1(){
     if(cartesVolees.length === 2){
 
         historique +=
-        `${joueur.nom} vole les deux dernières cartes de ${cible.nom} avec le double 1<br>`;
-
+        `${joueur.nom} vole les deux dernières cartes de ${cible.nom} (${cartesVolees[0].valeur}) (${cartesVolees[1].valeur}) avec le Double 1<br>`;
+        
     }
     else if(cartesVolees.length === 1){
 
         historique +=
-        `${joueur.nom} vole la dernière carte de ${cible.nom} avec le double 1<br>`;
+        `${joueur.nom} vole la dernière carte de ${cible.nom} (${cartesVolees[0].valeur}) avec le Double 1<br>`;
 
     }
     else{
 
         historique +=
-        `${joueur.nom} joue double 1, aucune carte disponible<br>`;
+        `${joueur.nom} joue Double 1, aucune carte disponible<br>`;
 
     }
 
@@ -4988,7 +5000,7 @@ function choisirAdversaireDouble3(index){
     });
 
     historique +=
-    `${joueurs[joueurActuel].nom} inflige -40 à ${cible.nom} avec le double 3<br>`;
+    `${joueurs[joueurActuel].nom} inflige (-40) à ${cible.nom} avec le Double 3<br>`;
 
     if(verifierFinPartie()){
         return;
@@ -5025,7 +5037,7 @@ function choisirAdversaireDouble9(index){
     cible.main = mainTemporaire;
 
     historique +=
-    `${joueur.nom} échange sa main avec ${cible.nom} avec le double 9<br>`;
+    `${joueur.nom} échange sa main avec ${cible.nom} avec le Double 9<br>`;
 
     // Fin du pouvoir
 
@@ -5057,7 +5069,7 @@ function effetDouble11(valeur){
     });
 
     historique +=
-    `${joueur.nom} ${valeur > 0 ? "+20" : "-20"} avec le double 11<br>`;
+    `${joueur.nom} (${valeur > 0 ? "+20" : "-20"}) avec le Double 11<br>`;
 
     if(verifierFinPartie()){
         return;
@@ -5137,7 +5149,7 @@ function volerCartesDouble13(){
     if(cartesDisponibles.length === 0){
 
         historique +=
-        `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+        `${joueur.nom} joue le Double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
 
     }else{
 
@@ -5181,19 +5193,19 @@ function volerCartesDouble13(){
         if(cartesVolees.length === 2){
 
             historique +=
-            `${joueur.nom} vole deux cartes à ${cible.nom} avec le double 13<br>`;
+            `${joueur.nom} vole deux cartes à ${cible.nom} (${cartesVolees[0].valeur}) (${cartesVolees[1].valeur}) avec le Double 13<br>`;
 
         }
         else if(cartesVolees.length === 1){
 
             historique +=
-            `${joueur.nom} vole une carte à ${cible.nom} avec le double 13<br>`;
+            `${joueur.nom} vole une carte à ${cible.nom} (${cartesVolees[0].valeur}) avec le Double 13<br>`;
 
         }
         else{
 
             historique +=
-            `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+            `${joueur.nom} joue le Double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
 
         }
 
@@ -5229,7 +5241,7 @@ function terminerDouble13(){
     let cible = joueurs[cibleChoisie];
 
     historique +=
-    `${joueur.nom} joue le double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+    `${joueur.nom} joue le Double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
 
     piocherCarte(joueur);
 
@@ -5277,7 +5289,7 @@ function triplerCarte15(carteIndex){
     carte.liee = true;
 
     historique +=
-    `${joueur.nom} triple ${ancienneValeur} en ${nouvelleValeur} avec le double 15<br>`;
+    `${joueur.nom} triple (${ancienneValeur}) en (${nouvelleValeur}) avec le Double 15<br>`;
 
     if(verifierFinPartie()){
         afficherJeu();
@@ -5309,7 +5321,7 @@ function terminerDouble15(){
     let joueur = joueurs[joueurActuel];
 
     historique +=
-    `${joueur.nom} ne peut pas utiliser le double 15 car il n'a aucune carte à points.<br>`;
+    `${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
 
     if(verifierFinPartie()){
         return;
@@ -5346,7 +5358,7 @@ function choisirAdversaireDouble17(index){
     if(nombreCartes === 0){
 
         historique +=
-        `${joueur.nom} joue le double 17, aucune carte disponible dans la main de ${cible.nom}<br>`;
+        `${joueur.nom} joue le Double 17, aucune carte disponible dans la main de ${cible.nom}<br>`;
 
         piocherCarte(joueur);
 
@@ -5381,13 +5393,13 @@ function choisirAdversaireDouble17(index){
     if(cartesDouble17.length === 2){
 
         historique +=
-        `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le double 17<br>`;
+        `${joueur.nom} vole deux cartes dans la main de ${cible.nom} avec le Double 17<br>`;
 
     }
     else if(cartesDouble17.length === 1){
 
         historique +=
-        `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le 17<br>`;
+        `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le Double 17<br>`;
 
     }
 
@@ -5462,7 +5474,7 @@ cartesTable.push({
 });
 
 historique +=
-`${joueur.nom} joue ${carte} avec le double 17 (+${carte})<br>`;
+`${joueur.nom} joue ${carte} avec le Double 17 (+${carte})<br>`;
 
 // Vérifier la victoire
 
@@ -5515,17 +5527,17 @@ cartesPiochees++;
 if(cartesPiochees === 2){
 
     historique +=
-    `${joueur.nom} joue 5 avec le double 17 et pioche 2 cartes<br>`;
+    `${joueur.nom} joue 5 avec le Double 17 et pioche deux cartes<br>`;
 
 }else if(cartesPiochees === 1){
 
     historique +=
-    `${joueur.nom} joue 5 avec le double 17 et pioche 1 carte<br>`;
+    `${joueur.nom} joue 5 avec le Double 17 et pioche une carte<br>`;
 
 }else{
 
     historique +=
-    `${joueur.nom} joue 5 avec le double 17, aucune carte disponible<br>`;
+    `${joueur.nom} joue 5 avec le Double 17, aucune carte disponible<br>`;
 
 }
 
@@ -5554,7 +5566,7 @@ return;
     });
 
     historique +=
-    `${joueur.nom} joue 7 avec le double 17 (+20)<br>`;
+    `${joueur.nom} joue 7 avec le Double 17 (+20)<br>`;
 
     if(verifierFinPartie()){
         return;
@@ -5644,7 +5656,7 @@ function terminerDouble17(){
     piocherCarte(joueur);
 
     historique +=
-    `${joueur.nom} termine son double 17 <br>`;
+    `${joueur.nom} termine son Double 17 <br>`;
 
     actionEnCours = null;
     double17EnCours = false;
@@ -5778,19 +5790,18 @@ function effectuerEchangeDouble19(){
     if(nombreEchange >= 2){
 
         historique +=
-        `${joueur.nom} échange avec ${cible.nom} les deux dernières cartes jouées avec le double 19<br>`;
-
+        `${joueur.nom} échange avec ${cible.nom} les deux dernières cartes jouées (${cartesJoueur[cartesJoueur.length - 2].valeur}) (${cartesJoueur[cartesJoueur.length - 1].valeur}) contre (${cartesCible[cartesCible.length - 2].valeur}) (${cartesCible[cartesCible.length - 1].valeur}) avec le Double 19<br>`;
+   
     }
     else if(nombreEchange === 1){
 
         historique +=
-        `${joueur.nom} échange avec ${cible.nom} la dernière carte jouée avec le double 19<br>`;
-
+        `${joueur.nom} échange avec ${cible.nom} sa dernière carte jouée (${cartesJoueur[cartesJoueur.length - 1].valeur}) contre (${cartesCible[cartesCible.length - 1].valeur}) avec le Double 19<br>`;
     }
     else{
 
         historique +=
-        `${joueur.nom} joue le double 19, aucune carte disponible<br>`;
+        `${joueur.nom} joue le Double 19, aucune carte disponible<br>`;
 
     }
 
@@ -5834,7 +5845,7 @@ function effetDouble21(valeur){
         });
 
         historique +=
-        `${joueur.nom} +40 points avec le double 21<br>`;
+        `${joueur.nom} (+40) avec le Double 21<br>`;
 
         if(verifierFinPartie()){
             return;
@@ -5887,7 +5898,7 @@ function cibleDouble21(index){
     });
 
     historique +=
-    `${joueur.nom} inflige -40 points à ${cible.nom} avec le double 21.<br>`;
+    `${joueur.nom} inflige (-40) à ${cible.nom} avec le Double 21<br>`;
 
     // Vérifier la fin de partie
 
