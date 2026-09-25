@@ -833,12 +833,43 @@ ${cible.nom}
 
 if(actionEnCours === "vol1"){
 
+let adversairesDisponibles = joueurs.filter((adversaire,index) => {
+
+if(index === joueurActuel){
+return false;
+}
+
+return cartesTable.some(carte =>
+carte.proprietaire === adversaire.nom &&
+carte.valeur !== 0
+);
+
+});
+
+// Aucun adversaire avec une carte à points posée
+
+if(adversairesDisponibles.length === 0){
+
+historique +=
+`${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 1<br>`;
+
+actionEnCours = null;
+
+if(!gererFinTourMultijoueur()){
+passerJoueur();
+}
+
+afficherJeu();
+
+}
+else{
+
 zoneJeu.innerHTML +=
 "<h3>Choisir un adversaire :</h3>";
 
-joueurs.forEach((adversaire,index)=>{
+adversairesDisponibles.forEach(adversaire => {
 
-if(index !== joueurActuel){
+let index = joueurs.indexOf(adversaire);
 
 zoneJeu.innerHTML +=
 `
@@ -847,9 +878,9 @@ ${adversaire.nom}
 </button>
 `;
 
-}
-
 });
+
+}
 
 }
 
