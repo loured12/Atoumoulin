@@ -3108,8 +3108,8 @@ function choisirAdversaireVol1(index){
         }
 
         historique +=
-        `${joueur.nom} vole la dernière carte (${carte.valeur}) de ${cible.nom} avec le 1<br>`;
-
+        `${joueur.nom} vole la dernière carte (${carteVolee.valeur}) de ${cible.nom} avec le 1<br>`;
+        
     }else{
 
         historique +=
