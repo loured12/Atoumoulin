@@ -1509,11 +1509,18 @@ if(actionEnCours === "double19"){
 
     if(adversairesDisponibles.length === 0){
 
+        historique +=
+        `${joueurs[joueurActuel].nom} joue Double 19, aucune carte disponible<br>`;
+
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
-            passerJoueur();
+        passerJoueur();
         }
+
+        afficherJeu();
+
+        return;
 
     }
     else{
