@@ -1566,6 +1566,10 @@ if(actionEnCours === "carte19"){
         passerJoueur();
         }
 
+        afficherJeu();
+
+        return;
+
     }
     else{
 
