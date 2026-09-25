@@ -253,6 +253,36 @@ if(actionEnCours === "partieTerminee"){
 
     </div>
     </div>
+
+    <div class="historique-jeu">
+        <h3>Historique :</h3>
+        <div class="historique-contenu">
+            ${historique
+                .split("<br>")
+                .filter(function(ligne){
+                    return ligne.trim() !== "" &&
+                           !ligne.includes("Score :");
+                })
+                .reverse()
+                .map(function(ligne){
+
+                    let joueurTrouve = joueurs.find(function(joueur){
+                        return ligne.trim().startsWith(joueur.nom);
+                    });
+
+                    if(joueurTrouve){
+
+                        let indexJoueur = joueurs.indexOf(joueurTrouve);
+
+                        return `${couleurJoueur(indexJoueur)} ${ligne}`;
+                    }
+
+                    return ligne;
+                })
+                .join("<br>")}
+        </div>
+    </div>
+
     `;
 
     return;
