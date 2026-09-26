@@ -266,9 +266,14 @@ if(actionEnCours === "partieTerminee"){
                 .reverse()
                 .map(function(ligne){
 
-                    let joueurTrouve = joueurs.find(function(joueur){
-                        return ligne.trim().startsWith(joueur.nom);
-                    });
+                    let joueurTrouve = joueurs
+                        .slice()
+                        .sort(function(a, b){
+                            return b.nom.length - a.nom.length;
+                        })
+                        .find(function(joueur){
+                            return ligne.trim().startsWith(joueur.nom);
+                        });
 
                     if(joueurTrouve){
 
