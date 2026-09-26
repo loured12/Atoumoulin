@@ -142,7 +142,6 @@
   box.innerHTML = `<h2>🌐 Multijoueur</h2>
   <div id="multiStatus">${SERVER_URL ? "Prêt à se connecter" : "Version solo disponible"}</div>
   <input id="mpName" maxlength="24" value="${SAVED_NAME.replace(/"/g,"&quot;")}" placeholder="Ton nom">
-  <select id="mpMax">${[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n} joueurs max</option>`).join("")}</select>  
   <button id="mpCreate">Créer un salon</button>
   <input id="mpCode" maxlength="6" placeholder="CODE">
   <button id="mpJoin">Rejoindre</button>
@@ -576,11 +575,25 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
     const joueursHumains = r.players.filter(p => !p.bot);
 
+    const spectateurs = r.spectators || [];
+
     $("multiPlayers").innerHTML =
-    `<strong>${joueursHumains.length}/${r.maxPlayers} joueurs</strong>` +
+    `<strong>${joueursHumains.length}/8 joueurs</strong>` +
+
     joueursHumains.map(p =>
     `<div>👤 ${p.name}${p.id === r.hostId ? " 👑" : ""}</div>`
-    ).join("");
+    ).join("") +
+
+    (spectateurs.length > 0
+    ? `
+    <div style="margin-top:8px;font-weight:bold;">
+      👁️ Spectateurs (${spectateurs.length})
+    </div>
+    ${spectateurs.map(p =>
+      `<div>👁️ ${p.name}</div>`
+    ).join("")}
+    `
+    : "");
 
     $("mpStart").disabled =
       myId !== r.hostId ||
@@ -752,8 +765,7 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
     const action = {
       type: "room:create",
-      name: $("mpName").value,
-      maxPlayers: Number($("mpMax").value)
+      name: $("mpName").value      
     };
 
     if (ws && ws.readyState === WebSocket.OPEN) {
