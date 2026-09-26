@@ -6247,6 +6247,43 @@ function afficherFinManche(gagnant){
         `;
 }
 
+function ajusterLargeurModeJeu(){
+
+    const select = document.getElementById("modeJeu");
+
+    if(!select){
+        return;
+    }
+
+    const option = select.options[select.selectedIndex];
+
+    const texte = document.createElement("span");
+    const style = getComputedStyle(select);
+
+    texte.style.position = "absolute";
+    texte.style.visibility = "hidden";
+    texte.style.whiteSpace = "nowrap";
+    texte.style.font = style.font;
+
+    texte.textContent = option.textContent;
+
+    document.body.appendChild(texte);
+
+    select.style.width = `${texte.offsetWidth + 35}px`;
+
+    texte.remove();
+
+}
+
+const modeJeuSelect = document.getElementById("modeJeu");
+
+modeJeuSelect.addEventListener(
+    "change",
+    ajusterLargeurModeJeu
+);
+
+ajusterLargeurModeJeu();
+
 function afficherRegles(){
 
     document.getElementById("fenetreRegles").style.display = "flex";
