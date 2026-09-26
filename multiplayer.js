@@ -623,7 +623,7 @@ for(let bots = 0; bots <= nombreBots; bots++){
     $("multiPlayers").innerHTML =
       `<strong>👤 ${joueursHumains.length} Joueur${joueursHumains.length === 1 ? "" : "s"}</strong>` +
       joueursHumains.map(p =>
-        `<div>♟️ ${p.name}${p.id === r.hostId ? " (Hôte)" : ""}</div>`
+        `<div>♟️ <strong>${p.name}</strong>${p.id === r.hostId ? " (Hôte)" : ""}</div>`
       ).join("") +
     
     (spectateurs.length > 0
