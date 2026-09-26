@@ -106,9 +106,8 @@
      type:"game:action",
      fn:"nouvellePartieMultijoueur",
      args:[
-      Number(document.getElementById("modeJeu").value || 1),
-      Number(document.getElementById("nombreJoueurs").value || 2),
-      Number(document.getElementById("nombreBots").value || 0)
+     Number(document.getElementById("modeJeu").value || 1),
+     Number(document.getElementById("nombreJoueurs").value || 2)
      ]
     });
 
