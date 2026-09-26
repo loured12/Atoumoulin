@@ -453,6 +453,9 @@ if(m.type==="game:select"){
  if(!room.started)
   throw Error("La partie n'a pas commencé.");
 
+ if(room.spectators.some(p=>p.id===player.id))
+  throw Error("Vous êtes spectateur.");
+
  if(player.index!==room.engine.currentIndex())
   throw Error("Ce n'est pas votre tour.");
 
@@ -488,6 +491,9 @@ if(m.type==="game:action"){
 
  if(!room.started)
   throw Error("La partie n'a pas commencé.");
+
+ if(room.spectators.some(p=>p.id===player.id))
+  throw Error("Vous êtes spectateur.");
 
  const fn=String(m.fn||"");
 
