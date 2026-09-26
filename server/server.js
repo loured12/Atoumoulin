@@ -580,8 +580,7 @@ if(fn==="nouvellePartieMultijoueur"){
       2,
       Math.min(
         8,
-        nombreHumains +
-        spectateursDisponibles.length
+        Number(args[1]) || nombreHumains
       )
     );
 
