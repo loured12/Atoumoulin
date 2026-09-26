@@ -1075,6 +1075,23 @@ label {
     margin-top: 0px;
 }
 
+.mp-input-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.mp-input-icon > span {
+    position: absolute;
+    left: 9px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.mp-input-icon input {
+    padding-left: 32px !important;
+}
+
 #mpName,
 #mpCode {
     appearance: none;
