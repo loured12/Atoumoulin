@@ -6269,7 +6269,7 @@ function ajusterLargeurModeJeu(){
 
     document.body.appendChild(texte);
 
-    select.style.width = `${texte.offsetWidth + 35}px`;
+    select.style.width = `${texte.offsetWidth + 45}px`;
 
     texte.remove();
 
