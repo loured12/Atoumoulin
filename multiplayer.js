@@ -820,7 +820,10 @@ for(let bots = 0; bots <= nombreBots; bots++){
     document.querySelectorAll("#nombreBots");
 
   const nombreJoueursMultijoueur =
-    Number(tousLesJoueurs[0]?.value || 2);
+    Math.min(
+      8,
+      Number(tousLesJoueurs[0]?.value || 2)
+    );
 
   const nombreBotsMultijoueur =
     Number(tousLesBots[0]?.value || 0);
