@@ -633,7 +633,7 @@ label {
 .score-cible {
   display: inline-block;
 
-  margin: 12px auto 18px;
+  margin: 12px auto 8px;
   padding: 10px 22px;
 
   border: 2px solid #d7b72f;
