@@ -131,7 +131,10 @@ r.spectators.forEach(p=>{
     type:"game:state",
     seq,
     playerIndex:-1,
-    state:publicState(r,r.players[0])
+    state:publicState(r,{
+    index:-1,
+    selection:[]
+    })
   });
  
 });
@@ -345,7 +348,7 @@ wss.on("connection",ws=>{
 
   // Maximum 8 joueurs actifs.
   // Les joueurs supplémentaires deviennent spectateurs.
-  if(room.players.length < 8){
+  if(!room.started && room.players.length < 8){
 
     player={
       id:id(),
