@@ -18,6 +18,24 @@ const makeCode=()=>{
 
 const name=n=>String(n||"Joueur").trim().slice(0,24)||"Joueur";
 
+function nomUnique(room, nomBase){
+
+  const nomsPris = [
+    ...room.players,
+    ...room.spectators
+  ].map(p => String(p.name || "").toLowerCase());
+
+  let nom = nomBase;
+  let numero = 2;
+
+  while(nomsPris.includes(nom.toLowerCase())){
+    nom = `${nomBase} ${numero}`;
+    numero++;
+  }
+
+  return nom;
+}
+
 const send=(ws,m)=>{
  if(ws?.readyState===1)ws.send(JSON.stringify(m));
 };
@@ -353,7 +371,7 @@ wss.on("connection",ws=>{
     player={
       id:id(),
       token:id(),
-      name:name(m.name),
+      name:nomUnique(room, name(m.name)),
       bot:false,
       connected:true,
       ws,
@@ -375,7 +393,7 @@ wss.on("connection",ws=>{
     const spectator={
       id:id(),
       token:id(),
-      name:name(m.name),
+      name:nomUnique(room, name(m.name)),
       connected:true,
       ws
     };
