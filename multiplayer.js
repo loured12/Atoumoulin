@@ -467,27 +467,36 @@ document.addEventListener("click", e => {
   function renderRoom(r) {
     room = r;
 
+    const joueurActif =
+      r.players.some(p => p.id === myId);
+
+    const joueurSpectateur =
+      r.spectators.some(p => p.id === myId);
+
+    globalThis.__atoumoulinSpectateur =
+      joueurSpectateur && !joueurActif;
+
     const humainsDansLeSalon =
-    r.players.filter(p => !p.bot).length;
+      r.players.filter(p => !p.bot).length;
 
     const choixJoueursMulti =
-    document.getElementById("nombreJoueurs");
+      document.getElementById("nombreJoueurs");
 
     const choixBotsMulti =
-    document.getElementById("nombreBots");
+      document.getElementById("nombreBots");
 
    if (choixJoueursMulti && choixBotsMulti) {
 
     const valeurActuelle =
-    Number(choixJoueursMulti.value);
+      Number(choixJoueursMulti.value);
 
-   choixJoueursMulti.innerHTML = "";
+      choixJoueursMulti.innerHTML = "";
 
-  for (
-    let total = humainsDansLeSalon;
-    total <= 8;
-    total++
-  ) {
+   for (
+     let total = humainsDansLeSalon;
+     total <= 8;
+     total++
+   ) {
 
     const option =
       document.createElement("option");
