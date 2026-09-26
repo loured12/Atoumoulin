@@ -1090,6 +1090,7 @@ label {
 
 .mp-input-icon input {
     padding-left: 32px !important;
+    background: #fff4d6 !important;
 }
 
 #mpName,
