@@ -396,6 +396,8 @@ wss.on("connection",ws=>{
 
   return;
 
+  }
+
  if(!room||!player)
   throw Error("Rejoignez d'abord un salon.");
 
