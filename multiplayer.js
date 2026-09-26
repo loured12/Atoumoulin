@@ -616,7 +616,7 @@ for(let bots = 0; bots <= nombreBots; bots++){
     const spectateurs = r.spectators || [];
 
     $("multiPlayers").innerHTML =
-      `<strong>👤 ${joueursHumains.length} joueur${joueursHumains.length === 1 ? "" : "s"}</strong>` +
+      `<strong>👤 ${joueursHumains.length} Joueur${joueursHumains.length === 1 ? "" : "s"}</strong>` +
       joueursHumains.map(p =>
         `<div>♟️ ${p.name}${p.id === r.hostId ? " (Hôte)" : ""}</div>`
       ).join("") +
