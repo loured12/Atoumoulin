@@ -1069,7 +1069,8 @@ label {
 
 .mp-action-row {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 4px;
+    margin-top: 0px;
 }
