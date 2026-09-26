@@ -704,7 +704,17 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
         started = true;
 
-        applyGameState(m.state, m.seq || 0, m.playerIndex);
+        globalThis.__atoumoulinPlayerIndex =
+         Number(m.playerIndex);
+
+        globalThis.__atoumoulinSpectateur =
+         Number(m.playerIndex) === -1;
+
+         applyGameState(
+          m.state,
+          m.seq || 0,
+          m.playerIndex
+          );
       }
 
       if (m.type === "player:bot")
@@ -822,10 +832,17 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
     window[name] = function(...args) {
 
-  if (!started)
-    return original.apply(this,args);
+    if (
+      started &&
+      globalThis.__atoumoulinSpectateur
+    ){
+      return status("👁️ Vous êtes spectateur.");
+    }
 
-  if(name === "preparerNouvelleManche"){
+    if (!started)
+      return original.apply(this,args);
+
+    if(name === "preparerNouvelleManche"){
 
     if(!room || myId !== room.hostId){
       return status("⚠️ Seul l'hôte peut lancer une nouvelle manche.");
@@ -857,16 +874,25 @@ for(let bots = 0; bots <= nombreBots; bots++){
     if (typeof original !== "function") return;
 
     window[name] = function(index) {
-        if (!started)
-            return original.call(this,index);
 
-        original.call(this,index);
+    if (
+      started &&
+      globalThis.__atoumoulinSpectateur
+    ){
+      return status("👁️ Vous êtes spectateur.");
+    }
 
-        return send({
-            type:"game:select",
-            selection: carteChoisie
-        });
-    };
+    if (!started)
+        return original.call(this,index);
+
+    original.call(this,index);
+
+    return send({
+        type:"game:select",
+        selection: carteChoisie
+    });
+ };
+    
 }
   
   hookSelection("selectionnerCarte");
