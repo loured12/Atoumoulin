@@ -17,6 +17,8 @@ function element(id) {
     innerHTML: "",
     style: { display: "" },
     children: [],
+    options: [],
+    selectedIndex: 0,
     classList: {
       add() {},
       remove() {},
