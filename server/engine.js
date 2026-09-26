@@ -17,7 +17,9 @@ function element(id) {
     innerHTML: "",
     style: { display: "" },
     children: [],
-    options: [],
+    options: id === "modeJeu"
+      ? [{ textContent: "Mode 1" }]
+      : [],
     selectedIndex: 0,
     classList: {
       add() {},
