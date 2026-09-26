@@ -131,6 +131,13 @@
   const style = document.createElement("style");
   style.textContent = `#multiBox{margin:16px auto;max-width:700px;padding:16px;border:1px solid #aaa;border-radius:12px;background:#fff}
   #multiBox input,#multiBox select,#multiBox button{margin:4px;padding:8px;font-size:16px}
+  #multiBox #mpName,#multiBox #mpCode{
+    background:#fff0f0 !important;
+    background-image:none !important;
+    color:#287a3e !important;
+    border:1px solid #e0b0b0 !important;
+    border-radius:8px;
+  }
   #multiStatus{font-weight:bold;margin:8px 0}.mp-player{padding:4px 0}
   #multiChat{height:150px;overflow:auto;border:1px solid #bbb;padding:8px}`;
   document.head.appendChild(style);
