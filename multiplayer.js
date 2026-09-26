@@ -145,7 +145,7 @@
   <input id="mpCode" maxlength="6" placeholder="CODE">
   <button id="mpJoin">Rejoindre</button>
   <div id="mpRoom" hidden>
-    <div>Code salon : <strong id="mpRoomCode"></strong></div>
+    <div>🔑 Code salon : <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
     <button id="mpStart">Lancer la partie</button>
   </div>`;
@@ -616,9 +616,9 @@ for(let bots = 0; bots <= nombreBots; bots++){
     const spectateurs = r.spectators || [];
 
     $("multiPlayers").innerHTML =
-      `<strong>${joueursHumains.length} joueur${joueursHumains.length === 1 ? "" : "s"}</strong>` +
+      `<strong>👤 ${joueursHumains.length} joueur${joueursHumains.length === 1 ? "" : "s"}</strong>` +
       joueursHumains.map(p =>
-        `<div>👤 ${p.name}${p.id === r.hostId ? " (Hôte)" : ""}</div>`
+        `<div>♟️ ${p.name}${p.id === r.hostId ? " (Hôte)" : ""}</div>`
       ).join("") +
     
     (spectateurs.length > 0
