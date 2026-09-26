@@ -63,9 +63,17 @@ function makeSandbox() {
     }
   };
 
+  const getComputedStyle = () => ({
+    font: "",
+    fontSize: "16px",
+    fontFamily: "Arial",
+    fontWeight: "400"
+  });
+
   return {
     console,
     document,
+    getComputedStyle,
     globalThis: null,
     window: null,
     setTimeout,
