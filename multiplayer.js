@@ -597,22 +597,38 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
     $("mpStart").disabled =
       myId !== r.hostId ||
+      globalThis.__atoumoulinSpectateur ||
       r.players.length < 2 ||
       r.started;
 
     $("mpStart").style.display =
-      myId === r.hostId && !r.started ? "" : "none";
-
+      myId === r.hostId &&
+      !globalThis.__atoumoulinSpectateur &&
+      !r.started
+        ? ""
+        : "none";
+    
     if(boutonNouvellePartie){
-    boutonNouvellePartie.style.display =
-        myId === r.hostId ? "" : "none";
+
+      boutonNouvellePartie.style.display =
+        myId === r.hostId &&
+        !globalThis.__atoumoulinSpectateur
+          ? ""
+          : "none";
+
     }
 
-    const configurationJeu = document.querySelector(".configuration-jeu");
+    const configurationJeu =
+      document.querySelector(".configuration-jeu");
 
     if(configurationJeu){
-    configurationJeu.style.display =
-    myId === r.hostId ? "" : "none";
+
+      configurationJeu.style.display =
+        myId === r.hostId &&
+        !globalThis.__atoumoulinSpectateur
+          ? ""
+          : "none";
+
     }
 
     if (r.started && !document.getElementById("chatBulle")) {
@@ -664,7 +680,12 @@ for(let bots = 0; bots <= nombreBots; bots++){
     };
 
     ws.onclose = () => {
+
       started = false;
+
+      globalThis.__atoumoulinSpectateur = false;
+      globalThis.__atoumoulinPlayerIndex = -1;
+
       status("Connexion perdue — le mode solo reste disponible");
     };
 
@@ -697,6 +718,13 @@ for(let bots = 0; bots <= nombreBots; bots++){
       if (m.room) {
         localStorage.setItem("atoumoulin_room_code", m.room.code);
         renderRoom(m.room);
+      }
+
+      if (m.type === "room:joined") {
+
+        globalThis.__atoumoulinSpectateur =
+        m.spectator === true;
+
       }
 
       if (m.type === "game:start") {
