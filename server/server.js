@@ -660,7 +660,8 @@ if(nombreJoueurs < nombreHumains)
   room.engine=new AtoumoulinEngine(
     room.players.map(p=>p.name),
     room.players.map(p=>p.bot),
-    room.mode
+    room.mode,
+    room.botLevel
   );
 
   broadcast(room,{
