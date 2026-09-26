@@ -141,14 +141,15 @@
   box.innerHTML = `<h2>🌐 Multijoueur</h2>
   <div id="multiStatus">${SERVER_URL ? "Prêt à se connecter" : "Version solo disponible"}</div>
   <div class="mp-action-row">
-    <input id="mpName" maxlength="24" value="${SAVED_NAME.replace(/"/g,"&quot;")}" placeholder="Ton nom">
+    <input id="mpName" maxlength="24" value="${SAVED_NAME.replace(/"/g,"&quot;")}" placeholder="♟️ Ton nom">
     <button id="mpCreate">Créer un salon</button>
   </div>
 
   <div class="mp-action-row">
-    <input id="mpCode" maxlength="6" placeholder="CODE">
+    <input id="mpCode" maxlength="6" placeholder="🔑 Code salon">
     <button id="mpJoin">Rejoindre</button>
   </div>
+
   <div id="mpRoom" hidden>
     <div>🔑 Code salon : <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
