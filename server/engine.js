@@ -56,6 +56,9 @@ function makeSandbox() {
   );
 
   const document = {
+    body: {
+      appendChild() {}
+    },
     getElementById(id) {
       if (!els.has(id)) els.set(id, element(id));
       return els.get(id);
