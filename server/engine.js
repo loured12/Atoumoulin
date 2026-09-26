@@ -30,6 +30,7 @@ function element(id) {
       this.children.push(x);
     },
     removeChild() {},
+    remove() {},
     addEventListener() {},
     querySelector() {
       return null;
