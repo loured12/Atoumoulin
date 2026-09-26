@@ -518,10 +518,25 @@ document.addEventListener("click", e => {
 
   choixBotsMulti.innerHTML = "";
 
-  const nombreBots =
-  nouveauTotal - humainsDansLeSalon;
+  const nombreSpectateursDisponibles =
+    (r.spectators || []).length;
 
-  choixBotsMulti.innerHTML = "";
+  const placesApresHumains =
+    Math.max(
+      0,
+      nouveauTotal - humainsDansLeSalon
+    );
+
+  const nombreSpectateursPris =
+    Math.min(
+      nombreSpectateursDisponibles,
+      placesApresHumains
+    );
+
+  const nombreBots =
+    placesApresHumains - nombreSpectateursPris;
+
+    choixBotsMulti.innerHTML = "";
 
 for(let bots = 0; bots <= nombreBots; bots++){
 
@@ -548,23 +563,38 @@ for(let bots = 0; bots <= nombreBots; bots++){
   const total =
     Number(choixJoueursMulti.value);
 
-  const bots =
-    total - humains;
+  const spectateursDisponibles =
+    (r.spectators || []).length;
 
-  choixBotsMulti.innerHTML = "";
+  const placesApresHumains =
+    Math.max(
+      0,
+      total - humains
+    );
+
+  const spectateursPris =
+    Math.min(
+      spectateursDisponibles,
+      placesApresHumains
+    );
+
+  const bots =
+    placesApresHumains - spectateursPris;
+
+    choixBotsMulti.innerHTML = "";
 
   const optionBot =
     document.createElement("option");
 
-  optionBot.value = bots;
-  optionBot.textContent =
-    `${bots} bot${bots === 1 ? "" : "s"}`;
+    optionBot.value = bots;
+    optionBot.textContent =
+      `${bots} bot${bots === 1 ? "" : "s"}`;
 
-  choixBotsMulti.appendChild(optionBot);
+    choixBotsMulti.appendChild(optionBot);
 
-  choixBotsMulti.value =
-    bots;
-};
+    choixBotsMulti.value =
+      bots;
+  };
 
     if (r.players.some(p => p.id === myId && !p.bot)) {
     const message = $("multiStatus");
