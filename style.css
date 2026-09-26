@@ -1075,12 +1075,12 @@ label {
     margin-top: 0px;
 }
 
-#mpName,
-#mpCode {
+#multiBox #mpName,
+#multiBox #mpCode {
     background: #fff0f0 !important;
-    border: 1px solid #e0b0b0;
+    border: 1px solid #e0b0b0 !important;
     border-radius: 8px;
-    color: #287a3e;
+    color: #287a3e !important;
     height: 36px;
     box-sizing: border-box;
 }
