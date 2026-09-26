@@ -616,12 +616,12 @@ for(let bots = 0; bots <= nombreBots; bots++){
     const spectateurs = r.spectators || [];
 
     $("multiPlayers").innerHTML =
-    `<strong>${joueursHumains.length}/8 joueurs</strong>` +
-
-    joueursHumains.map(p =>
-    `<div>👤 ${p.name}${p.id === r.hostId ? " 👑" : ""}</div>`
-    ).join("") +
-
+      `<strong>Code Salon : ${r.code}</strong>` +
+      `<div>${joueursHumains.length} joueur${joueursHumains.length === 1 ? "" : "s"}</div>` +
+      joueursHumains.map(p =>
+        `<div>👤 ${p.name}${p.id === r.hostId ? " (Hôte)" : ""}</div>`
+      ).join("") +
+    
     (spectateurs.length > 0
     ? `
     <div style="margin-top:8px;font-weight:bold;">
