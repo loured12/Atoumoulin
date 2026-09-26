@@ -145,7 +145,7 @@
   <input id="mpCode" maxlength="6" placeholder="CODE">
   <button id="mpJoin">Rejoindre</button>
   <div id="mpRoom" hidden>
-    <div>Salon : <strong id="mpRoomCode"></strong></div>
+    <div>Code salon : <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
     <button id="mpStart">Lancer la partie</button>
   </div>`;
