@@ -1120,4 +1120,5 @@ label {
 #mpCode::placeholder {
     color: #287a3e;
     opacity: 0.8;
+    font-weight: normal;
 }
