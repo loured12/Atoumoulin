@@ -1074,3 +1074,27 @@ label {
     gap: 4px;
     margin-top: 0px;
 }
+
+#mpName,
+#mpCode {
+    background: #fff0f0;
+    border: 1px solid #e0b0b0;
+    border-radius: 8px;
+    color: #287a3e;
+    height: 36px;
+    box-sizing: border-box;
+}
+
+#mpName {
+    width: 150px;
+}
+
+#mpCode {
+    width: 150px;
+}
+
+#mpName::placeholder,
+#mpCode::placeholder {
+    color: #287a3e;
+    opacity: 0.8;
+}
