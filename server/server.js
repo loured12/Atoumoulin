@@ -41,7 +41,7 @@ function roomCreate(n,max){
  const r={
   code:makeCode(),
   seq:0,
-  maxPlayers:Math.max(2,Math.min(8,Number(max)||8)),
+  maxPlayers:8,
   started:false,
   hostId:null,
   players:[],
