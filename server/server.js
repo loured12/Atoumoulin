@@ -22,7 +22,17 @@ const send=(ws,m)=>{
  if(ws?.readyState===1)ws.send(JSON.stringify(m));
 };
 
-const broadcast=(r,m)=>r.players.forEach(p=>send(p.ws,m));
+const broadcast=(r,m)=>{
+ 
+  r.players.forEach(p=>{
+    send(p.ws,m);
+  });
+ 
+  r.spectators.forEach(p=>{
+    send(p.ws,m);
+  });
+ 
+};
 
 const fail=(ws,m)=>send(ws,{type:"error",message:m});
 
@@ -111,6 +121,20 @@ function sendState(r){
     state:publicState(r,p)
    });
  });
+
+r.spectators.forEach(p=>{
+
+  if(!p.ws || !r.engine)
+    return;
+
+  send(p.ws,{
+    type:"game:state",
+    seq,
+    playerIndex:-1,
+    state:publicState(r,r.players[0])
+  });
+ 
+});
 }
 
 function lobby(r){
