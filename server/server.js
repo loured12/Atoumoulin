@@ -375,7 +375,10 @@ wss.on("connection",ws=>{
 
   const nombreJoueurs = Math.max(
     2,
-    Math.min(8, Number(m.players) || room.players.length)
+    Math.min(
+      8,
+      Number(m.players) || room.players.length
+    )
   );
 
   const nombreBots = Math.max(
