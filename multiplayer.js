@@ -156,7 +156,10 @@
   </div>
 
   <div class="mp-action-row">
-    <input id="mpCode" maxlength="6" placeholder="🔑 Code salon">
+    <div class="mp-input-icon">
+      <span>🔑</span>
+      <input id="mpCode" maxlength="6" placeholder="Code salon">
+    </div>
     <button id="mpJoin">Rejoindre</button>
   </div>
 
