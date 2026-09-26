@@ -98,10 +98,10 @@ function publicState(r,p){
       p?.selection ?? null
     );
 
-  if (special !== null) {
+  if (special !== null && special !== undefined) {
     return special;
   }
-
+ 
   return r.engine.stateFor(
     p.index,
     p?.selection ?? null
