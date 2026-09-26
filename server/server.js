@@ -560,39 +560,71 @@ if(fn==="nouvellePartieMultijoueur"){
   if(player.id!==room.hostId)
     throw Error("Seul l'hôte peut lancer une nouvelle partie.");
 
+  if(room.spectators.some(p => p.id === player.id))
+    throw Error("Un spectateur ne peut pas lancer une nouvelle partie.");
+
   const nouveauMode=
     Number(args[0])||room.mode||1;
 
-  const nombreJoueurs = Math.max(
-    2,
-    Math.min(8, Number(args[1]) || room.players.filter(p => !p.bot).length)
-  );
-
   const joueursHumains =
-  room.players.filter(p => !p.bot);
+    room.players.filter(p => !p.bot);
+
+  const spectateursDisponibles =
+    room.spectators.slice();
 
   const nombreHumains =
-  joueursHumains.length;
+    joueursHumains.length;
+
+  const nombreJoueurs =
+    Math.max(
+      2,
+      Math.min(
+        8,
+        nombreHumains +
+        spectateursDisponibles.length
+      )
+    );
 
 if(nombreJoueurs < nombreHumains)
   throw Error(
     `Le nombre de joueurs ne peut pas être inférieur à ${nombreHumains}.`
   );
 
+  const nombreSpectateurs =
+    Math.min(
+      spectateursDisponibles.length,
+      nombreJoueurs - nombreHumains
+    );
+
   const nombreBots =
-  nombreJoueurs - nombreHumains;
+    nombreJoueurs -
+    nombreHumains -
+    nombreSpectateurs;
 
-  // On supprime les anciens bots
-  room.players = joueursHumains;
+  // Les joueurs humains sont prioritaires.
+  room.players = joueursHumains.slice();
 
-  // On remet les index des joueurs humains
-  room.players.forEach((p,i)=>{
-    p.index=i;
-    p.selection=null;
-  });
+  // Les spectateurs prennent ensuite les places disponibles.
+  for(let i=0; i<nombreSpectateurs; i++){
 
-  // On crée les nouveaux bots
-  for(let i=0;i<nombreBots;i++){
+    const spectateur =
+      spectateursDisponibles[i];
+
+    room.spectators =
+      room.spectators.filter(
+        p => p.id !== spectateur.id
+      );
+
+    spectateur.bot = false;
+    spectateur.connected = !!spectateur.ws;
+    spectateur.selection = null;
+    spectateur.index = room.players.length;
+
+    room.players.push(spectateur);
+  }
+
+  // On complète seulement les places restantes avec des bots.
+  for(let i=0; i<nombreBots; i++){
 
     room.players.push({
       id:id(),
