@@ -240,12 +240,20 @@ wss.on("connection",ws=>{
   // ---------------------------------------------------------
 
   const existing=wanted.players.find(
-    p =>
-      m.playerId &&
-      m.token &&
-      p.id===m.playerId &&
-      p.token===m.token
-  );
+  p =>
+    m.playerId &&
+    m.token &&
+    p.id===m.playerId &&
+    p.token===m.token
+);
+
+  const existingSpectator=wanted.spectators.find(
+  p =>
+    m.playerId &&
+    m.token &&
+    p.id===m.playerId &&
+    p.token===m.token
+);
 
   if(existing){
 
@@ -280,6 +288,45 @@ wss.on("connection",ws=>{
       send(ws,{
        type:"chat:message",
        message
+      });
+    });
+
+    if(room.engine)
+      sendState(room);
+
+    lobby(room);
+    return;
+  }
+
+  if(existingSpectator){
+
+   if(existingSpectator.ws &&
+      existingSpectator.ws!==ws){
+
+      try{
+        existingSpectator.ws.close();
+      }catch{}
+
+    }
+
+    room=wanted;
+    player=existingSpectator;
+
+    player.ws=ws;
+    player.connected=true;
+
+    send(ws,{
+      type:"room:reconnected",
+      playerId:player.id,
+      token:player.token,
+      spectator:true,
+      room:view(room)
+    });
+
+    room.chatMessages.forEach(message=>{
+      send(ws,{
+        type:"chat:message",
+        message
       });
     });
 
@@ -678,6 +725,18 @@ return;
 
   player.ws=null;
   player.connected=false;
+
+  if(room.spectators.some(p=>p.id===player.id)){
+
+    room.spectators =
+      room.spectators.filter(
+        p=>p!==player
+      );
+
+    lobby(room);
+
+    return;
+  }
 
   if(room.started){
       player.bot=true;
