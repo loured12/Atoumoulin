@@ -743,13 +743,15 @@ return;
 
  }catch(e){
 
+  console.error(e.stack || e);
+
   fail(
    ws,
    e.message||"Erreur serveur."
   );
 
- }
-
+}
+  
  });
 
  ws.on("close",()=>{
