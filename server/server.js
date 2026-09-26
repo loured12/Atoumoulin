@@ -35,6 +35,7 @@ function roomCreate(n,max){
   started:false,
   hostId:null,
   players:[],
+  spectators:[],
   engine:null,
   mode:1,
   chatMessages:[]
@@ -69,6 +70,12 @@ function view(r){
    id:p.id,
    name:p.name,
    bot:p.bot,
+   connected:p.connected
+  })),
+
+  spectators:r.spectators.map(p=>({
+   id:p.id,
+   name:p.name,
    connected:p.connected
   }))
  };
@@ -259,42 +266,61 @@ wss.on("connection",ws=>{
     return;
   }
 
+   room=wanted;
+
   // ---------------------------------------------------------
   // NOUVEAU JOUEUR
   // ---------------------------------------------------------
 
-  if(wanted.started)
-    throw Error("La partie a déjà commencé.");
+  // Maximum 8 joueurs actifs.
+  // Les joueurs supplémentaires deviennent spectateurs.
+  if(room.players.length < 8){
 
-  if(wanted.players.length>=wanted.maxPlayers)
-    throw Error("Salon complet.");
+    player={
+      id:id(),
+      token:id(),
+      name:name(m.name),
+      bot:false,
+      connected:true,
+      ws,
+      index:room.players.length,
+      selection:null
+    };
 
-  room=wanted;
+    room.players.push(player);
 
-  player={
-    id:id(),
-    token:id(),
-    name:name(m.name),
-    bot:false,
-    connected:true,
-    ws,
-    index:room.players.length,
-    selection:null
-  };
+    send(ws,{
+      type:"room:joined",
+      playerId:player.id,
+      token:player.token,
+      room:view(room)
+    });
 
-  room.players.push(player);
+  }else{
 
-  send(ws,{
-    type:"room:joined",
-    playerId:player.id,
-    token:player.token,
-    room:view(room)
-  });
+    const spectator={
+      id:id(),
+      token:id(),
+      name:name(m.name),
+      connected:true,
+      ws
+    };
+
+    room.spectators.push(spectator);
+
+    send(ws,{
+      type:"room:joined",
+      playerId:spectator.id,
+      token:spectator.token,
+      spectator:true,
+      room:view(room)
+    });
+
+  }
 
   lobby(room);
 
   return;
-}
 
  if(!room||!player)
   throw Error("Rejoignez d'abord un salon.");
