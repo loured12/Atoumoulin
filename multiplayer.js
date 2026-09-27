@@ -164,7 +164,7 @@
   </div>
 
   <div id="mpRoom" hidden>
-    <div>🔑 Code salon : <strong id="mpRoomCode"></strong></div>
+    <div>🔑 <strong id="mpRoomCode"></strong></div>
     <div id="multiPlayers"></div>
     <button id="mpStart">Lancer la partie</button>
   </div>`;
