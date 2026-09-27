@@ -231,7 +231,7 @@ Object.assign(chatFenetre.style, {
   width: "280px",
   maxWidth: "calc(100vw - 40px)",
   height: "320px",
-  background: "#d4af37",
+  background: "#fff8e7",
   border: "2px solid #9e1717",
   borderRadius: "12px",
   boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
