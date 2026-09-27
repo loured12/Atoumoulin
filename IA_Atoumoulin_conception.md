@@ -1,4 +1,4 @@
-# Conception de l'IA Atoumoulin
+# Conception de l’IA Atoumoulin
 
 ## 1. Objectif
 
@@ -6,341 +6,579 @@ Créer une IA capable d'adapter ses décisions :
 
 * à la main qu'elle possède ;
 * à la situation actuelle de la partie ;
-* aux possibilités disponibles ;
+* aux possibilités légalement disponibles ;
 * aux informations auxquelles elle a réellement accès ;
 * au niveau de difficulté choisi.
 
-L'IA doit analyser et évaluer les possibilités disponibles plutôt que de fonctionner avec des combinaisons de cartes préprogrammées.
+L'IA ne repose pas sur des combinaisons de cartes préprogrammées. Elle analyse les actions disponibles, leurs conséquences et l'état résultant.
 
-L'objectif est de permettre à l'IA de prendre des décisions cohérentes, y compris dans des situations qu'elle n'a jamais rencontrées auparavant.
+Principe fondamental :
 
-L'IA ne doit jamais utiliser une information qu'elle n'est pas censée connaître. Le système doit donc distinguer les informations **visibles et accessibles par le bot** des informations **cachées aux joueurs**.
+> **Carte → action complète → état résultant → évaluation → décision.**
+
+L'IA ne doit jamais utiliser une information cachée qu'elle n'est pas censée connaître.
 
 ---
 
 ## 2. Détermination des actions légalement disponibles
 
-Avant toute analyse stratégique, l'IA doit déterminer quelles actions sont réellement autorisées par les règles du jeu.
+La légalité est déterminée avant toute évaluation stratégique.
 
-Le système stratégique ne doit jamais pouvoir sélectionner une action interdite.
+Ordre des priorités :
 
-L'ordre de priorité est :
+1. **Double 7**
+2. **7 simple**
+3. **Double X**
+4. **Carte simple**
 
-1. **7 présent dans la main** → le 7 doit être joué.
-2. **Aucun 7 mais un ou plusieurs doubles présents** → le bot doit choisir parmi les doubles disponibles.
-3. **Aucun 7 et aucun double** → le bot peut choisir librement parmi les cartes simples disponibles.
-
-Si un seul double est disponible, celui-ci doit être joué.
-
-Si plusieurs doubles différents sont disponibles, l'IA peut analyser chacun d'eux et choisir le meilleur stratégiquement.
-
-Cette règle s'applique à tous les doubles.
-
-La stratégie intervient donc **après le filtrage des actions légales**.
+Si trois cartes identiques ou plus sont présentes, une seule double est formée et jouée ; les cartes restantes restent en main.
 
 Exemple :
 
-```text
-Main :
-7 / 15 / Double 9
+* 7 / 7 / 7 / 15 / 21 → Double 7.
+* 7 / 15 / 15 / 21 → 7 simple.
+* Double 9 / Double 15 / 12 → choix entre les deux doubles.
 
-→ Le 7 est obligatoire.
-→ L'IA ne compare pas le 7 avec le Double 9 ou le 15.
-```
-
-Autre exemple :
-
-```text
-Main :
-Double 9 / Double 15 / 12
-
-→ Aucun 7.
-→ Les doubles sont prioritaires.
-→ L'IA compare uniquement Double 9 et Double 15.
-```
+Le moteur stratégique ne peut jamais sélectionner une action interdite par ces règles.
 
 ---
 
-## 3. Informations disponibles
+## 3. Informations accessibles
 
-L'IA doit prendre ses décisions uniquement à partir des informations auxquelles elle a légalement accès.
+L'IA distingue toujours :
 
-Le système doit donc séparer :
+### État réel
 
-* les informations connues par l'IA ;
-* les informations visibles dans la situation actuelle ;
-* les informations cachées appartenant aux adversaires ;
-* les informations révélées temporairement par certaines cartes.
+Toutes les cartes et informations internes du moteur de jeu.
+
+### Connaissance de l'IA
+
+Uniquement les informations auxquelles elle a réellement accès.
 
 Exemples :
 
-* **9 simple** → l'IA connaît le nombre de cartes dans les mains adverses, mais pas leur contenu.
-* **Double 9** → l'IA peut voir le contenu des mains et choisir le joueur avec lequel elle souhaite échanger.
-* **19 simple** → l'IA utilise les dernières cartes de score jouées par les joueurs concernés.
-* **Double 19** → l'IA peut également voir le contenu des mains adverses conformément aux règles de cette carte.
-* **17** → la carte volée est inconnue avant le vol. L'IA ne doit donc pas connaître à l'avance la carte qui sera tirée.
-
-L'IA ne doit jamais utiliser une information cachée uniquement parce que cette information existe dans l'état interne du jeu.
-
----
-
-## 4. Niveaux de difficulté
-
-Les différents niveaux utilisent le même système d'évaluation stratégique, mais ne sélectionnent pas leurs actions de la même manière.
-
-* **Facile** → 40 % stratégique / 60 % aléatoire
-* **Normal** → 75 % stratégique / 25 % aléatoire
-* **Difficile** → 90 % stratégique / 10 % aléatoire
-* **Expert** → 100 % stratégique / 0 % aléatoire
-
-Ces pourcentages constituent une base et pourront être adaptés selon la complexité de la décision.
-
-L'aléatoire ne signifie pas nécessairement choisir n'importe quelle action.
-
-Lorsqu'il existe plusieurs choix intéressants, l'aléatoire peut permettre au bot de varier son choix parmi ces possibilités.
-
-L'aléatoire ne doit cependant jamais permettre au bot de choisir une action qui n'est pas légalement disponible.
+* 9 simple → l'IA connaît le nombre de cartes dans les mains adverses, pas leur contenu.
+* Double 9 → l'IA voit les mains et peut choisir son adversaire.
+* 19 et Double 19 → aucune vision des mains adverses.
+* 17 → la carte volée est inconnue avant le vol.
+* 1 / Double 1 → l'IA connaît les derniers scores éligibles.
+* Les informations cachées sont estimées sans jamais être révélées artificiellement.
 
 ---
 
-## 5. Complexité des décisions
+## 4. Difficulté
 
-Chaque décision pourra être classée comme :
+Même moteur stratégique pour tous les niveaux.
+
+| Difficulté | Stratégique | Random |
+| ---------- | ----------: | -----: |
+| Facile     |        40 % |   60 % |
+| Normale    |        75 % |   25 % |
+| Difficile  |        90 % |   10 % |
+| Expert     |       100 % |    0 % |
+
+Le hasard ne choisit jamais une action illégale.
+
+Il peut sélectionner une possibilité moins optimale, mais raisonnablement proche ou pertinente.
+
+Une victoire immédiate n'est pas traitée par un sélecteur spécial : elle passe par le même moteur d'évaluation.
+
+---
+
+## 5. Complexité
+
+Trois niveaux :
 
 * **Simple**
 * **Moyenne**
 * **Complexe**
 
-Une décision simple pourra être correctement évaluée même par un bot de niveau normal.
+La complexité dépend notamment :
 
-Une décision moyenne pourra nécessiter la prise en compte de plusieurs critères.
+* du nombre de possibilités ;
+* du nombre de critères à comparer ;
+* des conséquences ;
+* des informations cachées ;
+* de l'incertitude ;
+* de la profondeur de recherche nécessaire.
 
-Une décision complexe pourra prendre en compte davantage de conséquences, d'informations, de possibilités ou d'incertitudes.
+La puissance de l'effet ne détermine pas automatiquement sa complexité.
 
-La complexité pourra donc permettre de différencier davantage les niveaux de difficulté.
-
-Elle pourra également influencer :
-
-* la précision de l'évaluation ;
-* la tolérance utilisée pour considérer plusieurs choix comme proches ;
-* la quantité de possibilités considérées comme intéressantes ;
-* l'influence de l'aléatoire dans la sélection finale.
-
-La complexité ne modifie pas les règles du jeu : elle sert uniquement à déterminer la difficulté d'analyse d'une décision.
+Exemple : Double Joker est puissant mais simple, car il n'offre aucun choix d'effet ou de cible.
 
 ---
 
-## 6. Définition d'une possibilité
+## 6. Une possibilité = une action complète
 
-Une possibilité évaluée par l'IA doit correspondre à une **action complète**, et pas simplement au nom de la carte jouée.
-
-Une action complète peut comprendre :
-
-* la carte jouée ;
-* l'effet choisi ;
-* la cible choisie ;
-* éventuellement la carte ou l'élément ciblé.
+Une carte seule n'est pas nécessairement une possibilité.
 
 Exemples :
 
-```text
-11 → +10 à soi
-11 → -10 à soi
+* `13 → Joueur A → carte 40`
+* `21 → +20 → soi`
+* `21 → -20 → Joueur B`
+* `15 → carte personnelle 40`
+* `Joker → échange de scores → Joueur C`
 
-21 → +20 à soi
-21 → -20 au joueur A
-21 → -20 au joueur B
-
-Joker → +10
-Joker → +22
-Joker → échange de score avec le joueur A
-Joker → échange de score avec le joueur B
-```
-
-De la même manière :
-
-```text
-9 → échange avec le joueur A
-9 → échange avec le joueur B
-
-15 → doublement de la carte de score A
-15 → doublement de la carte de score B
-```
-
-Chaque possibilité concrète doit pouvoir recevoir sa propre évaluation.
+Chaque action complète reçoit son propre score.
 
 ---
 
-## 7. Système d'évaluation
+## 7. Simulation
 
-Chaque possibilité sera évaluée avec un système de points.
+Pour chaque possibilité :
 
-Le score représentera la qualité estimée d'une action dans la situation actuelle.
+> **État actuel + action → état résultant virtuel**
 
-Plusieurs critères pourront être utilisés pour calculer ce score, par exemple :
+Le moteur crée une simulation sans modifier immédiatement la partie réelle.
 
-* avantage immédiat ;
-* avantage futur ;
-* proximité de la cible ;
-* sécurité ;
-* risque ;
-* coût de l'action ;
-* informations obtenues ;
-* synergie avec la main ;
-* influence sur les adversaires ;
-* conséquences possibles ;
-* potentiel de la situation créée.
+L'état simulé peut contenir :
 
-Les critères définitifs ainsi que leurs valeurs seront définis ultérieurement selon les règles d'Atoumoulin.
+* scores ;
+* mains ;
+* cartes jouées ;
+* cartes liées ;
+* pioche ;
+* effets temporaires ;
+* informations nouvellement révélées.
 
-La valeur d'une action ne doit pas être considérée comme fixe.
+Le même moteur de simulation sert à :
 
-Par exemple, un gain de **+20** peut avoir une valeur stratégique différente selon le score actuel du joueur, la cible de la partie et la situation des adversaires.
-
-Le système doit donc évaluer l'action **dans son contexte actuel**, et non simplement attribuer une valeur fixe à chaque carte.
-
-Le système devra pouvoir évaluer une possibilité même lorsqu'elle ne correspond pas à une combinaison préprogrammée.
+* l'évaluation immédiate ;
+* la recherche de finition ;
+* l'évaluation du danger adverse ;
+* la recherche de plans futurs.
 
 ---
 
-## 8. Prise en compte des conséquences et de l'incertitude
+# 8. Recherche future
 
-Certaines actions produisent un résultat directement prévisible.
+La recherche est effectuée par nombre de tours.
 
-D'autres peuvent produire plusieurs résultats possibles.
+* Profondeur 1 → action actuelle.
+* Profondeur 2 → action actuelle + prochain tour.
+* Profondeur 3 → + deux tours futurs.
+* etc.
 
-L'IA doit tenir compte de cette différence.
+À chaque futur tour :
 
-Par exemple, avec une carte **17**, la carte volée est inconnue avant l'action.
+> nouvel état → nouvelles informations → nouvelles actions légales → nouvelles priorités.
 
-L'IA ne doit donc pas considérer qu'elle va nécessairement obtenir une carte précise.
+La recherche respecte donc toujours les règles de priorité.
 
-Elle doit évaluer l'action à partir des conséquences possibles et des informations connues.
+### Recherche générale
 
-De manière générale, lorsqu'une action dépend d'un élément aléatoire ou inconnu, l'évaluation devra tenir compte de cette incertitude.
+* Facile → principalement 1 tour.
+* Normale → environ 2 tours.
+* Difficile → environ 3 tours.
+* Expert → recherche adaptative.
+
+### Recherche de finition
+
+Une recherche de finition exacte peut dépasser la profondeur générale si nécessaire.
 
 ---
 
-## 9. Classement des possibilités
+# 9. Potentiel de finition
 
-Une fois les scores calculés, les possibilités seront classées de la meilleure à la moins intéressante.
+L'IA cherche le nombre minimal de tours nécessaires pour :
+
+* atteindre exactement la cible ;
+* ou, si elle est au-dessus, revenir exactement à la cible.
+
+Ordre :
+
+1. finition en 1 tour ;
+2. sinon 2 tours ;
+3. sinon 3 tours ;
+4. etc.
+
+Toute action légale permettant d'atteindre exactement la cible dans le même nombre de tours compte comme un plan de même niveau.
+
+Direct, 13 et 15 sont donc comparés selon le nombre de tours nécessaires, pas selon le nombre de possibilités techniques.
+
+### Valeur du nombre de tours
+
+| Tours      | Valeur |
+| ---------- | -----: |
+| 1          |    100 |
+| 2          |     70 |
+| 3          |     45 |
+| 4          |     25 |
+| 5+         |     10 |
+| Impossible |      0 |
+
+### Certitude
+
+| Certitude     | Valeur |
+| ------------- | -----: |
+| Certaine      |  100 % |
+| Très probable |   80 % |
+| Possible      |   55 % |
+| Faible        |   30 % |
+| Impossible    |    0 % |
+
+La certitude représente la probabilité que **l'ensemble du plan** aboutisse réellement.
+
+Elle tient compte notamment :
+
+* de la réalisation du plan ;
+* des informations connues ;
+* du hasard ;
+* de la dépendance aux actions adverses.
+
+### Potentiel de finition
+
+> **Potentiel de finition = Valeur du nombre de tours × Certitude / 100**
 
 Exemple :
 
-```text
-Choix 1 → 94 points
-Choix 2 → 92 points
-Choix 3 → 89 points
-Choix 4 → 63 points
-Choix 5 → 41 points
-```
-
-Le classement servira ensuite à déterminer les groupes de choix disponibles pour le bot.
+* 1 tour certain → 100
+* 1 tour à 50 % → 50
+* 2 tours certains → 70
+* 3 tours à 80 % → 36
 
 ---
 
-## 10. Choix équivalents
+# 10. Progression
 
-Plusieurs possibilités ayant des scores suffisamment proches pourront être considérées comme appartenant au même groupe de bons choix.
+La progression mesure la capacité d'une situation à améliorer durablement la position vers la cible.
+
+Elle ne signifie pas simplement « gagner plus de points ».
+
+> **Progression = (Amélioration du score ×25 + Chemins vers la cible ×30 + Diversité ×20 + Qualité des cartes ×15 + Adaptation ×10) ÷100**
+
+Les critères sont évalués de 0 à 100.
+
+Échelle générale :
+
+* 90–100 : excellente
+* 70–89 : très bonne
+* 50–69 : correcte
+* 30–49 : faible
+* 10–29 : très faible
+* 0–9 : pratiquement aucune
+
+La proximité brute de la cible ne suffit jamais à déterminer la progression.
+
+---
+
+# 11. Stabilité
+
+La stabilité mesure la résistance de la situation à la disparition ou à l'échec d'un plan.
+
+> **Stabilité = (Plans de secours ×35 + Diversité ×30 + Indépendance à l'incertitude ×20 + Récupération ×15) ÷100**
+
+Différence :
+
+* **Stabilité** = résistance si un plan échoue.
+* **Flexibilité** = diversité des stratégies disponibles.
+
+---
+
+# 12. Position personnelle
+
+> **Position = (Finition/retour ×90 + Progression ×65 + Stabilité ×55) ÷210**
+
+La finition/retour reste le critère principal.
+
+---
+
+# 13. Évaluation des adversaires
+
+L'IA applique les mêmes principes aux adversaires, mais uniquement avec les informations accessibles.
+
+### Information connue
+
+Évaluation directe.
+
+### Information inconnue
+
+L'IA utilise quelques scénarios stratégiquement pertinents.
 
 Exemple :
 
-```text
-Choix 1 → 94 points
-Choix 2 → 92 points
-Choix 3 → 89 points
-Choix 4 → 63 points
-Choix 5 → 41 points
-```
+* scénario avec bonne finition ;
+* scénario avec progression ;
+* scénario avec forte manipulation ;
+* scénario faible ;
+* scénario de récupération.
 
-Avec une tolérance de 5 points :
+Valeur estimée :
 
-```text
-Groupe 1 → Choix 1, Choix 2, Choix 3
-Groupe 2 → Choix 4
-Groupe 3 → Choix 5
-```
+> **Évaluation = Σ (probabilité du scénario × valeur du scénario)**
 
-Ainsi, une différence de quelques points ne signifie pas nécessairement qu'un choix est nettement meilleur qu'un autre.
-
-La tolérance pourra être adaptée en fonction de la complexité de la décision.
+L'IA ne reconstruit jamais artificiellement la main cachée de l'adversaire.
 
 ---
 
-## 11. Séparation entre évaluation et sélection
+# 14. Danger individuel adverse
 
-Le système sera séparé en deux parties.
+Le danger d'un adversaire n'est jamais simplement sa distance à la cible.
 
-### Évaluateur stratégique
+Il dépend notamment de sa capacité réelle à :
 
-Il détermine la valeur de chaque possibilité légalement disponible.
+* finir ;
+* revenir à la cible ;
+* progresser ;
+* manipuler les scores ;
+* conserver plusieurs plans ;
+* récupérer après un échec.
+
+### Danger
+
+> **Danger = (Finition/retour ×50 + Position ×20 + Possibilités ×20 + Stabilité ×10) ÷100**
+
+Les possibilités mesurent notamment :
+
+* nombre d'actions intéressantes ;
+* diversité ;
+* possibilités de score ;
+* réduction de score ;
+* manipulation ;
+* préparation d'une finition ;
+* perturbation.
+
+---
+
+# 15. Potentiel futur adverse
+
+> **Potentiel futur = (Progression ×40 + Manipulation ×30 + Qualité des cartes ×20 + Création ×10) ÷100**
+
+La création mesure notamment :
+
+* nouvelles cartes ;
+* nouvelles combinaisons ;
+* modification de la situation ;
+* informations utiles.
+
+---
+
+# 16. Situation adverse
+
+> **Situation adverse = (Danger ×100 + Potentiel futur ×65 + Stabilité ×50) ÷215**
+
+On conserve deux indicateurs globaux :
+
+* **danger maximal** d'un adversaire ;
+* **danger moyen** de l'ensemble des adversaires.
+
+Le danger global n'est pas simplement la somme des dangers.
+
+---
+
+# 17. Impact adversaire
+
+Après simulation :
+
+> **Évolution = Situation adverse après − Situation adverse avant**
+
+Une réduction de la situation adverse correspond à un impact positif pour l'IA.
+
+La réduction est transformée en valeur d'impact selon une échelle progressive.
+
+---
+
+# 18. Impact personnel
+
+> **Impact personnel = (Position ×95 + Qualité main ×60 + Possibilités restantes ×45) ÷200**
+
+### Position
+
+> **Position = (Finition/retour ×90 + Progression ×65 + Stabilité ×55) ÷210**
+
+### Qualité de la main
+
+> **Qualité main = (Actions ×25 + Finition ×25 + Manipulation ×20 + Doubles ×15 + Synergies ×15) ÷100**
+
+La qualité d'une carte dépend de son utilité réelle dans la situation, pas de sa valeur numérique.
+
+### Possibilités restantes
+
+> **Possibilités = (Actions ×25 + Diversité ×20 + Finition ×20 + Manipulation ×15 + Réponses ×10 + Plans ×10) ÷100**
+
+---
+
+# 19. Potentiel futur après action
+
+> **Potentiel futur = (Possibilités futures ×35 + Main après action ×30 + Flexibilité ×30 + Création ×10) ÷105**
+
+### Flexibilité
+
+> **Flexibilité = (Diversité des plans ×35 + Indépendance ×25 + Adaptation adversaires ×25 + Adaptation événements ×15) ÷100**
+
+La flexibilité représente la diversité de stratégies réellement disponibles.
+
+---
+
+# 20. Coût d'opportunité
+
+> **Coût = (Sacrifice ×50 + Alternatives abandonnées ×30 + Rareté ×20) ÷100**
+
+Il mesure ce que l'action consomme ou abandonne.
+
+### Sacrifice
+
+De négligeable à quasi-irremplaçable.
+
+### Alternatives
+
+Uniquement les alternatives légalement disponibles.
+
+### Rareté
+
+Difficulté à récupérer ou remplacer la ressource consommée.
+
+Le coût évite de compter deux fois une perte déjà intégrée dans la qualité de la main.
+
+---
+
+# 21. Risque
+
+> **Risque = (Probabilité défavorable ×40 + Gravité ×40 + Difficulté de récupération ×20) ÷100**
+
+### Probabilité défavorable
+
+De pratiquement nulle à quasi certaine.
+
+### Gravité
+
+De négligeable à critique.
+
+La gravité dépend du contexte : perdre 10 points peut être insignifiant dans une situation et décisif dans une autre.
+
+### Difficulté de récupération
+
+De correction immédiate à pratiquement impossible.
+
+L'incertitude seule n'est pas automatiquement considérée comme un risque.
+
+---
+
+# 22. Score final
+
+Le score final d'une possibilité est :
+
+> **Score final = Impact personnel ×0,40 + Impact adversaire ×0,30 + Potentiel futur ×0,15 − Coût d'opportunité ×0,10 − Risque ×0,05**
+
+Les coefficients restent paramétrables pour les tests futurs.
+
+---
+
+# 23. Cible et position
+
+La cible doit être traitée dynamiquement.
+
+Le moteur ne considère jamais simplement :
+
+> « Plus proche de la cible = meilleur. »
+
+Il doit tenir compte :
+
+* du score actuel ;
+* de la possibilité de finir exactement ;
+* de la possibilité de revenir exactement ;
+* des cartes réellement disponibles ;
+* des mécanismes indirects ;
+* de la phase de la partie.
+
+### Progression de la partie
+
+> **Progression = cartes déjà sorties / nombre total de cartes**
+
+Les cartes sorties comprennent les cartes :
+
+* jouées ;
+* défaussées ;
+* présentes dans les mains.
+
+Nombre total selon le nombre de joueurs :
+
+* 2–3 joueurs : 44
+* 4 joueurs : 66
+* 5 joueurs : 88
+* 6 joueurs : 110
+* 7 joueurs : 132
+* 8 joueurs : 154
+
+Le poids de la distance finale augmente progressivement au cours de la partie.
+
+---
+
+# 24. Fin de partie
+
+Si personne n'atteint exactement la cible lorsque toutes les cartes sont épuisées :
+
+> **le joueur le plus proche de la cible gagne la manche.**
+
+Cette règle donne davantage d'importance à la distance absolue en fin de partie.
+
+Mais l'exactitude reste prioritaire : atteindre exactement la cible termine immédiatement la manche.
+
+---
+
+# 25. Classement et choix équivalents
+
+Après évaluation :
+
+1. classer les possibilités ;
+2. identifier les choix proches ;
+3. former des groupes selon une tolérance ;
+4. appliquer le niveau de difficulté.
 
 Exemple :
 
-```text
-Choix 1 → 94
-Choix 2 → 92
-Choix 3 → 89
-Choix 4 → 63
-Choix 5 → 41
-```
+> 94 / 92 / 89 / 63 / 41
 
-### Sélection finale
+Avec une tolérance de 5 :
 
-Le niveau de difficulté détermine ensuite la manière dont le bot utilise ces résultats.
+* groupe 1 : 94 / 92 / 89
+* groupe 2 : 63
+* groupe 3 : 41
 
-Le bot **Expert** cherchera systématiquement à utiliser les meilleurs choix stratégiques.
-
-Le bot **Difficile** pourra parfois varier parmi les choix proches.
-
-Le bot **Normal** pourra davantage utiliser l'aléatoire.
-
-Le bot **Facile** pourra effectuer plus fréquemment des choix moins optimaux.
-
-Cette séparation permet de modifier la difficulté sans modifier le système d'évaluation lui-même.
+La tolérance peut être adaptée selon la complexité de la décision.
 
 ---
 
-## 12. Principe général
+# 26. Cycle complet de décision
 
-Le fonctionnement global de l'IA sera donc :
-
-1. Lire l'état actuel de la partie.
-2. Déterminer les informations réellement accessibles à l'IA.
-3. Identifier les actions légalement disponibles.
-4. Appliquer les priorités imposées par les règles du jeu.
-5. Générer les actions complètes pouvant réellement être choisies.
-6. Identifier les conséquences et informations pertinentes de chaque action.
-7. Déterminer la complexité de la décision.
-8. Définir les critères d'évaluation.
-9. Attribuer un score à chaque possibilité.
-10. Classer les possibilités.
-11. Regrouper les choix suffisamment proches.
-12. Déterminer les choix accessibles selon le niveau de difficulté.
-13. Appliquer la part d'aléatoire du niveau choisi.
-14. Effectuer le choix final.
-15. Exécuter l'action.
-16. Mettre à jour l'état de la partie.
-17. Répéter le processus au prochain tour.
+1. Lire l'état réel.
+2. Déterminer les informations accessibles.
+3. Déterminer les actions légales.
+4. Appliquer les priorités.
+5. Générer les possibilités complètes.
+6. Simuler chaque possibilité.
+7. Rechercher les conséquences futures.
+8. Calculer finition/retour.
+9. Calculer progression et stabilité.
+10. Calculer impact personnel.
+11. Calculer danger et impact adversaire.
+12. Calculer potentiel futur.
+13. Calculer coût d'opportunité.
+14. Calculer risque.
+15. Calculer le score final.
+16. Classer les possibilités.
+17. Regrouper les choix proches.
+18. Appliquer la difficulté.
+19. Choisir l'action.
+20. Exécuter réellement l'action.
+21. Mettre à jour l'état.
+22. Recommencer.
 
 ---
 
-## 13. Évolution du système
+# 27. Principe général définitif
 
-Le système devra pouvoir être ajusté progressivement sans devoir être entièrement réécrit.
+Le cœur de l'IA est :
 
-Les éléments suivants pourront être modifiés indépendamment :
+> **État actuel → actions légales → possibilités complètes → simulation → état résultant → conséquences futures → évaluation → classement → difficulté → action.**
 
-* critères d'évaluation ;
-* valeur des critères ;
-* tolérance entre les choix ;
-* influence de la complexité ;
-* pourcentage stratégique ;
-* pourcentage aléatoire ;
-* règles de sélection finale ;
-* gestion des conséquences incertaines ;
-* classification de la complexité des décisions.
+L'IA ne mémorise donc pas simplement :
 
-L'objectif est de construire progressivement une IA capable de prendre des décisions cohérentes et variées tout en conservant une différence claire entre les niveaux de difficulté.
+> « Le 13 est une bonne carte. »
 
-L'architecture doit permettre d'ajouter de nouvelles cartes, de nouvelles situations ou de nouveaux critères d'évaluation sans avoir à créer manuellement une combinaison stratégique pour chaque situation.
+Elle cherche plutôt :
+
+> « Dans cet état précis, quelle utilisation légale du 13 produit le meilleur résultat parmi toutes les possibilités disponibles ? »
+
+C'est cette architecture qui permet à l'IA de s'adapter à des situations nouvelles sans devoir programmer manuellement chaque combinaison de cartes.
