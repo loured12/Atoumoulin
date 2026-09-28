@@ -1,10 +1,16 @@
 /**
- * Gestion des informations réellement accessibles au bot.
+ * Atoumoulin - KnowledgeState
  *
- * Principe :
- * - GameState peut contenir des informations masquées par null.
- * - KnowledgeState détermine ce que le bot peut réellement utiliser.
- * - Aucune carte inconnue d'un adversaire n'est reconstruite artificiellement.
+ * Cette classe représente UNIQUEMENT les informations auxquelles
+ * l'IA a le droit d'avoir accès.
+ *
+ * GameState = état connu par le moteur.
+ * KnowledgeState = état observable par le bot.
+ *
+ * RÈGLE ABSOLUE :
+ *
+ * Une information absente ou masquée ne doit jamais être
+ * reconstruite artificiellement.
  */
 
 export class KnowledgeState {
@@ -16,146 +22,207 @@ export class KnowledgeState {
     }
 
     this.state = gameState;
-    this.botIndex = Number(botIndex);
 
-    const bot = gameState.getPlayer(this.botIndex);
+    this.botIndex =
+      Number(botIndex);
 
-    if (!bot) {
+    if (
+      !Number.isInteger(
+        this.botIndex
+      )
+    ) {
       throw new Error(
-        `Joueur IA introuvable : ${this.botIndex}`
+        "Index du bot invalide."
       );
     }
+
+    if (
+      !this.state.getPlayer(
+        this.botIndex
+      )
+    ) {
+      throw new Error(
+        `Le joueur ${this.botIndex} n'existe pas.`
+      );
+    }
+
+    /*
+     * Informations temporairement révélées.
+     *
+     * Elles sont stockées ici plutôt que dans GameState,
+     * car elles représentent ce que le bot sait à un instant
+     * donné, et non une modification du jeu réel.
+     */
+    this.revealedCards =
+      new Map();
+
+    /*
+     * Informations révélées concernant les mains.
+     *
+     * Exemple :
+     *
+     * joueur 2 → carte 13 connue
+     */
+    this.revealedHands =
+      new Map();
+
+    /*
+     * Informations obtenues par des effets de cartes.
+     */
+    this.revelations =
+      [];
+
+    /*
+     * Historique local des informations connues.
+     */
+    this.knowledgeHistory =
+      [];
   }
 
   /**
-   * Joueur contrôlé par l'IA.
+   * ----------------------------------------------------------
+   * COPIE
+   * ----------------------------------------------------------
    */
+
+  clone() {
+    const knowledge =
+      new KnowledgeState(
+        this.state.clone(),
+        this.botIndex
+      );
+
+    knowledge.revealedCards =
+      cloneMap(
+        this.revealedCards
+      );
+
+    knowledge.revealedHands =
+      cloneMap(
+        this.revealedHands
+      );
+
+    knowledge.revelations =
+      cloneArray(
+        this.revelations
+      );
+
+    knowledge.knowledgeHistory =
+      cloneArray(
+        this.knowledgeHistory
+      );
+
+    return knowledge;
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * JOUEUR DU BOT
+   * ----------------------------------------------------------
+   */
+
   getSelf() {
-    return this.state.getPlayer(this.botIndex);
+    return this.state.getPlayer(
+      this.botIndex
+    );
   }
 
-  /**
-   * Adversaires.
-   */
-  getOpponents() {
-    return this.state.getOpponents(this.botIndex);
-  }
-
-  /**
-   * Main réellement connue du bot.
-   *
-   * Pour lui-même, toutes les cartes sont accessibles.
-   */
   getOwnHand() {
-    return this.getSelf().main.filter(
-      card => card !== null
+    return this.state.getOwnHand();
+  }
+
+  getOwnScore() {
+    return this.state.getOwnScore();
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * ADVERSAIRES
+   * ----------------------------------------------------------
+   */
+
+  getOpponents() {
+    return this.state.getOpponents();
+  }
+
+  getOpponent(index) {
+    return this.state.getOpponent(
+      index
     );
   }
 
   /**
-   * Cartes connues d'un adversaire.
+   * ----------------------------------------------------------
+   * INFORMATIONS PUBLIQUES
+   * ----------------------------------------------------------
    *
-   * Une carte inconnue reste inconnue.
-   */
-  getKnownOpponentCards(playerIndex) {
-    if (Number(playerIndex) === this.botIndex) {
-      return this.getOwnHand();
-    }
-
-    return this.state.getKnownCards(playerIndex);
-  }
-
-  /**
-   * Nombre de cartes d'un adversaire.
+   * Certaines informations sont connues indépendamment
+   * du contenu des mains :
    *
-   * Le nombre est connu même lorsque leur contenu ne l'est pas.
+   * - score
+   * - nombre de cartes
+   * - joueur actuel
+   * - cartes de la table
+   * - défausse
+   * - historique
+   * - état des effets
    */
-  getOpponentCardCount(playerIndex) {
-    const player = this.state.getPlayer(playerIndex);
 
-    return player ? player.cardCount : 0;
-  }
-
-  /**
-   * Indique si le bot connaît une carte précise.
-   */
-  knowsCard(playerIndex, card) {
-    return this.state.knowsCard(playerIndex, card);
-  }
-
-  /**
-   * Retourne uniquement les informations accessibles concernant
-   * un joueur.
-   */
-  getPlayerKnowledge(playerIndex) {
-    const player = this.state.getPlayer(playerIndex);
-
-    if (!player) {
-      return null;
-    }
-
-    const own = Number(playerIndex) === this.botIndex;
-
+  getPublicState() {
     return {
-      id: player.id,
-      name: player.name,
-      score: player.score,
-      bot: player.bot,
-      cardCount: player.cardCount,
+      currentPlayer:
+        this.state.currentPlayer,
 
-      main: own
-        ? player.main.slice()
-        : player.main.map(card =>
-            card === null ? null : card
-          ),
+      targetScore:
+        this.state.targetScore,
 
-      knownCards: own
-        ? player.main.filter(card => card !== null)
-        : player.main.filter(card => card !== null)
-    };
-  }
+      progression:
+        this.state.progression,
 
-  /**
-   * Vue complète autorisée au bot.
-   *
-   * Les mains adverses restent masquées.
-   */
-  getView() {
-    return {
-      self: this.getPlayerKnowledge(this.botIndex),
+      deckCount:
+        this.state.deckCount,
 
-      opponents: this.getOpponents().map(
-        player => this.getPlayerKnowledge(player.id)
-      ),
+      table:
+        cloneArray(
+          this.state.table
+        ),
 
-      deckCount: this.state.deckCount,
+      discard:
+        cloneArray(
+          this.state.discard
+        ),
 
-      table: this.state.table.slice(),
+      history:
+        this.state.history,
 
-      discard: this.state.discard.slice(),
+      action:
+        this.state.action,
 
-      history: this.state.history,
+      target:
+        this.state.target,
 
-      currentPlayer: this.state.currentPlayer,
+      selection:
+        cloneValue(
+          this.state.selection
+        ),
 
-      action: this.state.action,
+      toursJoker:
+        cloneValue(
+          this.state.toursJoker
+        ),
 
-      target: this.state.target,
+      player17:
+        this.state.player17,
 
-      selection: cloneValue(
-        this.state.selection
-      ),
-
-      toursJoker: this.state.toursJoker,
-
-      player17: this.state.player17,
-
-      card17Pending: cloneValue(
-        this.state.card17Pending
-      ),
+      card17Pending:
+        cloneValue(
+          this.state.card17Pending
+        ),
 
       double17Cards:
-        this.state.double17Cards.slice(),
+        cloneArray(
+          this.state.double17Cards
+        ),
 
       double17Active:
         this.state.double17Active,
@@ -163,8 +230,14 @@ export class KnowledgeState {
       player19:
         this.state.player19,
 
-      victories:
-        cloneValue(this.state.victories),
+      roundEnded:
+        this.state.roundEnded,
+
+      roundWinner:
+        this.state.roundWinner,
+
+      winner:
+        this.state.winner,
 
       modeJeu:
         this.state.modeJeu
@@ -172,36 +245,327 @@ export class KnowledgeState {
   }
 
   /**
-   * Informations connues sur les cartes déjà visibles.
+   * ----------------------------------------------------------
+   * INFORMATIONS SUR UN JOUEUR
+   * ----------------------------------------------------------
+   */
+
+  getPlayerKnowledge(index) {
+    const player =
+      this.state.getPlayer(
+        index
+      );
+
+    if (!player) {
+      return null;
+    }
+
+    const isSelf =
+      Number(index) ===
+      this.botIndex;
+
+    return {
+      id:
+        player.id,
+
+      name:
+        player.name,
+
+      score:
+        player.score,
+
+      bot:
+        player.bot,
+
+      cardCount:
+        player.cardCount,
+
+      /*
+       * Notre propre main est entièrement connue.
+       *
+       * Pour un adversaire, seules les cartes explicitement
+       * connues sont exposées.
+       */
+      main:
+        isSelf
+          ? player.main.slice()
+          : this.getKnownOpponentCards(
+              player.id
+            ),
+
+      /*
+       * Nombre de cartes dont le contenu reste inconnu.
+       */
+      unknownCardCount:
+        isSelf
+          ? 0
+          : this.getUnknownCardCount(
+              player.id
+            ),
+
+      /*
+       * Permet au moteur stratégique de savoir à quel point
+       * l'information sur ce joueur est complète.
+       */
+      informationCompleteness:
+        this.getInformationCompleteness(
+          player.id
+        )
+    };
+  }
+
+  /**
+   * Vue de tous les joueurs.
+   */
+  getPlayersKnowledge() {
+    return this.state.players.map(
+      player =>
+        this.getPlayerKnowledge(
+          player.id
+        )
+    );
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * CARTES CONNUES DES ADVERSAIRES
+   * ----------------------------------------------------------
+   */
+
+  getKnownOpponentCards(
+    playerIndex
+  ) {
+    const index =
+      Number(playerIndex);
+
+    if (
+      index ===
+      this.botIndex
+    ) {
+      return this.getOwnHand();
+    }
+
+    const player =
+      this.state.getPlayer(
+        index
+      );
+
+    if (!player) {
+      return [];
+    }
+
+    /*
+     * 1. Cartes visibles directement dans l'état.
+     */
+    const known =
+      player.main.filter(
+        card =>
+          card !== null
+      );
+
+    /*
+     * 2. Cartes explicitement révélées
+     *    par un effet précédent.
+     */
+    const revealed =
+      this.revealedHands.get(
+        index
+      ) ?? [];
+
+    for (const card of revealed) {
+      if (
+        card !== null &&
+        !known.includes(card)
+      ) {
+        known.push(card);
+      }
+    }
+
+    return known.slice();
+  }
+
+  /**
+   * Nombre de cartes inconnues.
+   */
+  getUnknownCardCount(
+    playerIndex
+  ) {
+    const player =
+      this.state.getPlayer(
+        playerIndex
+      );
+
+    if (!player) {
+      return 0;
+    }
+
+    if (
+      Number(playerIndex) ===
+      this.botIndex
+    ) {
+      return 0;
+    }
+
+    const known =
+      this.getKnownOpponentCards(
+        playerIndex
+      );
+
+    return Math.max(
+      0,
+      player.cardCount -
+        known.length
+    );
+  }
+
+  /**
+   * Pourcentage d'information connue.
+   */
+  getInformationCompleteness(
+    playerIndex
+  ) {
+    const player =
+      this.state.getPlayer(
+        playerIndex
+      );
+
+    if (!player) {
+      return 0;
+    }
+
+    if (
+      Number(playerIndex) ===
+      this.botIndex
+    ) {
+      return 100;
+    }
+
+    if (
+      player.cardCount <= 0
+    ) {
+      return 100;
+    }
+
+    const known =
+      this.getKnownOpponentCards(
+        playerIndex
+      );
+
+    return (
+      known.length /
+      player.cardCount
+    ) * 100;
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * CARTE CONNUE
+   * ----------------------------------------------------------
+   */
+
+  knowsCard(
+    playerIndex,
+    card
+  ) {
+    if (
+      Number(playerIndex) ===
+      this.botIndex
+    ) {
+      return this.getOwnHand()
+        .includes(card);
+    }
+
+    return this.getKnownOpponentCards(
+      playerIndex
+    ).includes(card);
+  }
+
+  /**
+   * Une carte peut être connue comme sortie sans que
+   * sa localisation exacte soit forcément utile.
+   */
+  isCardKnownOut(card) {
+    return this.state.isCardKnownOut(
+      card
+    );
+  }
+
+  /**
+   * Toutes les cartes dont le bot connaît l'existence
+   * et la localisation.
    */
   getKnownCards() {
     const result = [];
 
-    for (const player of this.state.players) {
-      for (const card of player.main) {
-        if (card !== null) {
-          result.push({
-            card,
-            location: "hand",
-            player: player.id
-          });
-        }
+    /*
+     * Mains visibles.
+     */
+    for (
+      const player
+      of this.state.players
+    ) {
+      const cards =
+        player.id ===
+        this.botIndex
+          ? player.main
+          : this.getKnownOpponentCards(
+              player.id
+            );
+
+      for (const card of cards) {
+        result.push({
+          card,
+          location: "hand",
+          playerIndex:
+            player.id
+        });
       }
     }
 
-    for (const card of this.state.table) {
+    /*
+     * Table.
+     */
+    for (
+      const card
+      of this.state.table
+    ) {
       result.push({
-        card,
-        location: "table",
-        player: null
+        card:
+          card?.valeur ??
+          card?.card ??
+          card,
+
+        location:
+          "table",
+
+        playerIndex:
+          card?.proprietaire != null
+            ? this.state
+                .findPlayerIndexByName(
+                  card.proprietaire
+                )
+            : null
       });
     }
 
-    for (const card of this.state.discard) {
+    /*
+     * Défausse.
+     */
+    for (
+      const card
+      of this.state.discard
+    ) {
       result.push({
-        card,
-        location: "discard",
-        player: null
+        card:
+          card?.valeur ??
+          card?.card ??
+          card,
+
+        location:
+          "discard",
+
+        playerIndex:
+          null
       });
     }
 
@@ -209,130 +573,602 @@ export class KnowledgeState {
   }
 
   /**
-   * Vérifie si une carte est connue comme étant sortie.
+   * ----------------------------------------------------------
+   * RÉVÉLATIONS
+   * ----------------------------------------------------------
+   */
+
+  /**
+   * Enregistre une carte révélée.
    *
-   * Important :
-   * "inconnue" ne signifie PAS "dans la pioche".
+   * Cette méthode ne modifie PAS la main réelle du joueur.
    */
-  isKnownCardOut(card) {
-    return this.getKnownCards()
-      .some(entry => entry.card === card);
-  }
+  revealCard(
+    playerIndex,
+    card,
+    reason = "unknown"
+  ) {
+    const index =
+      Number(playerIndex);
 
-  /**
-   * Retourne les cartes explicitement connues comme étant
-   * encore dans une main.
-   */
-  getKnownCardsInHands() {
-    return this.getKnownCards()
-      .filter(entry => entry.location === "hand");
-  }
-
-  /**
-   * Retourne le nombre de cartes inconnues dans la main
-   * d'un adversaire.
-   */
-  getUnknownCardCount(playerIndex) {
-    const player = this.state.getPlayer(playerIndex);
-
-    if (!player) {
-      return 0;
+    if (
+      index ===
+      this.botIndex
+    ) {
+      return;
     }
 
-    if (Number(playerIndex) === this.botIndex) {
-      return 0;
+    if (
+      card === null ||
+      card === undefined
+    ) {
+      return;
     }
 
-    return player.main.filter(
-      card => card === null
-    ).length;
+    let cards =
+      this.revealedHands.get(
+        index
+      );
+
+    if (!cards) {
+      cards = [];
+      this.revealedHands.set(
+        index,
+        cards
+      );
+    }
+
+    if (
+      !cards.includes(card)
+    ) {
+      cards.push(card);
+    }
+
+    const revelation = {
+      type:
+        "card",
+
+      playerIndex:
+        index,
+
+      card,
+
+      reason
+    };
+
+    this.revelations.push(
+      revelation
+    );
+
+    this.knowledgeHistory.push(
+      revelation
+    );
   }
 
   /**
-   * Vérifie si le bot est autorisé à connaître la main complète
-   * d'un joueur dans la situation actuelle.
-   *
-   * Certaines cartes du jeu peuvent révéler une main.
-   * Cette méthode est volontairement centralisée afin que ces
-   * règles soient ajoutées ici plutôt que dispersées dans le bot.
+   * Enregistre plusieurs cartes révélées.
    */
-  canSeeFullHand(playerIndex) {
-    if (Number(playerIndex) === this.botIndex) {
+  revealCards(
+    playerIndex,
+    cards,
+    reason = "unknown"
+  ) {
+    if (!Array.isArray(cards)) {
+      return;
+    }
+
+    for (const card of cards) {
+      this.revealCard(
+        playerIndex,
+        card,
+        reason
+      );
+    }
+  }
+
+  /**
+   * Efface une information devenue invalide.
+   *
+   * Exemple : une carte connue vient d'être jouée.
+   */
+  forgetCard(
+    playerIndex,
+    card
+  ) {
+    const index =
+      Number(playerIndex);
+
+    const cards =
+      this.revealedHands.get(
+        index
+      );
+
+    if (!cards) {
+      return;
+    }
+
+    const filtered =
+      cards.filter(
+        knownCard =>
+          knownCard !== card
+      );
+
+    if (
+      filtered.length === 0
+    ) {
+      this.revealedHands.delete(
+        index
+      );
+    } else {
+      this.revealedHands.set(
+        index,
+        filtered
+      );
+    }
+  }
+
+  /**
+   * Efface toutes les informations relatives à une carte
+   * d'un joueur.
+   */
+  forgetPlayerCard(
+    playerIndex,
+    card
+  ) {
+    this.forgetCard(
+      playerIndex,
+      card
+    );
+  }
+
+  /**
+   * Réinitialise toutes les révélations temporaires.
+   */
+  clearRevelations() {
+    this.revealedCards.clear();
+    this.revealedHands.clear();
+    this.revelations = [];
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * CAS PARTICULIER DU DOUBLE 9
+   * ----------------------------------------------------------
+   *
+   * Le Double 9 permet une connaissance supplémentaire.
+   *
+   * On ne donne cependant pas automatiquement toutes les mains
+   * aux autres joueurs.
+   *
+   * C'est le bot qui a déclenché le Double 9 qui reçoit
+   * l'information autorisée.
+   */
+
+  canSeeFullHand(
+    playerIndex
+  ) {
+    const index =
+      Number(playerIndex);
+
+    if (
+      index ===
+      this.botIndex
+    ) {
       return true;
     }
 
     /*
-     * Pour l'instant, aucune révélation supplémentaire n'est
-     * inventée ici.
-     *
-     * Les effets comme Double 9 pourront modifier cette capacité
-     * lorsqu'ils seront représentés explicitement par l'état.
+     * Si le Double 9 est en cours et que le bot est le joueur
+     * concerné, le moteur a ouvert une fenêtre d'information.
      */
+    if (
+      this.state.isDouble9() &&
+      this.state.currentPlayer ===
+        this.botIndex
+    ) {
+      return true;
+    }
+
     return false;
   }
 
+  getDouble9VisibleHand(
+    playerIndex
+  ) {
+    if (
+      !this.canSeeFullHand(
+        playerIndex
+      )
+    ) {
+      return null;
+    }
+
+    const player =
+      this.state.getPlayer(
+        playerIndex
+      );
+
+    if (!player) {
+      return null;
+    }
+
+    return player.main.slice();
+  }
+
   /**
-   * Vue d'un adversaire adaptée aux évaluations probabilistes.
+   * ----------------------------------------------------------
+   * CARTE 17
+   * ----------------------------------------------------------
    *
-   * Le bot connaît :
-   * - son score ;
-   * - son nombre de cartes ;
-   * - les cartes éventuellement révélées ;
+   * Avant le vol :
+   * la carte choisie dans la main adverse est inconnue.
    *
-   * mais pas les cartes cachées.
+   * Après révélation :
+   * la carte tirée devient connue.
    */
-  getOpponentEstimate(playerIndex) {
-    const player = this.state.getPlayer(playerIndex);
+
+  is17CardKnown() {
+    return (
+      this.state.card17Pending !==
+      undefined &&
+      this.state.card17Pending !==
+      null
+    );
+  }
+
+  get17Information() {
+    return {
+      player17:
+        this.state.player17,
+
+      pendingCard:
+        this.is17CardKnown()
+          ? cloneValue(
+              this.state.card17Pending
+            )
+          : null,
+
+      double17Cards:
+        this.state.double17Cards
+          .slice(),
+
+      active:
+        this.state.double17Active
+    };
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * CARTE 19
+   * ----------------------------------------------------------
+   *
+   * Les cartes concernées par le 19 sont publiques si elles
+   * sont déjà présentes sur la table.
+   */
+
+  get19Information() {
+    const playerIndex =
+      this.state.player19;
+
+    if (
+      playerIndex == null
+    ) {
+      return {
+        player19:
+          null,
+
+        cards:
+          []
+      };
+    }
+
+    return {
+      player19:
+        playerIndex,
+
+      cards:
+        this.state.getLastPointCards(
+          playerIndex,
+          2
+        )
+    };
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * ESTIMATION D'UN ADVERSAIRE
+   * ----------------------------------------------------------
+   *
+   * IMPORTANT :
+   * ceci ne fabrique pas une main.
+   *
+   * Cela décrit uniquement :
+   *
+   * - ce que le bot sait ;
+   * - ce qu'il ignore ;
+   * - le nombre de cartes inconnues.
+   */
+
+  getOpponentEstimate(
+    playerIndex
+  ) {
+    const player =
+      this.state.getPlayer(
+        playerIndex
+      );
 
     if (!player) {
       return null;
     }
 
     const knownCards =
-      this.getKnownOpponentCards(playerIndex);
+      this.getKnownOpponentCards(
+        playerIndex
+      );
 
     const unknownCount =
-      this.getUnknownCardCount(playerIndex);
+      this.getUnknownCardCount(
+        playerIndex
+      );
 
     return {
-      id: player.id,
-      score: player.score,
-      cardCount: player.cardCount,
+      id:
+        player.id,
 
-      knownCards: knownCards.slice(),
+      name:
+        player.name,
 
-      unknownCardCount: unknownCount,
+      score:
+        player.score,
+
+      cardCount:
+        player.cardCount,
+
+      knownCards:
+        knownCards.slice(),
+
+      unknownCardCount:
+        unknownCount,
 
       informationCompleteness:
-        player.cardCount === 0
-          ? 100
-          : (
-              knownCards.length /
-              player.cardCount
-            ) * 100
+        this.getInformationCompleteness(
+          playerIndex
+        ),
+
+      exactScoreDistance:
+        this.state.getAbsoluteDistanceToTarget(
+          playerIndex
+        ),
+
+      exactTarget:
+        this.state.isExactTarget(
+          playerIndex
+        )
+    };
+  }
+
+  getOpponentEstimates() {
+    return this.getOpponents()
+      .map(
+        player =>
+          this.getOpponentEstimate(
+            player.id
+          )
+      );
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * SCÉNARIOS D'INFORMATION
+   * ----------------------------------------------------------
+   *
+   * Le futur moteur de recherche pourra créer plusieurs
+   * scénarios sans transformer une hypothèse en vérité.
+   */
+
+  createScenario(
+    overrides = {}
+  ) {
+    const state =
+      this.state.clone();
+
+    /*
+     * Les overrides ne sont utilisés que pour une simulation
+     * probabiliste explicite.
+     */
+    for (
+      const [key, value]
+      of Object.entries(
+        overrides
+      )
+    ) {
+      if (
+        Object.prototype.hasOwnProperty.call(
+          state,
+          key
+        )
+      ) {
+        state[key] =
+          cloneValue(value);
+      }
+    }
+
+    return new KnowledgeState(
+      state,
+      this.botIndex
+    );
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * VUE COMPLETE AUTORISÉE
+   * ----------------------------------------------------------
+   */
+
+  getView() {
+    return {
+      botIndex:
+        this.botIndex,
+
+      self:
+        this.getPlayerKnowledge(
+          this.botIndex
+        ),
+
+      opponents:
+        this.getOpponents()
+          .map(
+            player =>
+              this.getPlayerKnowledge(
+                player.id
+              )
+          ),
+
+      public:
+        this.getPublicState(),
+
+      knownCards:
+        this.getKnownCards(),
+
+      opponentEstimates:
+        this.getOpponentEstimates(),
+
+      revelations:
+        cloneArray(
+          this.revelations
+        )
     };
   }
 
   /**
-   * Estimation de l'ensemble des adversaires.
+   * ----------------------------------------------------------
+   * VALIDATION ANTI-TRICHE
+   * ----------------------------------------------------------
    *
-   * Ceci ne crée aucune main cachée.
+   * Cette fonction sera utilisée par les tests du bot.
+   *
+   * Elle vérifie qu'une vue adversaire ne contient pas de carte
+   * cachée.
    */
-  getOpponentEstimates() {
-    return this.getOpponents().map(
-      player => this.getOpponentEstimate(player.id)
-    );
+
+  validateNoHiddenInformation() {
+    for (
+      const player
+      of this.state.players
+    ) {
+      if (
+        player.id ===
+        this.botIndex
+      ) {
+        continue;
+      }
+
+      const known =
+        this.getKnownOpponentCards(
+          player.id
+        );
+
+      /*
+       * Toutes les cartes renvoyées doivent être réellement
+       * présentes dans les informations accessibles.
+       */
+      for (const card of known) {
+        const visible =
+          player.main.includes(
+            card
+          );
+
+        const revealed =
+          (
+            this.revealedHands
+              .get(player.id) ??
+            []
+          ).includes(card);
+
+        if (
+          !visible &&
+          !revealed
+        ) {
+          throw new Error(
+            `Information cachée détectée : ` +
+            `joueur ${player.id}, carte ${card}`
+          );
+        }
+      }
+    }
+
+    return true;
   }
 
   /**
-   * Crée une nouvelle connaissance basée sur une copie de l'état.
+   * ----------------------------------------------------------
+   * RÉSUMÉ
+   * ----------------------------------------------------------
    */
-  clone() {
-    return new KnowledgeState(
-      this.state.clone(),
-      this.botIndex
+
+  summary() {
+    return {
+      botIndex:
+        this.botIndex,
+
+      ownCards:
+        this.getOwnHand(),
+
+      ownScore:
+        this.getOwnScore(),
+
+      opponents:
+        this.getOpponentEstimates(),
+
+      currentPlayer:
+        this.state.currentPlayer,
+
+      action:
+        this.state.action,
+
+      knownCards:
+        this.getKnownCards(),
+
+      revelations:
+        cloneArray(
+          this.revelations
+        )
+    };
+  }
+}
+
+/**
+ * ------------------------------------------------------------
+ * UTILITAIRES
+ * ------------------------------------------------------------
+ */
+
+function cloneArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map(
+    item =>
+      cloneValue(item)
+  );
+}
+
+function cloneMap(map) {
+  const result =
+    new Map();
+
+  for (
+    const [key, value]
+    of map.entries()
+  ) {
+    result.set(
+      key,
+      cloneValue(value)
     );
   }
+
+  return result;
 }
 
 function cloneValue(value) {
@@ -343,15 +1179,37 @@ function cloneValue(value) {
     return value;
   }
 
-  if (Array.isArray(value)) {
-    return value.map(item => cloneValue(item));
+  if (
+    typeof structuredClone ===
+    "function"
+  ) {
+    try {
+      return structuredClone(
+        value
+      );
+    } catch {
+      // Fallback.
+    }
   }
 
-  if (typeof value === "object") {
+  if (Array.isArray(value)) {
+    return value.map(
+      item =>
+        cloneValue(item)
+    );
+  }
+
+  if (
+    typeof value === "object"
+  ) {
     const result = {};
 
-    for (const [key, item] of Object.entries(value)) {
-      result[key] = cloneValue(item);
+    for (
+      const [key, item]
+      of Object.entries(value)
+    ) {
+      result[key] =
+        cloneValue(item);
     }
 
     return result;
