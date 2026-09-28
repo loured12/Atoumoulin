@@ -1,1371 +1,1556 @@
-/**
- * Atoumoulin AI
- * search.js
- *
- * Recherche stratégique de l'IA.
- *
- * Principe :
- *   état actuel
- *      ↓
- *   actions légales complètes
- *      ↓
- *   simulation de chaque action
- *      ↓
- *   évaluation de l'état résultant
- *      ↓
- *   recherche des tours suivants
- *      ↓
- *   comparaison des lignes
- *
- * Important :
- * - Une action = une décision complète.
- * - Les actions futures sont recalculées à chaque tour.
- * - Les informations cachées ne sont jamais révélées artificiellement.
- * - Une finition n'est PAS sélectionnée par une logique séparée :
- *   elle passe par la même recherche et la même évaluation.
- */
+// ai/search.js
+//
+// Recherche stratégique par tours.
+// Le moteur ne choisit jamais une action ici : il explore les actions légales,
+// simule leurs conséquences et transmet les états à l'évaluation.
+//
+// Principe :
+//   état courant
+//      ↓
+//   actions complètes légales
+//      ↓
+//   simulation
+//      ↓
+//   évaluation
+//      ↓
+//   tour suivant
+//      ↓
+//   meilleure ligne stratégique
+//
+// Important :
+// - aucune combinaison de cartes n'est codée ici ;
+// - aucune difficulté ne modifie les règles ;
+// - une action gagnante passe par l'évaluation normale ;
+// - les informations cachées restent cachées ;
+// - le bot pourra ensuite choisir parmi les actions proches du meilleur score.
 
 import {
-    generateLegalActions,
-    sortByActionPriority
+  generateLegalActions,
+  sortByActionPriority
 } from "./action-generator.js";
 
 import {
-    SimulatedAction,
-    simulateAction
+  SimulatedAction,
+  simulateAction
 } from "./simulation.js";
 
 import {
-    evaluate,
-    evaluatePlayerPosition,
-    calculateFinishPotential
+  evaluate,
+  evaluatePlayerPosition
 } from "./evaluation.js";
 
-import {
-    getGamePhase,
-    getTargetDistance,
-    getVictoryTarget,
-    hasExactTarget
-} from "./state.js";
 
+// ---------------------------------------------------------------------------
+// DIFFICULTÉ / PROFONDEUR
+// ---------------------------------------------------------------------------
 
-/* =========================================================
- * DIFFICULTÉ / PROFONDEUR
- * ========================================================= */
+const SEARCH_DEPTH = Object.freeze({
+  facile: 1,
+  normal: 2,
+  difficile: 3,
+  expert: 3
+});
 
-const SEARCH_DEPTH = {
-    facile: 1,
-    normal: 2,
-    difficile: 3
-};
 
 function normalizeDifficulty(value) {
-    const aliases = {
-        easy: "facile",
-        medium: "normal",
-        hard: "difficile"
-    };
+  const difficulty = String(value || "normal").toLowerCase();
 
-    const normalized = String(value || "normal").toLowerCase();
+  if (
+    difficulty === "facile" ||
+    difficulty === "easy"
+  ) {
+    return "facile";
+  }
 
-    return aliases[normalized] ||
-        (
-            normalized === "facile" ||
-            normalized === "normal" ||
-            normalized === "difficile" ||
-            normalized === "expert"
-                ? normalized
-                : "normal"
-        );
+  if (
+    difficulty === "normal" ||
+    difficulty === "medium"
+  ) {
+    return "normal";
+  }
+
+  if (
+    difficulty === "difficile" ||
+    difficulty === "hard"
+  ) {
+    return "difficile";
+  }
+
+  if (
+    difficulty === "expert"
+  ) {
+    return "expert";
+  }
+
+  return "normal";
 }
 
-function getAdaptiveExpertDepth(state, actionCount = 0) {
-    let depth = 3;
 
-    const phase = Number(getGamePhase(state)) || 0;
-    const distance = Number(getTargetDistance(state)) || 0;
-
-    /*
-     * Plus la partie avance, plus la recherche devient importante.
-     */
-    if (phase >= 0.65) {
-        depth += 1;
-    }
-
-    if (phase >= 0.82) {
-        depth += 1;
-    }
-
-    /*
-     * Une proximité forte de la cible justifie davantage
-     * de profondeur.
-     */
-    if (distance <= 40) {
-        depth += 1;
-    }
-
-    if (distance <= 20) {
-        depth += 1;
-    }
-
-    /*
-     * Évite l'explosion combinatoire lorsque beaucoup
-     * d'actions sont disponibles.
-     */
-    if (actionCount >= 20) {
-        depth -= 1;
-    }
-
-    return Math.max(3, Math.min(6, depth));
-}
-
+/**
+ * Profondeur de recherche en nombre de tours.
+ *
+ * Easy     = 1
+ * Normal   = 2
+ * Hard     = 3
+ * Expert   = adaptatif
+ *
+ * Les actions intermédiaires ne sont pas comptées comme des tours
+ * supplémentaires : action-generator est censé produire une action complète.
+ */
 export function getSearchDepth(
+  state,
+  {
     difficulty = "normal",
-    {
-        state = null,
-        actionCount = 0,
-        gamePhase = null
-    } = {}
+    actionCount = null,
+    playerIndex = null
+  } = {}
 ) {
-    const level = normalizeDifficulty(difficulty);
+  const level = normalizeDifficulty(difficulty);
 
-    if (level === "expert") {
-        if (state) {
-            return getAdaptiveExpertDepth(
-                state,
-                actionCount
-            );
-        }
-
-        const phase =
-            Number(gamePhase) || 0;
-
-        let depth = 3;
-
-        if (phase >= 0.65) depth += 1;
-        if (phase >= 0.82) depth += 1;
-        if (actionCount >= 20) depth -= 1;
-
-        return Math.max(3, Math.min(6, depth));
-    }
-
+  if (level !== "expert") {
     return SEARCH_DEPTH[level];
+  }
+
+  const progress =
+    typeof state?.getGamePhase === "function"
+      ? state.getGamePhase()
+      : typeof state?.getCardsProgress === "function"
+        ? state.getCardsProgress()
+        : 0;
+
+  const distance =
+    typeof state?.getTargetDistance === "function"
+      ? state.getTargetDistance(
+          playerIndex ?? state.currentPlayer
+        )
+      : Number.POSITIVE_INFINITY;
+
+  const alternatives =
+    Number.isFinite(actionCount)
+      ? actionCount
+      : safeActionCount(state);
+
+  let depth = 3;
+
+  // En fin de partie, les conséquences à court terme deviennent
+  // plus importantes : on regarde un tour supplémentaire.
+  if (progress >= 0.70) {
+    depth += 1;
+  }
+
+  if (distance <= 40) {
+    depth += 1;
+  }
+
+  if (distance <= 20) {
+    depth += 1;
+  }
+
+  // Trop de branches => profondeur plafonnée pour éviter l'explosion.
+  if (alternatives >= 20) {
+    depth = Math.min(depth, 4);
+  } else if (alternatives >= 12) {
+    depth = Math.min(depth, 5);
+  }
+
+  return Math.max(3, Math.min(depth, 6));
 }
 
 
-/* =========================================================
- * CONVERSION ACTION → SIMULATION
- * ========================================================= */
+function safeActionCount(state) {
+  try {
+    if (!state) {
+      return 0;
+    }
+
+    return generateLegalActions(state).length;
+  } catch {
+    return 0;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// CONVERSION ACTION IA -> ACTION DE SIMULATION
+// ---------------------------------------------------------------------------
+
+function inferSimulationType(action) {
+  if (!action) {
+    return "card";
+  }
+
+  if (action.kind === "PLAY_DOUBLE") {
+    return "double";
+  }
+
+  if (action.kind === "PLAY_CARD") {
+    return "card";
+  }
+
+  if (action.kind === "CHOOSE_TARGET") {
+    return "target";
+  }
+
+  if (
+    action.kind === "CHOOSE_EFFECT" ||
+    action.kind === "CHOOSE_TABLE_CARD" ||
+    action.kind === "CHOOSE_MULTIPLE_TABLE_CARDS" ||
+    action.kind === "CHOOSE_REVEALED_CARD" ||
+    action.kind === "CONTINUE" ||
+    action.kind === "FINISH"
+  ) {
+    return "effect";
+  }
+
+  return "combination";
+}
+
 
 export function toSimulatedAction(action) {
-    if (!action) {
-        return null;
-    }
+  if (!action) {
+    throw new Error("Action IA absente.");
+  }
 
-    /*
-     * L'action-generator historique et le nouveau générateur
-     * peuvent fournir des objets légèrement différents.
-     *
-     * On conserve donc une conversion tolérante.
-     */
+  return new SimulatedAction({
+    type: inferSimulationType(action),
 
-    const kind = String(
-        action.kind ||
-        action.type ||
-        "effect"
-    );
+    cardIndex:
+      action.cardIndex ??
+      action.index ??
+      null,
 
-    let type = "effect";
+    card:
+      action.card ??
+      action.value ??
+      null,
 
-    if (
-        kind === "PLAY_CARD" ||
-        kind === "card" ||
-        kind === "play_card"
-    ) {
-        type = "card";
-    } else if (
-        kind === "PLAY_DOUBLE" ||
-        kind === "double" ||
-        kind === "play_double"
-    ) {
-        type = "double";
-    } else if (
-        kind === "TARGET" ||
-        kind === "target"
-    ) {
-        type = "target";
-    } else if (
-        kind === "TABLE_CARD" ||
-        kind === "table_card"
-    ) {
-        type = "table_card";
-    } else if (
-        kind === "TABLE_CARDS" ||
-        kind === "table_cards"
-    ) {
-        type = "table_cards";
-    } else if (
-        kind === "CONTINUE" ||
-        kind === "continue"
-    ) {
-        type = "continue";
-    } else if (
-        kind === "TERMINATE" ||
-        kind === "finish"
-    ) {
-        type = "terminate";
-    }
+    cards:
+      Array.isArray(action.cards)
+        ? action.cards.slice()
+        : [],
 
-    return new SimulatedAction({
-        type,
-        cardIndex:
-            action.cardIndex ?? null,
-        card:
-            action.card ?? null,
-        cards:
-            Array.isArray(action.cards)
-                ? action.cards
-                : [],
-        target:
-            action.target ?? null,
-        effect:
-            action.effect ?? null,
-        value:
-            action.value ?? null,
-        parameters: {
-            ...(action.parameters || {}),
-            ...(action.metadata || {}),
-            tableCard:
-                action.tableCard ?? null,
-            tableCards:
-                action.tableCards ?? null,
-            commands:
-                action.commands || null,
-            hiddenInformation:
-                action.hiddenInformation || null,
-            uncertainty:
-                action.uncertainty || null
-        },
-        description:
-            action.description ||
-            action.metadata?.description ||
-            ""
-    });
+    target:
+      action.target ??
+      null,
+
+    effect:
+      action.effect ??
+      null,
+
+    value:
+      action.value ??
+      null,
+
+    parameters: {
+      ...(action.parameters || {}),
+      tableCard:
+        action.tableCard ??
+        action.parameters?.tableCard ??
+        null,
+
+      tableCards:
+        Array.isArray(action.tableCards)
+          ? action.tableCards.slice()
+          : Array.isArray(action.parameters?.tableCards)
+            ? action.parameters.tableCards.slice()
+            : [],
+
+      hiddenInformation:
+        action.hiddenInformation ??
+        action.parameters?.hiddenInformation ??
+        false,
+
+      uncertainty:
+        action.uncertainty ??
+        action.parameters?.uncertainty ??
+        null,
+
+      metadata:
+        action.metadata
+          ? { ...action.metadata }
+          : {},
+
+      commands:
+        Array.isArray(action.commands)
+          ? action.commands.slice()
+          : Array.isArray(action.parameters?.commands)
+            ? action.parameters.commands.slice()
+            : []
+    },
+
+    description:
+      action.metadata?.description ??
+      action.description ??
+      action.id ??
+      "Action IA"
+  });
 }
 
 
-/* =========================================================
- * SIGNATURES / CYCLES
- * ========================================================= */
+// ---------------------------------------------------------------------------
+// OUTILS D'ÉTAT
+// ---------------------------------------------------------------------------
+
+function getCurrentPlayer(state) {
+  if (!state) {
+    return null;
+  }
+
+  if (
+    Number.isInteger(state.currentPlayer)
+  ) {
+    return state.currentPlayer;
+  }
+
+  if (
+    typeof state.currentPlayer === "string" &&
+    state.currentPlayer.trim() !== ""
+  ) {
+    const parsed = Number(state.currentPlayer);
+
+    return Number.isInteger(parsed)
+      ? parsed
+      : null;
+  }
+
+  return null;
+}
+
+
+function getPlayerIndex(state, fallback = 0) {
+  if (
+    Number.isInteger(fallback)
+  ) {
+    return fallback;
+  }
+
+  if (
+    state &&
+    Number.isInteger(state.currentPlayer)
+  ) {
+    return state.currentPlayer;
+  }
+
+  return 0;
+}
+
 
 function getStateSignature(state) {
-    if (!state) {
-        return "null";
-    }
+  if (!state) {
+    return "null";
+  }
 
-    if (
-        typeof state.signature === "function"
-    ) {
-        return state.signature();
-    }
+  if (
+    typeof state.signature === "function"
+  ) {
+    return state.signature();
+  }
 
-    if (
-        typeof state.toMutableObject === "function"
-    ) {
-        return JSON.stringify(
-            state.toMutableObject()
-        );
-    }
-
-    try {
-        return JSON.stringify(state);
-    } catch {
-        return String(state);
-    }
-}
-
-function getActionSignature(action) {
-    if (!action) {
-        return "null";
-    }
-
-    if (
-        typeof action.signature === "function"
-    ) {
-        return action.signature();
-    }
-
-    try {
-        return JSON.stringify(action);
-    } catch {
-        return String(action);
-    }
+  try {
+    return JSON.stringify(state);
+  } catch {
+    return String(state);
+  }
 }
 
 
-/* =========================================================
- * COMPLEXITÉ D'UNE ACTION
- * ========================================================= */
-
-/*
- * La complexité ne correspond PAS à la puissance de la carte.
- *
- * Elle dépend notamment :
- * - du nombre d'alternatives ;
- * - du nombre de cibles ;
- * - du choix de cartes ;
- * - des informations cachées ;
- * - de l'incertitude ;
- * - des conséquences ;
- * - de la profondeur de recherche nécessaire.
- */
-
-export function calculateActionComplexity(
-    state,
-    action,
-    actionCount = null
-) {
-    let complexity = 0;
-
-    const actions =
-        Array.isArray(
-            generateLegalActions(state)
-        )
-            ? generateLegalActions(state)
-            : [];
-
-    const alternatives =
-        actionCount == null
-            ? actions.length
-            : actionCount;
-
-    if (alternatives >= 12) {
-        complexity += 2;
-    } else if (alternatives >= 6) {
-        complexity += 1;
-    }
-
-    const kind = String(
-        action?.kind ||
-        action?.type ||
-        ""
-    ).toLowerCase();
-
-    if (
-        kind.includes("target") ||
-        action?.target != null
-    ) {
-        complexity += 1;
-    }
-
-    if (
-        action?.tableCard != null ||
-        Array.isArray(action?.tableCards)
-    ) {
-        complexity += 1;
-    }
-
-    if (
-        action?.hiddenInformation ||
-        action?.metadata?.hiddenInformation
-    ) {
-        complexity += 2;
-    }
-
-    if (
-        action?.uncertainty ||
-        action?.metadata?.uncertainty
-    ) {
-        complexity += 1;
-    }
-
-    if (
-        Array.isArray(action?.commands) &&
-        action.commands.length > 1
-    ) {
-        complexity += 1;
-    }
-
-    /*
-     * Conséquences particulièrement ramifiées.
-     */
-    const card =
-        Number(action?.card?.value ?? action?.card);
-
-    if (
-        card === 9 ||
-        card === 13 ||
-        card === 17 ||
-        card === 19 ||
-        card === 21
-    ) {
-        complexity += 1;
-    }
-
-    if (
-        card === 1 &&
-        action?.target != null
-    ) {
-        complexity += 1;
-    }
-
-    if (complexity <= 2) {
-        return "simple";
-    }
-
-    if (complexity <= 5) {
-        return "medium";
-    }
-
-    return "complex";
+function isRoundEnded(state) {
+  return !!(
+    state?.roundEnded ||
+    state?.mancheTerminee
+  );
 }
 
 
-/* =========================================================
- * TOLÉRANCE ADAPTATIVE
- * ========================================================= */
+function getTargetScore(state, playerIndex) {
+  if (
+    typeof state?.getVictoryTarget === "function"
+  ) {
+    return state.getVictoryTarget(playerIndex);
+  }
 
-export function getActionTolerance(
-    state,
-    action,
-    actionCount = null
-) {
-    const complexity =
-        calculateActionComplexity(
-            state,
-            action,
-            actionCount
-        );
+  if (
+    Number.isFinite(state?.targetScore)
+  ) {
+    return state.targetScore;
+  }
 
-    const phase =
-        Number(getGamePhase(state)) || 0;
+  const count =
+    Array.isArray(state?.players)
+      ? state.players.length
+      : 2;
 
-    /*
-     * La tolérance augmente avec la complexité :
-     * une action complexe peut avoir plusieurs lignes
-     * proches sans qu'il soit pertinent de considérer
-     * toutes ces lignes comme totalement différentes.
-     */
-
-    let tolerance;
-
-    if (complexity === "simple") {
-        tolerance = 3;
-    } else if (complexity === "medium") {
-        tolerance = 5;
-    } else {
-        tolerance = 8;
-    }
-
-    /*
-     * En fin de partie, les écarts deviennent plus importants.
-     */
-    if (phase >= 0.80) {
-        tolerance += 1;
-    }
-
-    return tolerance;
+  if (count <= 3) return 120;
+  if (count === 4) return 160;
+  if (count === 5) return 200;
+  if (count === 6) return 220;
+  if (count === 7) return 240;
+  return 260;
 }
 
 
-/* =========================================================
- * CONTEXTE D'ÉVALUATION
- * ========================================================= */
+function getPlayerScore(state, playerIndex) {
+  if (
+    typeof state?.getScore === "function"
+  ) {
+    return Number(
+      state.getScore(playerIndex)
+    ) || 0;
+  }
 
-function buildEvaluationContext({
-    state,
-    playerIndex,
-    action,
-    resultingState,
-    depth,
-    path,
-    actionCount
-}) {
-    return {
-        playerIndex,
-        action,
-        resultingState,
-        depth,
-        path,
-        actionCount,
-        complexity:
-            calculateActionComplexity(
-                state,
-                action,
-                actionCount
-            ),
-        tolerance:
-            getActionTolerance(
-                state,
-                action,
-                actionCount
-            ),
-        gamePhase:
-            getGamePhase(state),
-        targetDistance:
-            getTargetDistance(
-                state,
-                playerIndex
-            ),
-        victoryTarget:
-            getVictoryTarget(
-                state
-            )
-    };
+  const player =
+    state?.players?.[playerIndex];
+
+  return Number(
+    player?.score
+  ) || 0;
 }
 
 
-/* =========================================================
- * ÉVALUATION D'UN ÉTAT
- * ========================================================= */
+function hasExactTarget(state, playerIndex) {
+  if (
+    typeof state?.hasExactTarget === "function"
+  ) {
+    return !!state.hasExactTarget(playerIndex);
+  }
 
-function scoreEvaluation(evaluation) {
-    if (!evaluation) {
-        return 0;
-    }
-
-    const candidates = [
-        evaluation.finalScore,
-        evaluation.score,
-        evaluation.position,
-        evaluation.metrics?.finalScore
-    ];
-
-    for (const value of candidates) {
-        const number = Number(value);
-
-        if (Number.isFinite(number)) {
-            return number;
-        }
-    }
-
-    return 0;
-}
-
-function evaluateResult({
-    state,
-    playerIndex,
-    action,
-    resultingState,
-    depth,
-    path,
-    actionCount
-}) {
-    const context =
-        buildEvaluationContext({
-            state,
-            playerIndex,
-            action,
-            resultingState,
-            depth,
-            path,
-            actionCount
-        });
-
-    const result =
-        evaluate({
-            state,
-            playerIndex,
-            action,
-            resultingState,
-            context
-        });
-
-    return {
-        evaluation: result,
-        score: scoreEvaluation(result)
-    };
+  return (
+    getPlayerScore(state, playerIndex) ===
+    getTargetScore(state, playerIndex)
+  );
 }
 
 
-/* =========================================================
- * FINITION
- * ========================================================= */
+function isTerminalState(state, playerIndex) {
+  if (!state) {
+    return false;
+  }
 
-function getFinishInfo(
-    state,
-    playerIndex,
-    action,
-    resultingState,
-    depth,
-    path
-) {
-    if (!resultingState) {
-        return {
-            potential: 0,
-            exact: false
-        };
-    }
+  if (isRoundEnded(state)) {
+    return true;
+  }
 
-    const exact =
-        hasExactTarget(
-            resultingState,
-            playerIndex
-        );
-
-    if (exact) {
-        return {
-            potential: 100,
-            exact: true
-        };
-    }
-
-    /*
-     * On demande au moteur d'évaluation de calculer
-     * la possibilité de finir depuis l'état résultant.
-     *
-     * Ce n'est pas un sélecteur séparé.
-     * C'est une métrique utilisée dans la ligne de recherche.
-     */
-    let potential = 0;
-
-    try {
-        potential =
-            Number(
-                calculateFinishPotential({
-                    state: resultingState,
-                    playerIndex,
-                    action,
-                    depth,
-                    path
-                })
-            );
-
-        if (!Number.isFinite(potential)) {
-            potential = 0;
-        }
-    } catch {
-        potential = 0;
-    }
-
-    return {
-        potential: Math.max(
-            0,
-            Math.min(100, potential)
-        ),
-        exact: false
-    };
-}
-
-
-/* =========================================================
- * SIMULATION
- * ========================================================= */
-
-function simulateOne(
-    state,
-    action
-) {
-    const simulated =
-        toSimulatedAction(action);
-
-    if (!simulated) {
-        return null;
-    }
-
-    try {
-        return simulateAction(
-            state,
-            simulated
-        );
-    } catch {
-        return null;
-    }
-}
-
-
-/* =========================================================
- * ACTIONS LÉGALES
- * ========================================================= */
-
-function generateActions(state) {
-    const actions =
-        generateLegalActions(state);
-
-    if (!Array.isArray(actions)) {
-        return [];
-    }
-
-    const legal =
-        actions.filter(Boolean);
-
-    return sortByActionPriority(
-        legal
-    );
-}
-
-
-/* =========================================================
- * TERMINAL
- * ========================================================= */
-
-function isTerminalState(
+  return hasExactTarget(
     state,
     playerIndex
-) {
-    if (!state) {
-        return false;
-    }
-
-    if (state.roundEnded) {
-        return true;
-    }
-
-    if (
-        hasExactTarget(
-            state,
-            playerIndex
-        )
-    ) {
-        return true;
-    }
-
-    return false;
+  );
 }
 
 
-/* =========================================================
- * RECHERCHE RÉCURSIVE
- * ========================================================= */
+function getDistance(state, playerIndex) {
+  if (
+    typeof state?.getTargetDistance === "function"
+  ) {
+    return state.getTargetDistance(
+      playerIndex
+    );
+  }
 
-function searchNode({
+  return (
+    getTargetScore(state, playerIndex) -
+    getPlayerScore(state, playerIndex)
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// CONTEXTE D'ÉVALUATION
+// ---------------------------------------------------------------------------
+
+function buildEvaluationContext({
+  rootState,
+  state,
+  action,
+  resultingState,
+  playerIndex,
+  depth,
+  maxDepth,
+  path,
+  isOpponentNode = false
+}) {
+  return {
+    rootState,
     state,
+    action,
+    resultingState,
+
+    playerIndex,
+
+    depth,
+    maxDepth,
+
+    path: path.slice(),
+
+    isOpponentNode,
+
+    score:
+      getPlayerScore(
+        resultingState || state,
+        playerIndex
+      ),
+
+    distance:
+      getDistance(
+        resultingState || state,
+        playerIndex
+      ),
+
+    progress:
+      typeof (
+        resultingState || state
+      )?.getGamePhase === "function"
+        ? (
+            resultingState || state
+          ).getGamePhase()
+        : typeof (
+            resultingState || state
+          )?.getCardsProgress === "function"
+          ? (
+              resultingState || state
+            ).getCardsProgress()
+          : 0
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// ÉVALUATION
+// ---------------------------------------------------------------------------
+
+function evaluateNode({
+  rootState,
+  state,
+  action = null,
+  resultingState = state,
+  playerIndex,
+  depth,
+  maxDepth,
+  path,
+  isOpponentNode = false
+}) {
+  const context = buildEvaluationContext({
+    rootState,
+    state,
+    action,
+    resultingState,
     playerIndex,
     depth,
     maxDepth,
-    path = [],
-    visited = new Set()
-}) {
-    /*
-     * État terminal :
-     * on l'évalue normalement.
-     */
-    if (
-        depth >= maxDepth ||
-        isTerminalState(
-            state,
-            playerIndex
-        )
-    ) {
-        const evaluation =
-            evaluatePlayerPosition(
-                state,
-                playerIndex
-            );
+    path,
+    isOpponentNode
+  });
 
-        return {
-            score:
-                scoreEvaluation(
-                    evaluation
-                ),
-            evaluation,
-            action: null,
-            depth,
-            path,
-            finishPotential:
-                hasExactTarget(
-                    state,
-                    playerIndex
-                )
-                    ? 100
-                    : 0,
-            terminal: true
-        };
-    }
+  if (action) {
+    const result = evaluate({
+      state,
+      playerIndex,
+      action,
+      resultingState,
+      context
+    });
 
-    const signature =
-        getStateSignature(state);
-
-    if (visited.has(signature)) {
-        const evaluation =
-            evaluatePlayerPosition(
-                state,
-                playerIndex
-            );
-
-        return {
-            score:
-                scoreEvaluation(
-                    evaluation
-                ),
-            evaluation,
-            action: null,
-            depth,
-            path,
-            finishPotential: 0,
-            terminal: false,
-            cycle: true
-        };
-    }
-
-    const nextVisited =
-        new Set(visited);
-
-    nextVisited.add(signature);
-
-    const actions =
-        generateActions(state);
-
-    if (!actions.length) {
-        const evaluation =
-            evaluatePlayerPosition(
-                state,
-                playerIndex
-            );
-
-        return {
-            score:
-                scoreEvaluation(
-                    evaluation
-                ),
-            evaluation,
-            action: null,
-            depth,
-            path,
-            finishPotential: 0,
-            terminal: true
-        };
-    }
-
-    let best = null;
-
-    for (const action of actions) {
-        const simulation =
-            simulateOne(
-                state,
-                action
-            );
-
-        if (!simulation) {
-            continue;
-        }
-
-        if (
-            simulation.legal === false ||
-            simulation.completed === false
-        ) {
-            continue;
-        }
-
-        const resultingState =
-            simulation.state;
-
-        if (!resultingState) {
-            continue;
-        }
-
-        const actionPath =
-            [...path, action];
-
-        const immediate =
-            evaluateResult({
-                state,
-                playerIndex,
-                action,
-                resultingState,
-                depth,
-                path: actionPath,
-                actionCount:
-                    actions.length
-            });
-
-        const finish =
-            getFinishInfo(
-                state,
-                playerIndex,
-                action,
-                resultingState,
-                depth,
-                actionPath
-            );
-
-        let future = null;
-
-        if (
-            depth + 1 < maxDepth &&
-            !isTerminalState(
-                resultingState,
-                playerIndex
-            )
-        ) {
-            future =
-                searchNode({
-                    state: resultingState,
-                    playerIndex,
-                    depth: depth + 1,
-                    maxDepth,
-                    path: actionPath,
-                    visited: nextVisited
-                });
-        }
-
-        /*
-         * Si aucune recherche future n'est possible,
-         * l'évaluation immédiate reste la référence.
-         *
-         * Sinon, on conserve l'évaluation future comme
-         * conséquence de cette action.
-         *
-         * Pas de 40/60 arbitraire :
-         * le résultat futur est lui-même une évaluation
-         * complète du nouvel état.
-         */
-        const futureScore =
-            future
-                ? Number(future.score) || 0
-                : immediate.score;
-
-        /*
-         * On utilise la moyenne des évaluations disponibles
-         * afin d'éviter qu'une profondeur supplémentaire
-         * écrase complètement l'état immédiat.
-         *
-         * Le poids est ajusté selon la profondeur restante.
-         */
-        const remainingDepth =
-            Math.max(
-                1,
-                maxDepth - depth
-            );
-
-        const futureWeight =
-            remainingDepth <= 1
-                ? 0
-                : 1 / (remainingDepth + 1);
-
-        const immediateWeight =
-            1 - futureWeight;
-
-        const combinedScore =
-            immediate.score *
-                immediateWeight +
-            futureScore *
-                futureWeight;
-
-        /*
-         * La finition est une information de l'évaluation,
-         * pas une règle de sélection prioritaire.
-         */
-        const finishAdjustment =
-            finish.potential > 0
-                ? finish.potential * 0.10
-                : 0;
-
-        const finalScore =
-            combinedScore +
-            finishAdjustment;
-
-        const candidate = {
-            action,
-            score: finalScore,
-            finalScore,
-            immediateScore:
-                immediate.score,
-            futureScore,
-            finishPotential:
-                finish.potential,
-            winning:
-                finish.exact,
-            evaluation:
-                immediate.evaluation,
-            future,
-            resultingState,
-            simulation,
-            depth,
-            path: actionPath,
-            complexity:
-                calculateActionComplexity(
-                    state,
-                    action,
-                    actions.length
-                ),
-            tolerance:
-                getActionTolerance(
-                    state,
-                    action,
-                    actions.length
-                )
-        };
-
-        if (
-            best === null ||
-            candidate.score > best.score
-        ) {
-            best = candidate;
-        }
-    }
-
-    return best || {
-        score: 0,
-        finalScore: 0,
-        action: null,
-        depth,
-        path,
-        finishPotential: 0,
-        terminal: false
+    return {
+      ...result,
+      finalScore:
+        Number.isFinite(result?.finalScore)
+          ? result.finalScore
+          : Number.isFinite(result?.score)
+            ? result.score
+            : 0
     };
-}
+  }
 
-
-/* =========================================================
- * RECHERCHE DES ACTIONS
- * ========================================================= */
-
-export function searchActions({
-    state,
-    playerIndex = 0,
-    difficulty = "normal",
-    depth = null
-} = {}) {
-    if (!state) {
-        return [];
-    }
-
-    const actions =
-        generateActions(state);
-
-    if (!actions.length) {
-        return [];
-    }
-
-    const maxDepth =
-        depth == null
-            ? getSearchDepth(
-                difficulty,
-                {
-                    state,
-                    actionCount:
-                        actions.length
-                }
-            )
-            : Math.max(
-                1,
-                Number(depth) || 1
-            );
-
-    const results = [];
-
-    for (const action of actions) {
-        const simulation =
-            simulateOne(
-                state,
-                action
-            );
-
-        if (!simulation) {
-            continue;
-        }
-
-        if (
-            simulation.legal === false ||
-            simulation.completed === false
-        ) {
-            continue;
-        }
-
-        const resultingState =
-            simulation.state;
-
-        if (!resultingState) {
-            continue;
-        }
-
-        const path = [action];
-
-        const immediate =
-            evaluateResult({
-                state,
-                playerIndex,
-                action,
-                resultingState,
-                depth: 0,
-                path,
-                actionCount:
-                    actions.length
-            });
-
-        const finish =
-            getFinishInfo(
-                state,
-                playerIndex,
-                action,
-                resultingState,
-                0,
-                path
-            );
-
-        let future = null;
-
-        if (
-            maxDepth > 1 &&
-            !isTerminalState(
-                resultingState,
-                playerIndex
-            )
-        ) {
-            future =
-                searchNode({
-                    state: resultingState,
-                    playerIndex,
-                    depth: 1,
-                    maxDepth,
-                    path,
-                    visited: new Set([
-                        getStateSignature(state)
-                    ])
-                });
-        }
-
-        const futureScore =
-            future
-                ? Number(future.score) || 0
-                : immediate.score;
-
-        const remainingDepth =
-            Math.max(
-                1,
-                maxDepth
-            );
-
-        const futureWeight =
-            maxDepth <= 1
-                ? 0
-                : 1 / (remainingDepth + 1);
-
-        const immediateWeight =
-            1 - futureWeight;
-
-        const combinedScore =
-            immediate.score *
-                immediateWeight +
-            futureScore *
-                futureWeight;
-
-        const finishAdjustment =
-            finish.potential > 0
-                ? finish.potential * 0.10
-                : 0;
-
-        const finalScore =
-            combinedScore +
-            finishAdjustment;
-
-        results.push({
-            action,
-            score: finalScore,
-            finalScore,
-
-            immediateScore:
-                immediate.score,
-
-            futureScore,
-
-            finishPotential:
-                finish.potential,
-
-            winning:
-                finish.exact,
-
-            evaluation:
-                immediate.evaluation,
-
-            future,
-
-            resultingState,
-            simulation,
-
-            depth: maxDepth,
-
-            complexity:
-                calculateActionComplexity(
-                    state,
-                    action,
-                    actions.length
-                ),
-
-            tolerance:
-                getActionTolerance(
-                    state,
-                    action,
-                    actions.length
-                )
-        });
-    }
-
-    results.sort(
-        (a, b) =>
-            Number(b.finalScore || 0) -
-            Number(a.finalScore || 0)
+  const result =
+    evaluatePlayerPosition(
+      resultingState,
+      playerIndex,
+      context
     );
 
-    return results;
+  return {
+    ...result,
+    finalScore:
+      Number.isFinite(result?.finalScore)
+        ? result.finalScore
+        : Number.isFinite(result?.score)
+          ? result.score
+          : Number.isFinite(result?.position)
+            ? result.position
+            : 0
+  };
 }
 
 
-/* =========================================================
- * MEILLEURE ACTION
- * ========================================================= */
-
-export function searchBestAction({
-    state,
-    playerIndex = 0,
-    difficulty = "normal",
-    depth = null
-} = {}) {
-    const results =
-        searchActions({
-            state,
-            playerIndex,
-            difficulty,
-            depth
-        });
-
-    return results[0] || null;
-}
-
-
-/* =========================================================
- * ANALYSE DES LIGNES DE FINITION
- * ========================================================= */
-
-/*
- * Cette fonction reste disponible pour le diagnostic.
- *
- * Elle ne doit PAS être utilisée par bot.js pour dire :
- * "j'ai trouvé une finition donc je la joue".
- *
- * La décision principale passe par searchActions().
- */
-
-export function searchFinish({
-    state,
-    playerIndex = 0,
-    maxDepth = 8
-} = {}) {
-    if (!state) {
-        return [];
-    }
-
-    const results =
-        searchActions({
-            state,
-            playerIndex,
-            difficulty: "expert",
-            depth: Math.max(
-                1,
-                Number(maxDepth) || 1
-            )
-        });
-
-    return results
-        .filter(
-            result =>
-                Number(
-                    result.finishPotential
-                ) > 0 ||
-                result.winning
-        )
-        .sort(
-            (a, b) =>
-                Number(
-                    b.finishPotential || 0
-                ) -
-                Number(
-                    a.finishPotential || 0
-                )
-        );
-}
-
-
-/* =========================================================
- * UTILITAIRES
- * ========================================================= */
-
-export function calculateFinishLineScore(turns) {
-    const value =
-        Number(turns);
-
-    if (!Number.isFinite(value)) {
-        return 0;
-    }
-
-    if (value <= 1) return 100;
-    if (value === 2) return 70;
-    if (value === 3) return 45;
-    if (value === 4) return 25;
-    if (value >= 5) return 10;
-
+function numericEvaluation(evaluation) {
+  if (!evaluation) {
     return 0;
+  }
+
+  if (
+    Number.isFinite(
+      evaluation.finalScore
+    )
+  ) {
+    return evaluation.finalScore;
+  }
+
+  if (
+    Number.isFinite(
+      evaluation.score
+    )
+  ) {
+    return evaluation.score;
+  }
+
+  if (
+    Number.isFinite(
+      evaluation.position
+    )
+  ) {
+    return evaluation.position;
+  }
+
+  return 0;
 }
 
-export function getDistanceToTarget(
+
+// ---------------------------------------------------------------------------
+// ACTIONS LÉGALES
+// ---------------------------------------------------------------------------
+
+export function generateActions(state) {
+  if (!state) {
+    return [];
+  }
+
+  let actions = generateLegalActions(
+    state
+  );
+
+  actions = Array.isArray(actions)
+    ? actions.slice()
+    : [];
+
+  return sortByActionPriority(
+    actions
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// SIMULATION
+// ---------------------------------------------------------------------------
+
+export function simulateOne(
+  state,
+  action
+) {
+  const simulated =
+    toSimulatedAction(action);
+
+  return simulateAction(
     state,
-    playerIndex = 0
-) {
-    return getTargetDistance(
-        state,
-        playerIndex
-    );
+    simulated
+  );
 }
 
-export function groupCloseResults(
-    results,
-    tolerance = null
-) {
-    if (!Array.isArray(results) || !results.length) {
-        return [];
-    }
 
-    const best =
-        Number(
-            results[0]?.finalScore ??
-            results[0]?.score
+// ---------------------------------------------------------------------------
+// COMPARAISON DE NŒUDS
+// ---------------------------------------------------------------------------
+
+function chooseBestForAi(results) {
+  if (!results.length) {
+    return null;
+  }
+
+  return results.reduce(
+    (best, current) =>
+      !best ||
+      current.score > best.score
+        ? current
+        : best,
+    null
+  );
+}
+
+
+function chooseBestForOpponent(results) {
+  if (!results.length) {
+    return null;
+  }
+
+  // Le futur adversaire est supposé jouer de manière défavorable
+  // au joueur IA étudié : il choisit donc la ligne qui donne
+  // la plus petite valeur au joueur IA.
+  return results.reduce(
+    (best, current) =>
+      !best ||
+      current.score < best.score
+        ? current
+        : best,
+    null
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// RECHERCHE RÉCURSIVE
+// ---------------------------------------------------------------------------
+
+function searchNode({
+  rootState,
+  state,
+  playerIndex,
+  depth,
+  maxDepth,
+  path = [],
+  visited = new Set()
+}) {
+  const currentPlayer =
+    getCurrentPlayer(state);
+
+  const isAiTurn =
+    currentPlayer === null ||
+    Number(currentPlayer) ===
+      Number(playerIndex);
+
+  // -------------------------------------------------------------------------
+  // TERMINAL
+  // -------------------------------------------------------------------------
+
+  if (
+    isTerminalState(
+      state,
+      playerIndex
+    )
+  ) {
+    const evaluation =
+      evaluateNode({
+        rootState,
+        state,
+        resultingState: state,
+        playerIndex,
+        depth,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    return {
+      score:
+        numericEvaluation(evaluation),
+
+      finalScore:
+        numericEvaluation(evaluation),
+
+      immediateScore:
+        numericEvaluation(evaluation),
+
+      futureScore:
+        numericEvaluation(evaluation),
+
+      depth,
+
+      terminal: true,
+
+      finish:
+        evaluation?.finish ??
+        evaluation?.finishPotential ??
+        0,
+
+      evaluation,
+
+      resultingState: state,
+
+      line: path.slice()
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // PROFONDEUR ATTEINTE
+  // -------------------------------------------------------------------------
+
+  if (
+    depth >= maxDepth
+  ) {
+    const evaluation =
+      evaluateNode({
+        rootState,
+        state,
+        resultingState: state,
+        playerIndex,
+        depth,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    return {
+      score:
+        numericEvaluation(evaluation),
+
+      finalScore:
+        numericEvaluation(evaluation),
+
+      immediateScore:
+        numericEvaluation(evaluation),
+
+      futureScore:
+        numericEvaluation(evaluation),
+
+      depth,
+
+      terminal: false,
+
+      finish:
+        evaluation?.finish ??
+        evaluation?.finishPotential ??
+        0,
+
+      evaluation,
+
+      resultingState: state,
+
+      line: path.slice()
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // PROTECTION CONTRE LES CYCLES
+  // -------------------------------------------------------------------------
+
+  const signature =
+    getStateSignature(state);
+
+  const cycleKey =
+    `${signature}|${depth}|${playerIndex}`;
+
+  if (visited.has(cycleKey)) {
+    const evaluation =
+      evaluateNode({
+        rootState,
+        state,
+        resultingState: state,
+        playerIndex,
+        depth,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    return {
+      score:
+        numericEvaluation(evaluation),
+
+      finalScore:
+        numericEvaluation(evaluation),
+
+      immediateScore:
+        numericEvaluation(evaluation),
+
+      futureScore:
+        numericEvaluation(evaluation),
+
+      depth,
+
+      terminal: false,
+      cycle: true,
+
+      finish:
+        evaluation?.finish ??
+        evaluation?.finishPotential ??
+        0,
+
+      evaluation,
+
+      resultingState: state,
+
+      line: path.slice()
+    };
+  }
+
+  const nextVisited =
+    new Set(visited);
+
+  nextVisited.add(cycleKey);
+
+  // -------------------------------------------------------------------------
+  // ACTIONS
+  // -------------------------------------------------------------------------
+
+  const actions =
+    generateActions(state);
+
+  if (!actions.length) {
+    const evaluation =
+      evaluateNode({
+        rootState,
+        state,
+        resultingState: state,
+        playerIndex,
+        depth,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    return {
+      score:
+        numericEvaluation(evaluation),
+
+      finalScore:
+        numericEvaluation(evaluation),
+
+      immediateScore:
+        numericEvaluation(evaluation),
+
+      futureScore:
+        numericEvaluation(evaluation),
+
+      depth,
+
+      terminal: false,
+      noActions: true,
+
+      finish:
+        evaluation?.finish ??
+        evaluation?.finishPotential ??
+        0,
+
+      evaluation,
+
+      resultingState: state,
+
+      line: path.slice()
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // EXPLORATION
+  // -------------------------------------------------------------------------
+
+  const candidates = [];
+
+  for (
+    const action of actions
+  ) {
+    let simulation;
+
+    try {
+      simulation =
+        simulateOne(
+          state,
+          action
         );
-
-    if (!Number.isFinite(best)) {
-        return results.slice(0, 1);
+    } catch (error) {
+      continue;
     }
 
-    /*
-     * Si aucune tolérance n'est fournie,
-     * on prend celle de la meilleure action.
-     */
-    const effectiveTolerance =
-        tolerance == null
-            ? Number(
-                results[0]?.tolerance
-            ) || 5
-            : Number(tolerance);
+    if (
+      !simulation ||
+      simulation.error ||
+      simulation.legal === false
+    ) {
+      continue;
+    }
 
-    return results.filter(result => {
-        const score =
-            Number(
-                result?.finalScore ??
-                result?.score
-            );
+    const resultingState =
+      simulation.state;
+
+    if (!resultingState) {
+      continue;
+    }
+
+    const immediateEvaluation =
+      evaluateNode({
+        rootState,
+        state,
+        action,
+        resultingState,
+        playerIndex,
+        depth: depth + 1,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    const immediateScore =
+      numericEvaluation(
+        immediateEvaluation
+      );
+
+    const nextPath =
+      path.concat({
+        action,
+        simulation,
+        resultingState
+      });
+
+    // -----------------------------------------------------------------------
+    // PAS DE TOUR FUTUR
+    // -----------------------------------------------------------------------
+
+    if (
+      depth + 1 >= maxDepth ||
+      isTerminalState(
+        resultingState,
+        playerIndex
+      )
+    ) {
+      candidates.push({
+        action,
+        simulation,
+        resultingState,
+
+        score:
+          immediateScore,
+
+        finalScore:
+          immediateScore,
+
+        immediateScore,
+
+        futureScore:
+          immediateScore,
+
+        depth:
+          depth + 1,
+
+        terminal:
+          isTerminalState(
+            resultingState,
+            playerIndex
+          ),
+
+        finish:
+          immediateEvaluation?.finish ??
+          immediateEvaluation?.finishPotential ??
+          0,
+
+        evaluation:
+          immediateEvaluation,
+
+        line:
+          nextPath
+      });
+
+      continue;
+    }
+
+    // -----------------------------------------------------------------------
+    // TOUR FUTUR
+    // -----------------------------------------------------------------------
+
+    const future =
+      searchNode({
+        rootState,
+        state: resultingState,
+        playerIndex,
+        depth: depth + 1,
+        maxDepth,
+        path: nextPath,
+        visited: nextVisited
+      });
+
+    const futureScore =
+      Number.isFinite(
+        future?.score
+      )
+        ? future.score
+        : 0;
+
+    // On conserve l'évaluation de l'action puis la meilleure conséquence
+    // future. Le résultat futur est celui qui représente la position atteinte
+    // après le nombre de tours demandé.
+    //
+    // Le score final n'est pas une moyenne arbitraire entre "immédiat" et
+    // "futur" : la position future représente déjà l'évolution complète
+    // de la ligne recherchée.
+    const finalScore =
+      futureScore;
+
+    candidates.push({
+      action,
+      simulation,
+      resultingState,
+
+      score:
+        finalScore,
+
+      finalScore,
+
+      immediateScore,
+
+      futureScore,
+
+      depth:
+        future.depth ??
+        depth + 1,
+
+      terminal:
+        !!future.terminal,
+
+      finish:
+        Math.max(
+          Number(
+            immediateEvaluation?.finish ??
+            immediateEvaluation?.finishPotential ??
+            0
+          ) || 0,
+
+          Number(
+            future?.finish
+          ) || 0
+        ),
+
+      evaluation:
+        immediateEvaluation,
+
+      futureEvaluation:
+        future?.evaluation ?? null,
+
+      line:
+        future?.line?.length
+          ? future.line
+          : nextPath
+    });
+  }
+
+  if (!candidates.length) {
+    const evaluation =
+      evaluateNode({
+        rootState,
+        state,
+        resultingState: state,
+        playerIndex,
+        depth,
+        maxDepth,
+        path,
+        isOpponentNode: !isAiTurn
+      });
+
+    return {
+      score:
+        numericEvaluation(evaluation),
+
+      finalScore:
+        numericEvaluation(evaluation),
+
+      immediateScore:
+        numericEvaluation(evaluation),
+
+      futureScore:
+        numericEvaluation(evaluation),
+
+      depth,
+
+      terminal: false,
+      noUsableActions: true,
+
+      finish:
+        evaluation?.finish ??
+        evaluation?.finishPotential ??
+        0,
+
+      evaluation,
+
+      resultingState: state,
+
+      line: path.slice()
+    };
+  }
+
+  const chosen =
+    isAiTurn
+      ? chooseBestForAi(candidates)
+      : chooseBestForOpponent(candidates);
+
+  return chosen;
+}
+
+
+// ---------------------------------------------------------------------------
+// RECHERCHE DES ACTIONS INITIALES
+// ---------------------------------------------------------------------------
+
+export function searchActions(
+  state,
+  {
+    playerIndex = state?.currentPlayer ?? 0,
+    depth = 1,
+    difficulty = "normal"
+  } = {}
+) {
+  const actions =
+    generateActions(state);
+
+  if (!actions.length) {
+    return [];
+  }
+
+  const results = [];
+
+  for (
+    const action of actions
+  ) {
+    let simulation;
+
+    try {
+      simulation =
+        simulateOne(
+          state,
+          action
+        );
+    } catch {
+      continue;
+    }
+
+    if (
+      !simulation ||
+      simulation.error ||
+      simulation.legal === false ||
+      !simulation.state
+    ) {
+      continue;
+    }
+
+    const resultingState =
+      simulation.state;
+
+    const immediateEvaluation =
+      evaluateNode({
+        rootState: state,
+        state,
+        action,
+        resultingState,
+        playerIndex,
+        depth: 1,
+        maxDepth: depth,
+        path: [],
+        isOpponentNode: false
+      });
+
+    const immediateScore =
+      numericEvaluation(
+        immediateEvaluation
+      );
+
+    let future = null;
+
+    if (
+      depth > 1 &&
+      !isTerminalState(
+        resultingState,
+        playerIndex
+      )
+    ) {
+      future =
+        searchNode({
+          rootState: state,
+          state: resultingState,
+          playerIndex,
+          depth: 1,
+          maxDepth: depth,
+          path: [
+            {
+              action,
+              simulation,
+              resultingState
+            }
+          ]
+        });
+    }
+
+    const futureScore =
+      future
+        ? numericEvaluation(future)
+        : immediateScore;
+
+    const finalScore =
+      future
+        ? futureScore
+        : immediateScore;
+
+    results.push({
+      action,
+
+      simulation,
+
+      resultingState,
+
+      score:
+        finalScore,
+
+      finalScore,
+
+      immediateScore,
+
+      futureScore,
+
+      depth:
+        future?.depth ??
+        1,
+
+      finish:
+        Math.max(
+          Number(
+            immediateEvaluation?.finish ??
+            immediateEvaluation?.finishPotential ??
+            0
+          ) || 0,
+
+          Number(
+            future?.finish
+          ) || 0
+        ),
+
+      evaluation:
+        immediateEvaluation,
+
+      futureEvaluation:
+        future?.evaluation ?? null,
+
+      line:
+        future?.line?.length
+          ? future.line
+          : [
+              {
+                action,
+                simulation,
+                resultingState
+              }
+            ],
+
+      difficulty:
+        normalizeDifficulty(
+          difficulty
+        )
+    });
+  }
+
+  results.sort(
+    (a, b) =>
+      b.finalScore -
+      a.finalScore
+  );
+
+  return results;
+}
+
+
+// ---------------------------------------------------------------------------
+// MEILLEURE ACTION
+// ---------------------------------------------------------------------------
+
+export function searchBestAction(
+  state,
+  options = {}
+) {
+  const results =
+    searchActions(
+      state,
+      options
+    );
+
+  return (
+    results[0] ??
+    null
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// ANALYSE DE FIN DE PARTIE
+// ---------------------------------------------------------------------------
+
+/**
+ * Analyse les lignes pouvant conduire à une fin.
+ *
+ * Cette fonction est volontairement séparée de la sélection normale.
+ *
+ * Le bot principal ne doit PAS appeler searchFinish() pour choisir
+ * automatiquement une action : la possibilité de finir doit rester une
+ * composante de l'évaluation générale.
+ *
+ * Elle sert surtout au diagnostic, aux tests et à l'affichage éventuel
+ * des raisons d'une décision.
+ */
+export function searchFinish(
+  state,
+  {
+    playerIndex = state?.currentPlayer ?? 0,
+    depth = 6
+  } = {}
+) {
+  const results =
+    searchActions(
+      state,
+      {
+        playerIndex,
+        depth,
+        difficulty: "expert"
+      }
+    );
+
+  return results
+    .filter(
+      result =>
+        result.terminal ||
+        Number(result.finish) > 0 ||
+        hasExactTarget(
+          result.resultingState,
+          playerIndex
+        )
+    )
+    .sort(
+      (a, b) => {
+        const depthA =
+          Number.isFinite(a.depth)
+            ? a.depth
+            : Number.POSITIVE_INFINITY;
+
+        const depthB =
+          Number.isFinite(b.depth)
+            ? b.depth
+            : Number.POSITIVE_INFINITY;
+
+        if (depthA !== depthB) {
+          return depthA - depthB;
+        }
 
         return (
-            Number.isFinite(score) &&
-            best - score <=
-                effectiveTolerance
+          b.finalScore -
+          a.finalScore
         );
-    });
+      }
+    );
 }
 
 
-/* =========================================================
- * EXPORT PAR DÉFAUT
- * ========================================================= */
+// ---------------------------------------------------------------------------
+// VALEUR THÉORIQUE D'UNE LIGNE DE FIN
+// ---------------------------------------------------------------------------
+
+export function calculateFinishLineScore(
+  turns
+) {
+  const n =
+    Number(turns);
+
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+
+  if (n <= 1) {
+    return 100;
+  }
+
+  if (n === 2) {
+    return 70;
+  }
+
+  if (n === 3) {
+    return 45;
+  }
+
+  if (n === 4) {
+    return 25;
+  }
+
+  if (n >= 5) {
+    return 10;
+  }
+
+  return 0;
+}
+
+
+export function getDistanceToTarget(
+  state,
+  playerIndex
+) {
+  return getDistance(
+    state,
+    playerIndex
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// ANALYSE COMPLÈTE
+// ---------------------------------------------------------------------------
+
+export function analyzeSearch(
+  state,
+  {
+    playerIndex = state?.currentPlayer ?? 0,
+    difficulty = "normal",
+    depth = null
+  } = {}
+) {
+  const actions =
+    generateActions(state);
+
+  const searchDepth =
+    Number.isInteger(depth)
+      ? depth
+      : getSearchDepth(
+          state,
+          {
+            difficulty,
+            actionCount:
+              actions.length,
+            playerIndex
+          }
+        );
+
+  const results =
+    searchActions(
+      state,
+      {
+        playerIndex,
+        depth:
+          searchDepth,
+        difficulty
+      }
+    );
+
+  return {
+    playerIndex,
+
+    difficulty:
+      normalizeDifficulty(
+        difficulty
+      ),
+
+    depth:
+      searchDepth,
+
+    actionCount:
+      actions.length,
+
+    results,
+
+    best:
+      results[0] ?? null
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// EXPORT PAR DÉFAUT
+// ---------------------------------------------------------------------------
 
 export default {
-    searchActions,
-    searchBestAction,
-    searchFinish,
-    getSearchDepth,
-    toSimulatedAction,
-    calculateActionComplexity,
-    getActionTolerance,
-    groupCloseResults,
-    calculateFinishLineScore,
-    getDistanceToTarget
+  getSearchDepth,
+  toSimulatedAction,
+  generateActions,
+  simulateOne,
+  searchActions,
+  searchBestAction,
+  searchFinish,
+  calculateFinishLineScore,
+  getDistanceToTarget,
+  analyzeSearch
 };
