@@ -2,28 +2,27 @@
  * Atoumoulin AI
  * search.js
  *
- * Recherche prospective de l'IA.
+ * Recherche stratégique de l'IA.
  *
  * Principe :
+ *   état actuel
+ *      ↓
+ *   actions légales complètes
+ *      ↓
+ *   simulation de chaque action
+ *      ↓
+ *   évaluation de l'état résultant
+ *      ↓
+ *   recherche des tours suivants
+ *      ↓
+ *   comparaison des lignes
  *
- *     état actuel
- *          ↓
- *     actions légales
- *          ↓
- *     simulation
- *          ↓
- *     évaluation
- *          ↓
- *     actions futures
- *          ↓
- *     résultat final
- *
- * IMPORTANT :
- * - ne modifie jamais la partie réelle ;
- * - ne choisit pas directement selon la difficulté ;
- * - respecte les actions produites par action-generator.js ;
- * - recalcule les possibilités après chaque simulation ;
- * - ne révèle pas volontairement les informations cachées.
+ * Important :
+ * - Une action = une décision complète.
+ * - Les actions futures sont recalculées à chaque tour.
+ * - Les informations cachées ne sont jamais révélées artificiellement.
+ * - Une finition n'est PAS sélectionnée par une logique séparée :
+ *   elle passe par la même recherche et la même évaluation.
  */
 
 import {
@@ -38,510 +37,669 @@ import {
 
 import {
     evaluate,
-    evaluatePlayerPosition
+    evaluatePlayerPosition,
+    calculateFinishPotential
 } from "./evaluation.js";
 
+import {
+    getGamePhase,
+    getTargetDistance,
+    getVictoryTarget,
+    hasExactTarget
+} from "./state.js";
 
-/* ============================================================
- * UTILITAIRES
- * ========================================================== */
 
-function number(value, fallback = 0) {
-    const result = Number(value);
+/* =========================================================
+ * DIFFICULTÉ / PROFONDEUR
+ * ========================================================= */
 
-    return Number.isFinite(result)
-        ? result
-        : fallback;
+const SEARCH_DEPTH = {
+    facile: 1,
+    normal: 2,
+    difficile: 3
+};
+
+function normalizeDifficulty(value) {
+    const aliases = {
+        easy: "facile",
+        medium: "normal",
+        hard: "difficile"
+    };
+
+    const normalized = String(value || "normal").toLowerCase();
+
+    return aliases[normalized] ||
+        (
+            normalized === "facile" ||
+            normalized === "normal" ||
+            normalized === "difficile" ||
+            normalized === "expert"
+                ? normalized
+                : "normal"
+        );
 }
 
-
-function clamp(
-    value,
-    min = 0,
-    max = 100
-) {
-    return Math.max(
-        min,
-        Math.min(
-            max,
-            number(value)
-        )
-    );
-}
-
-
-function clone(value) {
-    if (
-        value === null ||
-        value === undefined
-    ) {
-        return value;
-    }
-
-    if (
-        typeof structuredClone === "function"
-    ) {
-        try {
-            return structuredClone(value);
-        } catch {}
-    }
-
-    if (Array.isArray(value)) {
-        return value.map(clone);
-    }
-
-    if (
-        typeof value === "object"
-    ) {
-        const result = {};
-
-        for (
-            const [key, item]
-            of Object.entries(value)
-        ) {
-            result[key] = clone(item);
-        }
-
-        return result;
-    }
-
-    return value;
-}
-
-
-/* ============================================================
- * PROFONDEUR
- * ========================================================== */
-
-/**
- * Profondeur générale par niveau.
- *
- * Le niveau peut être :
- * - facile
- * - normal
- * - difficile
- * - expert
- *
- * L'expert pourra ensuite être rendu adaptatif.
- */
-export function getSearchDepth(
-    difficulty = "normal",
-    context = {}
-) {
-    const level =
-        String(
-            difficulty
-        ).toLowerCase();
-
-    if (
-        Number.isInteger(
-            context.depth
-        ) &&
-        context.depth > 0
-    ) {
-        return context.depth;
-    }
-
-    switch (level) {
-        case "facile":
-        case "easy":
-            return 1;
-
-        case "difficile":
-        case "hard":
-            return 3;
-
-        case "expert":
-            return getAdaptiveExpertDepth(
-                context
-            );
-
-        case "normal":
-        default:
-            return 2;
-    }
-}
-
-
-/**
- * Profondeur adaptative Expert.
- *
- * On augmente la recherche lorsque :
- * - la fin de manche approche ;
- * - le bot est proche de la cible ;
- * - beaucoup d'informations sont déjà connues ;
- * - le nombre d'actions reste raisonnable.
- */
-export function getAdaptiveExpertDepth(
-    context = {}
-) {
+function getAdaptiveExpertDepth(state, actionCount = 0) {
     let depth = 3;
 
-    const gamePhase =
-        number(
-            context.gamePhase,
-            0
-        );
+    const phase = Number(getGamePhase(state)) || 0;
+    const distance = Number(getTargetDistance(state)) || 0;
 
-    const distance =
-        number(
-            context.distanceToTarget,
-            Infinity
-        );
-
-    const actionCount =
-        number(
-            context.actionCount,
-            0
-        );
-
-    if (
-        gamePhase >= 0.70
-    ) {
-        depth++;
+    /*
+     * Plus la partie avance, plus la recherche devient importante.
+     */
+    if (phase >= 0.65) {
+        depth += 1;
     }
 
-    if (
-        distance <= 40
-    ) {
-        depth++;
-    }
-
-    if (
-        distance <= 20
-    ) {
-        depth++;
+    if (phase >= 0.82) {
+        depth += 1;
     }
 
     /*
-     * Évite une explosion combinatoire.
+     * Une proximité forte de la cible justifie davantage
+     * de profondeur.
      */
-    if (
-        actionCount > 20
-    ) {
-        depth = Math.min(
-            depth,
-            4
-        );
+    if (distance <= 40) {
+        depth += 1;
     }
 
-    return Math.max(
-        3,
-        Math.min(
-            depth,
-            6
-        )
-    );
+    if (distance <= 20) {
+        depth += 1;
+    }
+
+    /*
+     * Évite l'explosion combinatoire lorsque beaucoup
+     * d'actions sont disponibles.
+     */
+    if (actionCount >= 20) {
+        depth -= 1;
+    }
+
+    return Math.max(3, Math.min(6, depth));
+}
+
+export function getSearchDepth(
+    difficulty = "normal",
+    {
+        state = null,
+        actionCount = 0,
+        gamePhase = null
+    } = {}
+) {
+    const level = normalizeDifficulty(difficulty);
+
+    if (level === "expert") {
+        if (state) {
+            return getAdaptiveExpertDepth(
+                state,
+                actionCount
+            );
+        }
+
+        const phase =
+            Number(gamePhase) || 0;
+
+        let depth = 3;
+
+        if (phase >= 0.65) depth += 1;
+        if (phase >= 0.82) depth += 1;
+        if (actionCount >= 20) depth -= 1;
+
+        return Math.max(3, Math.min(6, depth));
+    }
+
+    return SEARCH_DEPTH[level];
 }
 
 
-/* ============================================================
- * ADAPTATION ACTION → SIMULATION
- * ========================================================== */
+/* =========================================================
+ * CONVERSION ACTION → SIMULATION
+ * ========================================================= */
 
-/**
- * action-generator.js utilise AIAction.
- *
- * simulation.js utilise SimulatedAction.
- *
- * Cette fonction fait uniquement le pont structurel.
- *
- * Elle ne révèle aucune information cachée.
- */
-export function toSimulatedAction(
-    action
-) {
+export function toSimulatedAction(action) {
     if (!action) {
         return null;
     }
 
-    if (
-        action instanceof SimulatedAction
-    ) {
-        return action;
-    }
+    /*
+     * L'action-generator historique et le nouveau générateur
+     * peuvent fournir des objets légèrement différents.
+     *
+     * On conserve donc une conversion tolérante.
+     */
 
-    const isDouble =
-        action.kind === "play-double" ||
-        action.metadata?.double === true;
+    const kind = String(
+        action.kind ||
+        action.type ||
+        "effect"
+    );
 
-    let type = "card";
-
-    if (isDouble) {
-        type = "double";
-    }
-
-    if (
-        action.kind === "choose-target"
-    ) {
-        type = "target";
-    }
+    let type = "effect";
 
     if (
-        action.kind === "choose-effect"
-    ) {
-        type = "effect";
-    }
-
-    if (
-        action.kind === "choose-table-card" ||
-        action.kind ===
-            "choose-multiple-table-cards"
-    ) {
-        type = "combination";
-    }
-
-    if (
-        action.kind === "choose-revealed-card"
+        kind === "PLAY_CARD" ||
+        kind === "card" ||
+        kind === "play_card"
     ) {
         type = "card";
-    }
-
-    if (
-        action.kind === "continue"
+    } else if (
+        kind === "PLAY_DOUBLE" ||
+        kind === "double" ||
+        kind === "play_double"
     ) {
-        type = "effect";
-    }
-
-    if (
-        action.kind === "finish"
+        type = "double";
+    } else if (
+        kind === "TARGET" ||
+        kind === "target"
     ) {
-        type = "effect";
+        type = "target";
+    } else if (
+        kind === "TABLE_CARD" ||
+        kind === "table_card"
+    ) {
+        type = "table_card";
+    } else if (
+        kind === "TABLE_CARDS" ||
+        kind === "table_cards"
+    ) {
+        type = "table_cards";
+    } else if (
+        kind === "CONTINUE" ||
+        kind === "continue"
+    ) {
+        type = "continue";
+    } else if (
+        kind === "TERMINATE" ||
+        kind === "finish"
+    ) {
+        type = "terminate";
     }
 
     return new SimulatedAction({
         type,
-
         cardIndex:
-            action.cardIndex ??
-            null,
-
+            action.cardIndex ?? null,
         card:
-            clone(
-                action.card
-            ),
-
+            action.card ?? null,
         cards:
-            clone(
-                action.cards ??
-                []
-            ),
-
+            Array.isArray(action.cards)
+                ? action.cards
+                : [],
         target:
-            action.target ??
-            null,
-
+            action.target ?? null,
         effect:
-            action.effect ??
-            null,
-
+            action.effect ?? null,
         value:
-            action.value ??
-            null,
-
+            action.value ?? null,
         parameters: {
+            ...(action.parameters || {}),
+            ...(action.metadata || {}),
             tableCard:
-                action.tableCard ??
-                null,
-
+                action.tableCard ?? null,
             tableCards:
-                clone(
-                    action.tableCards ??
-                    []
-                ),
-
-            hiddenInformation:
-                !!action.hiddenInformation,
-
-            uncertainty:
-                action.uncertainty ??
-                null,
-
-            metadata:
-                clone(
-                    action.metadata ??
-                    {}
-                ),
-
+                action.tableCards ?? null,
             commands:
-                clone(
-                    action.commands ??
-                    []
-                )
+                action.commands || null,
+            hiddenInformation:
+                action.hiddenInformation || null,
+            uncertainty:
+                action.uncertainty || null
         },
-
         description:
-            action.metadata?.description ??
+            action.description ||
+            action.metadata?.description ||
             ""
     });
 }
 
 
-/* ============================================================
- * CONTEXTE
- * ========================================================== */
+/* =========================================================
+ * SIGNATURES / CYCLES
+ * ========================================================= */
+
+function getStateSignature(state) {
+    if (!state) {
+        return "null";
+    }
+
+    if (
+        typeof state.signature === "function"
+    ) {
+        return state.signature();
+    }
+
+    if (
+        typeof state.toMutableObject === "function"
+    ) {
+        return JSON.stringify(
+            state.toMutableObject()
+        );
+    }
+
+    try {
+        return JSON.stringify(state);
+    } catch {
+        return String(state);
+    }
+}
+
+function getActionSignature(action) {
+    if (!action) {
+        return "null";
+    }
+
+    if (
+        typeof action.signature === "function"
+    ) {
+        return action.signature();
+    }
+
+    try {
+        return JSON.stringify(action);
+    } catch {
+        return String(action);
+    }
+}
+
+
+/* =========================================================
+ * COMPLEXITÉ D'UNE ACTION
+ * ========================================================= */
+
+/*
+ * La complexité ne correspond PAS à la puissance de la carte.
+ *
+ * Elle dépend notamment :
+ * - du nombre d'alternatives ;
+ * - du nombre de cibles ;
+ * - du choix de cartes ;
+ * - des informations cachées ;
+ * - de l'incertitude ;
+ * - des conséquences ;
+ * - de la profondeur de recherche nécessaire.
+ */
+
+export function calculateActionComplexity(
+    state,
+    action,
+    actionCount = null
+) {
+    let complexity = 0;
+
+    const actions =
+        Array.isArray(
+            generateLegalActions(state)
+        )
+            ? generateLegalActions(state)
+            : [];
+
+    const alternatives =
+        actionCount == null
+            ? actions.length
+            : actionCount;
+
+    if (alternatives >= 12) {
+        complexity += 2;
+    } else if (alternatives >= 6) {
+        complexity += 1;
+    }
+
+    const kind = String(
+        action?.kind ||
+        action?.type ||
+        ""
+    ).toLowerCase();
+
+    if (
+        kind.includes("target") ||
+        action?.target != null
+    ) {
+        complexity += 1;
+    }
+
+    if (
+        action?.tableCard != null ||
+        Array.isArray(action?.tableCards)
+    ) {
+        complexity += 1;
+    }
+
+    if (
+        action?.hiddenInformation ||
+        action?.metadata?.hiddenInformation
+    ) {
+        complexity += 2;
+    }
+
+    if (
+        action?.uncertainty ||
+        action?.metadata?.uncertainty
+    ) {
+        complexity += 1;
+    }
+
+    if (
+        Array.isArray(action?.commands) &&
+        action.commands.length > 1
+    ) {
+        complexity += 1;
+    }
+
+    /*
+     * Conséquences particulièrement ramifiées.
+     */
+    const card =
+        Number(action?.card?.value ?? action?.card);
+
+    if (
+        card === 9 ||
+        card === 13 ||
+        card === 17 ||
+        card === 19 ||
+        card === 21
+    ) {
+        complexity += 1;
+    }
+
+    if (
+        card === 1 &&
+        action?.target != null
+    ) {
+        complexity += 1;
+    }
+
+    if (complexity <= 2) {
+        return "simple";
+    }
+
+    if (complexity <= 5) {
+        return "medium";
+    }
+
+    return "complex";
+}
+
+
+/* =========================================================
+ * TOLÉRANCE ADAPTATIVE
+ * ========================================================= */
+
+export function getActionTolerance(
+    state,
+    action,
+    actionCount = null
+) {
+    const complexity =
+        calculateActionComplexity(
+            state,
+            action,
+            actionCount
+        );
+
+    const phase =
+        Number(getGamePhase(state)) || 0;
+
+    /*
+     * La tolérance augmente avec la complexité :
+     * une action complexe peut avoir plusieurs lignes
+     * proches sans qu'il soit pertinent de considérer
+     * toutes ces lignes comme totalement différentes.
+     */
+
+    let tolerance;
+
+    if (complexity === "simple") {
+        tolerance = 3;
+    } else if (complexity === "medium") {
+        tolerance = 5;
+    } else {
+        tolerance = 8;
+    }
+
+    /*
+     * En fin de partie, les écarts deviennent plus importants.
+     */
+    if (phase >= 0.80) {
+        tolerance += 1;
+    }
+
+    return tolerance;
+}
+
+
+/* =========================================================
+ * CONTEXTE D'ÉVALUATION
+ * ========================================================= */
 
 function buildEvaluationContext({
     state,
     playerIndex,
-    actions = [],
-    depth = 0,
-    maxDepth = 1,
-    path = [],
-    simulation = null
+    action,
+    resultingState,
+    depth,
+    path,
+    actionCount
 }) {
-    const player =
-        typeof state?.getPlayer === "function"
-            ? state.getPlayer(
-                playerIndex
-            )
-            : state?.players?.[
-                playerIndex
-            ];
-
-    const target =
-        number(
-            state?.targetScore ??
-            state?.victoryTarget ??
-            0
-        );
-
-    const score =
-        number(
-            player?.score
-        );
-
-    const distance =
-        target > 0
-            ? target - score
-            : null;
-
-    const progress =
-        typeof state?.getCardsProgress ===
-        "function"
-            ? state.getCardsProgress()
-            : 0;
-
     return {
-        possibilities:
-            actions,
-
+        playerIndex,
+        action,
+        resultingState,
         depth,
-
-        maxDepth,
-
         path,
-
+        actionCount,
+        complexity:
+            calculateActionComplexity(
+                state,
+                action,
+                actionCount
+            ),
+        tolerance:
+            getActionTolerance(
+                state,
+                action,
+                actionCount
+            ),
         gamePhase:
-            progress,
-
-        distanceToTarget:
-            distance,
-
-        actionCount:
-            actions.length,
-
-        simulation,
-
-        searching:
-            true
+            getGamePhase(state),
+        targetDistance:
+            getTargetDistance(
+                state,
+                playerIndex
+            ),
+        victoryTarget:
+            getVictoryTarget(
+                state
+            )
     };
 }
 
 
-/* ============================================================
- * ÉVALUATION
- * ========================================================== */
+/* =========================================================
+ * ÉVALUATION D'UN ÉTAT
+ * ========================================================= */
 
-function evaluateLeaf({
+function scoreEvaluation(evaluation) {
+    if (!evaluation) {
+        return 0;
+    }
+
+    const candidates = [
+        evaluation.finalScore,
+        evaluation.score,
+        evaluation.position,
+        evaluation.metrics?.finalScore
+    ];
+
+    for (const value of candidates) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+            return number;
+        }
+    }
+
+    return 0;
+}
+
+function evaluateResult({
     state,
     playerIndex,
-    action = null,
-    resultingState = null,
-    actions = [],
-    depth = 0,
-    maxDepth = 0,
-    path = [],
-    simulation = null
+    action,
+    resultingState,
+    depth,
+    path,
+    actionCount
 }) {
     const context =
         buildEvaluationContext({
             state,
             playerIndex,
-            actions,
+            action,
+            resultingState,
             depth,
-            maxDepth,
             path,
-            simulation
+            actionCount
         });
 
-    if (
-        action &&
-        resultingState
-    ) {
-        return evaluate({
+    const result =
+        evaluate({
             state,
             playerIndex,
             action,
             resultingState,
             context
         });
+
+    return {
+        evaluation: result,
+        score: scoreEvaluation(result)
+    };
+}
+
+
+/* =========================================================
+ * FINITION
+ * ========================================================= */
+
+function getFinishInfo(
+    state,
+    playerIndex,
+    action,
+    resultingState,
+    depth,
+    path
+) {
+    if (!resultingState) {
+        return {
+            potential: 0,
+            exact: false
+        };
     }
 
-    return evaluatePlayerPosition(
-        state,
-        playerIndex,
-        context
+    const exact =
+        hasExactTarget(
+            resultingState,
+            playerIndex
+        );
+
+    if (exact) {
+        return {
+            potential: 100,
+            exact: true
+        };
+    }
+
+    /*
+     * On demande au moteur d'évaluation de calculer
+     * la possibilité de finir depuis l'état résultant.
+     *
+     * Ce n'est pas un sélecteur séparé.
+     * C'est une métrique utilisée dans la ligne de recherche.
+     */
+    let potential = 0;
+
+    try {
+        potential =
+            Number(
+                calculateFinishPotential({
+                    state: resultingState,
+                    playerIndex,
+                    action,
+                    depth,
+                    path
+                })
+            );
+
+        if (!Number.isFinite(potential)) {
+            potential = 0;
+        }
+    } catch {
+        potential = 0;
+    }
+
+    return {
+        potential: Math.max(
+            0,
+            Math.min(100, potential)
+        ),
+        exact: false
+    };
+}
+
+
+/* =========================================================
+ * SIMULATION
+ * ========================================================= */
+
+function simulateOne(
+    state,
+    action
+) {
+    const simulated =
+        toSimulatedAction(action);
+
+    if (!simulated) {
+        return null;
+    }
+
+    try {
+        return simulateAction(
+            state,
+            simulated
+        );
+    } catch {
+        return null;
+    }
+}
+
+
+/* =========================================================
+ * ACTIONS LÉGALES
+ * ========================================================= */
+
+function generateActions(state) {
+    const actions =
+        generateLegalActions(state);
+
+    if (!Array.isArray(actions)) {
+        return [];
+    }
+
+    const legal =
+        actions.filter(Boolean);
+
+    return sortByActionPriority(
+        legal
     );
 }
 
 
-function scoreEvaluation(
-    evaluation
-) {
-    if (!evaluation) {
-        return -Infinity;
-    }
+/* =========================================================
+ * TERMINAL
+ * ========================================================= */
 
-    /*
-     * evaluateAction() expose normalement finalScore.
-     */
-    if (
-        Number.isFinite(
-            Number(
-                evaluation.finalScore
-            )
-        )
-    ) {
-        return number(
-            evaluation.finalScore
-        );
-    }
-
-    /*
-     * Fallback : position globale.
-     */
-    if (
-        Number.isFinite(
-            Number(
-                evaluation.position
-            )
-        )
-    ) {
-        return number(
-            evaluation.position
-        );
-    }
-
-    return 0;
-}
-
-
-/* ============================================================
- * DÉTECTION FIN
- * ========================================================== */
-
-function isWinningState(
+function isTerminalState(
     state,
     playerIndex
 ) {
@@ -549,74 +707,26 @@ function isWinningState(
         return false;
     }
 
+    if (state.roundEnded) {
+        return true;
+    }
+
     if (
-        state.roundEnded === true
+        hasExactTarget(
+            state,
+            playerIndex
+        )
     ) {
-        const winner =
-            state.winner;
-
-        if (
-            winner === null ||
-            winner === undefined
-        ) {
-            return false;
-        }
-
-        if (
-            typeof winner === "number"
-        ) {
-            return (
-                Number(winner) ===
-                Number(playerIndex)
-            );
-        }
-
-        const player =
-            typeof state.getPlayer ===
-            "function"
-                ? state.getPlayer(
-                    playerIndex
-                )
-                : null;
-
-        return (
-            player &&
-            player.name === winner
-        );
+        return true;
     }
 
-    const player =
-        typeof state.getPlayer ===
-        "function"
-            ? state.getPlayer(
-                playerIndex
-            )
-            : state.players?.[
-                playerIndex
-            ];
-
-    if (!player) {
-        return false;
-    }
-
-    const target =
-        number(
-            state.targetScore ??
-            state.victoryTarget ??
-            0
-        );
-
-    return (
-        target > 0 &&
-        number(player.score) ===
-        target
-    );
+    return false;
 }
 
 
-/* ============================================================
- * RECHERCHE D'UNE LIGNE
- * ========================================================== */
+/* =========================================================
+ * RECHERCHE RÉCURSIVE
+ * ========================================================= */
 
 function searchNode({
     state,
@@ -627,193 +737,112 @@ function searchNode({
     visited = new Set()
 }) {
     /*
-     * Fin immédiate.
+     * État terminal :
+     * on l'évalue normalement.
      */
     if (
-        isWinningState(
+        depth >= maxDepth ||
+        isTerminalState(
             state,
             playerIndex
         )
     ) {
         const evaluation =
-            evaluateLeaf({
+            evaluatePlayerPosition(
                 state,
-                playerIndex,
-                actions: [],
-                depth,
-                maxDepth,
-                path
-            });
-
-        return {
-            score:
-                Math.max(
-                    1000,
-                    scoreEvaluation(
-                        evaluation
-                    )
-                ),
-
-            evaluation,
-
-            state,
-
-            path,
-
-            terminal:
-                true,
-
-            depth
-        };
-    }
-
-    /*
-     * Limite de profondeur.
-     */
-    if (
-        depth >= maxDepth
-    ) {
-        const actions =
-            generateActions(
-                state
+                playerIndex
             );
 
-        const evaluation =
-            evaluateLeaf({
-                state,
-                playerIndex,
-                actions,
-                depth,
-                maxDepth,
-                path
-            });
-
         return {
             score:
                 scoreEvaluation(
                     evaluation
                 ),
-
             evaluation,
-
-            state,
-
+            action: null,
+            depth,
             path,
-
-            terminal:
-                false,
-
-            depth
+            finishPotential:
+                hasExactTarget(
+                    state,
+                    playerIndex
+                )
+                    ? 100
+                    : 0,
+            terminal: true
         };
     }
 
-    /*
-     * Protection contre les cycles.
-     */
     const signature =
-        getStateSignature(
-            state
-        );
+        getStateSignature(state);
 
-    if (
-        signature &&
-        visited.has(signature)
-    ) {
+    if (visited.has(signature)) {
         const evaluation =
-            evaluateLeaf({
+            evaluatePlayerPosition(
                 state,
-                playerIndex,
-                actions: [],
-                depth,
-                maxDepth,
-                path
-            });
+                playerIndex
+            );
 
         return {
             score:
                 scoreEvaluation(
                     evaluation
                 ),
-
             evaluation,
-
-            state,
-
+            action: null,
+            depth,
             path,
-
-            terminal:
-                false,
-
-            repeated:
-                true,
-
-            depth
+            finishPotential: 0,
+            terminal: false,
+            cycle: true
         };
     }
 
     const nextVisited =
-        new Set(
-            visited
-        );
+        new Set(visited);
 
-    if (signature) {
-        nextVisited.add(
-            signature
-        );
-    }
+    nextVisited.add(signature);
 
     const actions =
-        generateActions(
-            state
-        );
+        generateActions(state);
 
-    if (
-        actions.length === 0
-    ) {
+    if (!actions.length) {
         const evaluation =
-            evaluateLeaf({
+            evaluatePlayerPosition(
                 state,
-                playerIndex,
-                actions,
-                depth,
-                maxDepth,
-                path
-            });
+                playerIndex
+            );
 
         return {
             score:
                 scoreEvaluation(
                     evaluation
                 ),
-
             evaluation,
-
-            state,
-
+            action: null,
+            depth,
             path,
-
-            terminal:
-                true,
-
-            depth
+            finishPotential: 0,
+            terminal: true
         };
     }
 
     let best = null;
 
-    for (
-        const action
-        of actions
-    ) {
+    for (const action of actions) {
         const simulation =
             simulateOne(
                 state,
                 action
             );
 
+        if (!simulation) {
+            continue;
+        }
+
         if (
-            !simulation ||
-            !simulation.isUsable()
+            simulation.legal === false ||
+            simulation.completed === false
         ) {
             continue;
         }
@@ -821,349 +850,215 @@ function searchNode({
         const resultingState =
             simulation.state;
 
-        const childPath =
-            [
-                ...path,
-                action
-            ];
+        if (!resultingState) {
+            continue;
+        }
 
-        const evaluation =
-            evaluateLeaf({
+        const actionPath =
+            [...path, action];
+
+        const immediate =
+            evaluateResult({
                 state,
                 playerIndex,
                 action,
                 resultingState,
-                actions,
                 depth,
-                maxDepth,
-                path:
-                    childPath,
-                simulation
+                path: actionPath,
+                actionCount:
+                    actions.length
             });
 
-        /*
-         * Si l'action termine immédiatement,
-         * elle passe avant toute continuation.
-         */
+        const finish =
+            getFinishInfo(
+                state,
+                playerIndex,
+                action,
+                resultingState,
+                depth,
+                actionPath
+            );
+
+        let future = null;
+
         if (
-            isWinningState(
+            depth + 1 < maxDepth &&
+            !isTerminalState(
                 resultingState,
                 playerIndex
             )
         ) {
-            const immediateScore =
-                Math.max(
-                    1000,
-                    scoreEvaluation(
-                        evaluation
-                    )
-                );
-
-            const candidate = {
-                score:
-                    immediateScore,
-
-                evaluation,
-
-                state:
-                    resultingState,
-
-                action,
-
-                simulation,
-
-                path:
-                    childPath,
-
-                terminal:
-                    true,
-
-                depth:
-                    depth + 1
-            };
-
-            if (
-                !best ||
-                candidate.score >
-                best.score
-            ) {
-                best =
-                    candidate;
-            }
-
-            continue;
+            future =
+                searchNode({
+                    state: resultingState,
+                    playerIndex,
+                    depth: depth + 1,
+                    maxDepth,
+                    path: actionPath,
+                    visited: nextVisited
+                });
         }
 
         /*
-         * Recherche récursive.
+         * Si aucune recherche future n'est possible,
+         * l'évaluation immédiate reste la référence.
+         *
+         * Sinon, on conserve l'évaluation future comme
+         * conséquence de cette action.
+         *
+         * Pas de 40/60 arbitraire :
+         * le résultat futur est lui-même une évaluation
+         * complète du nouvel état.
          */
-        const child =
-            searchNode({
-                state:
-                    resultingState,
+        const futureScore =
+            future
+                ? Number(future.score) || 0
+                : immediate.score;
 
-                playerIndex,
+        /*
+         * On utilise la moyenne des évaluations disponibles
+         * afin d'éviter qu'une profondeur supplémentaire
+         * écrase complètement l'état immédiat.
+         *
+         * Le poids est ajusté selon la profondeur restante.
+         */
+        const remainingDepth =
+            Math.max(
+                1,
+                maxDepth - depth
+            );
 
-                depth:
-                    depth + 1,
+        const futureWeight =
+            remainingDepth <= 1
+                ? 0
+                : 1 / (remainingDepth + 1);
 
-                maxDepth,
+        const immediateWeight =
+            1 - futureWeight;
 
-                path:
-                    childPath,
+        const combinedScore =
+            immediate.score *
+                immediateWeight +
+            futureScore *
+                futureWeight;
 
-                visited:
-                    nextVisited
-            });
+        /*
+         * La finition est une information de l'évaluation,
+         * pas une règle de sélection prioritaire.
+         */
+        const finishAdjustment =
+            finish.potential > 0
+                ? finish.potential * 0.10
+                : 0;
 
-        const candidateScore =
-            scoreEvaluation(
-                evaluation
-            ) * 0.40 +
-            child.score * 0.60;
+        const finalScore =
+            combinedScore +
+            finishAdjustment;
 
         const candidate = {
-            score:
-                candidateScore,
-
-            evaluation,
-
-            childEvaluation:
-                child.evaluation,
-
-            state:
-                resultingState,
-
             action,
-
+            score: finalScore,
+            finalScore,
+            immediateScore:
+                immediate.score,
+            futureScore,
+            finishPotential:
+                finish.potential,
+            winning:
+                finish.exact,
+            evaluation:
+                immediate.evaluation,
+            future,
+            resultingState,
             simulation,
-
-            child,
-
-            path:
-                childPath,
-
-            terminal:
-                child.terminal,
-
-            depth:
-                depth + 1
+            depth,
+            path: actionPath,
+            complexity:
+                calculateActionComplexity(
+                    state,
+                    action,
+                    actions.length
+                ),
+            tolerance:
+                getActionTolerance(
+                    state,
+                    action,
+                    actions.length
+                )
         };
 
         if (
-            !best ||
-            candidate.score >
-            best.score
+            best === null ||
+            candidate.score > best.score
         ) {
-            best =
-                candidate;
+            best = candidate;
         }
     }
 
-    /*
-     * Aucun coup simulable.
-     */
-    if (!best) {
-        const evaluation =
-            evaluateLeaf({
-                state,
-                playerIndex,
-                actions,
-                depth,
-                maxDepth,
-                path
-            });
-
-        return {
-            score:
-                scoreEvaluation(
-                    evaluation
-                ),
-
-            evaluation,
-
-            state,
-
-            path,
-
-            terminal:
-                false,
-
-            noSimulation:
-                true,
-
-            depth
-        };
-    }
-
-    return best;
+    return best || {
+        score: 0,
+        finalScore: 0,
+        action: null,
+        depth,
+        path,
+        finishPotential: 0,
+        terminal: false
+    };
 }
 
 
-/* ============================================================
- * ACTIONS
- * ========================================================== */
+/* =========================================================
+ * RECHERCHE DES ACTIONS
+ * ========================================================= */
 
-function generateActions(
-    state
-) {
-    let actions =
-        generateLegalActions(
-            state
-        );
-
-    if (
-        !Array.isArray(actions)
-    ) {
-        return [];
-    }
-
-    actions =
-        actions.filter(
-            Boolean
-        );
-
-    return sortByActionPriority(
-        actions
-    );
-}
-
-
-/* ============================================================
- * SIMULATION
- * ========================================================== */
-
-function simulateOne(
-    state,
-    action
-) {
-    const simulated =
-        toSimulatedAction(
-            action
-        );
-
-    if (!simulated) {
-        return null;
-    }
-
-    return simulateAction(
-        state,
-        simulated
-    );
-}
-
-
-/* ============================================================
- * SIGNATURE
- * ========================================================== */
-
-function getStateSignature(
-    state
-) {
-    if (!state) {
-        return null;
-    }
-
-    if (
-        typeof state.signature ===
-        "function"
-    ) {
-        try {
-            return state.signature();
-        } catch {}
-    }
-
-    try {
-        return JSON.stringify(
-            state
-        );
-    } catch {
-        return null;
-    }
-}
-
-
-/* ============================================================
- * RECHERCHE PUBLIQUE
- * ========================================================== */
-
-/**
- * Recherche toutes les premières actions et leur meilleure
- * continuation connue.
- */
 export function searchActions({
     state,
-    playerIndex,
+    playerIndex = 0,
     difficulty = "normal",
     depth = null
 } = {}) {
     if (!state) {
-        throw new Error(
-            "searchActions : state manquant."
-        );
+        return [];
     }
 
-    const index =
-        Number(playerIndex);
+    const actions =
+        generateActions(state);
 
-    if (
-        !Number.isInteger(index)
-    ) {
-        throw new Error(
-            "searchActions : playerIndex invalide."
-        );
-    }
-
-    const initialActions =
-        generateActions(
-            state
-        );
-
-    if (
-        initialActions.length === 0
-    ) {
+    if (!actions.length) {
         return [];
     }
 
     const maxDepth =
-        Number.isInteger(depth) &&
-        depth > 0
-            ? depth
-            : getSearchDepth(
+        depth == null
+            ? getSearchDepth(
                 difficulty,
                 {
+                    state,
                     actionCount:
-                        initialActions.length,
-
-                    gamePhase:
-                        typeof state.getCardsProgress ===
-                        "function"
-                            ? state.getCardsProgress()
-                            : 0,
-
-                    distanceToTarget:
-                        getDistanceToTarget(
-                            state,
-                            index
-                        )
+                        actions.length
                 }
+            )
+            : Math.max(
+                1,
+                Number(depth) || 1
             );
 
     const results = [];
 
-    for (
-        const action
-        of initialActions
-    ) {
+    for (const action of actions) {
         const simulation =
             simulateOne(
                 state,
                 action
             );
 
+        if (!simulation) {
+            continue;
+        }
+
         if (
-            !simulation ||
-            !simulation.isUsable()
+            simulation.legal === false ||
+            simulation.completed === false
         ) {
             continue;
         }
@@ -1171,359 +1066,306 @@ export function searchActions({
         const resultingState =
             simulation.state;
 
-        const evaluation =
-            evaluateLeaf({
+        if (!resultingState) {
+            continue;
+        }
+
+        const path = [action];
+
+        const immediate =
+            evaluateResult({
                 state,
-                playerIndex:
-                    index,
-
+                playerIndex,
                 action,
-
                 resultingState,
-
-                actions:
-                    initialActions,
-
-                depth:
-                    0,
-
-                maxDepth,
-
-                path:
-                    [action],
-
-                simulation
+                depth: 0,
+                path,
+                actionCount:
+                    actions.length
             });
 
-        let continuation = null;
+        const finish =
+            getFinishInfo(
+                state,
+                playerIndex,
+                action,
+                resultingState,
+                0,
+                path
+            );
+
+        let future = null;
 
         if (
             maxDepth > 1 &&
-            !isWinningState(
+            !isTerminalState(
                 resultingState,
-                index
+                playerIndex
             )
         ) {
-            continuation =
+            future =
                 searchNode({
-                    state:
-                        resultingState,
-
-                    playerIndex:
-                        index,
-
-                    depth:
-                        1,
-
+                    state: resultingState,
+                    playerIndex,
+                    depth: 1,
                     maxDepth,
-
-                    path:
-                        [action],
-
-                    visited:
-                        new Set([
-                            getStateSignature(
-                                state
-                            )
-                        ])
+                    path,
+                    visited: new Set([
+                        getStateSignature(state)
+                    ])
                 });
         }
 
-        const immediateScore =
-            scoreEvaluation(
-                evaluation
+        const futureScore =
+            future
+                ? Number(future.score) || 0
+                : immediate.score;
+
+        const remainingDepth =
+            Math.max(
+                1,
+                maxDepth
             );
 
-        const futureScore =
-            continuation
-                ? continuation.score
-                : immediateScore;
+        const futureWeight =
+            maxDepth <= 1
+                ? 0
+                : 1 / (remainingDepth + 1);
+
+        const immediateWeight =
+            1 - futureWeight;
+
+        const combinedScore =
+            immediate.score *
+                immediateWeight +
+            futureScore *
+                futureWeight;
+
+        const finishAdjustment =
+            finish.potential > 0
+                ? finish.potential * 0.10
+                : 0;
 
         const finalScore =
-            continuation
-                ? immediateScore * 0.40 +
-                  futureScore * 0.60
-                : immediateScore;
+            combinedScore +
+            finishAdjustment;
 
         results.push({
             action,
+            score: finalScore,
+            finalScore,
 
-            score:
-                finalScore,
-
-            immediateScore,
+            immediateScore:
+                immediate.score,
 
             futureScore,
 
-            evaluation,
+            finishPotential:
+                finish.potential,
 
-            simulation,
+            winning:
+                finish.exact,
+
+            evaluation:
+                immediate.evaluation,
+
+            future,
 
             resultingState,
+            simulation,
 
-            continuation,
+            depth: maxDepth,
 
-            depth:
-                continuation
-                    ? continuation.depth
-                    : 1
+            complexity:
+                calculateActionComplexity(
+                    state,
+                    action,
+                    actions.length
+                ),
+
+            tolerance:
+                getActionTolerance(
+                    state,
+                    action,
+                    actions.length
+                )
         });
     }
 
-    return results.sort(
+    results.sort(
         (a, b) =>
-            b.score -
-            a.score
+            Number(b.finalScore || 0) -
+            Number(a.finalScore || 0)
     );
+
+    return results;
 }
 
 
-/**
- * Renvoie la meilleure possibilité issue de la recherche.
- *
- * Cette fonction ne contient aucune logique de difficulté
- * aléatoire. Elle donne uniquement le résultat stratégique.
- */
-export function searchBestAction(
-    options = {}
-) {
+/* =========================================================
+ * MEILLEURE ACTION
+ * ========================================================= */
+
+export function searchBestAction({
+    state,
+    playerIndex = 0,
+    difficulty = "normal",
+    depth = null
+} = {}) {
     const results =
-        searchActions(
-            options
-        );
+        searchActions({
+            state,
+            playerIndex,
+            difficulty,
+            depth
+        });
 
-    return (
-        results[0] ??
-        null
-    );
+    return results[0] || null;
 }
 
 
-/**
- * Recherche dédiée à la fin de manche.
+/* =========================================================
+ * ANALYSE DES LIGNES DE FINITION
+ * ========================================================= */
+
+/*
+ * Cette fonction reste disponible pour le diagnostic.
  *
- * Elle peut utiliser une profondeur supérieure à la profondeur
- * générale.
+ * Elle ne doit PAS être utilisée par bot.js pour dire :
+ * "j'ai trouvé une finition donc je la joue".
+ *
+ * La décision principale passe par searchActions().
  */
+
 export function searchFinish({
     state,
-    playerIndex,
+    playerIndex = 0,
     maxDepth = 8
 } = {}) {
     if (!state) {
-        throw new Error(
-            "searchFinish : state manquant."
-        );
+        return [];
     }
 
-    const index =
-        Number(playerIndex);
+    const results =
+        searchActions({
+            state,
+            playerIndex,
+            difficulty: "expert",
+            depth: Math.max(
+                1,
+                Number(maxDepth) || 1
+            )
+        });
 
-    const actions =
-        generateActions(
-            state
+    return results
+        .filter(
+            result =>
+                Number(
+                    result.finishPotential
+                ) > 0 ||
+                result.winning
+        )
+        .sort(
+            (a, b) =>
+                Number(
+                    b.finishPotential || 0
+                ) -
+                Number(
+                    a.finishPotential || 0
+                )
         );
-
-    const winningLines = [];
-
-    for (
-        const action
-        of actions
-    ) {
-        const simulation =
-            simulateOne(
-                state,
-                action
-            );
-
-        if (
-            !simulation ||
-            !simulation.isUsable()
-        ) {
-            continue;
-        }
-
-        const resultingState =
-            simulation.state;
-
-        if (
-            isWinningState(
-                resultingState,
-                index
-            )
-        ) {
-            winningLines.push({
-                action,
-
-                turns:
-                    1,
-
-                score:
-                    100,
-
-                simulation,
-
-                resultingState,
-
-                path:
-                    [action]
-            });
-
-            continue;
-        }
-
-        const result =
-            searchNode({
-                state:
-                    resultingState,
-
-                playerIndex:
-                    index,
-
-                depth:
-                    1,
-
-                maxDepth,
-
-                path:
-                    [action],
-
-                visited:
-                    new Set([
-                        getStateSignature(
-                            state
-                        )
-                    ])
-            });
-
-        if (
-            result?.terminal &&
-            isWinningState(
-                result.state,
-                index
-            )
-        ) {
-            winningLines.push({
-                action,
-
-                turns:
-                    result.depth,
-
-                score:
-                    calculateFinishLineScore(
-                        result.depth
-                    ),
-
-                simulation,
-
-                resultingState,
-
-                result,
-
-                path:
-                    result.path
-            });
-        }
-    }
-
-    return winningLines.sort(
-        (a, b) => {
-            if (
-                a.turns !==
-                b.turns
-            ) {
-                return (
-                    a.turns -
-                    b.turns
-                );
-            }
-
-            return (
-                b.score -
-                a.score
-            );
-        }
-    );
 }
 
 
-/* ============================================================
- * FINISH SCORE
- * ========================================================== */
+/* =========================================================
+ * UTILITAIRES
+ * ========================================================= */
 
-function calculateFinishLineScore(
-    turns
-) {
-    switch (number(turns)) {
-        case 1:
-            return 100;
+export function calculateFinishLineScore(turns) {
+    const value =
+        Number(turns);
 
-        case 2:
-            return 70;
-
-        case 3:
-            return 45;
-
-        case 4:
-            return 25;
-
-        default:
-            return 10;
+    if (!Number.isFinite(value)) {
+        return 0;
     }
+
+    if (value <= 1) return 100;
+    if (value === 2) return 70;
+    if (value === 3) return 45;
+    if (value === 4) return 25;
+    if (value >= 5) return 10;
+
+    return 0;
 }
 
-
-/* ============================================================
- * OUTILS
- * ========================================================== */
-
-function getDistanceToTarget(
+export function getDistanceToTarget(
     state,
-    playerIndex
+    playerIndex = 0
 ) {
-    const player =
-        typeof state?.getPlayer ===
-        "function"
-            ? state.getPlayer(
-                playerIndex
-            )
-            : state?.players?.[
-                playerIndex
-            ];
-
-    if (!player) {
-        return Infinity;
-    }
-
-    const target =
-        number(
-            state?.targetScore ??
-            state?.victoryTarget ??
-            0
-        );
-
-    if (
-        target <= 0
-    ) {
-        return Infinity;
-    }
-
-    return (
-        target -
-        number(player.score)
+    return getTargetDistance(
+        state,
+        playerIndex
     );
 }
 
+export function groupCloseResults(
+    results,
+    tolerance = null
+) {
+    if (!Array.isArray(results) || !results.length) {
+        return [];
+    }
 
-/* ============================================================
- * API PAR DÉFAUT
- * ========================================================== */
+    const best =
+        Number(
+            results[0]?.finalScore ??
+            results[0]?.score
+        );
+
+    if (!Number.isFinite(best)) {
+        return results.slice(0, 1);
+    }
+
+    /*
+     * Si aucune tolérance n'est fournie,
+     * on prend celle de la meilleure action.
+     */
+    const effectiveTolerance =
+        tolerance == null
+            ? Number(
+                results[0]?.tolerance
+            ) || 5
+            : Number(tolerance);
+
+    return results.filter(result => {
+        const score =
+            Number(
+                result?.finalScore ??
+                result?.score
+            );
+
+        return (
+            Number.isFinite(score) &&
+            best - score <=
+                effectiveTolerance
+        );
+    });
+}
+
+
+/* =========================================================
+ * EXPORT PAR DÉFAUT
+ * ========================================================= */
 
 export default {
     searchActions,
     searchBestAction,
     searchFinish,
     getSearchDepth,
-    getAdaptiveExpertDepth,
-    toSimulatedAction
+    toSimulatedAction,
+    calculateActionComplexity,
+    getActionTolerance,
+    groupCloseResults,
+    calculateFinishLineScore,
+    getDistanceToTarget
 };
