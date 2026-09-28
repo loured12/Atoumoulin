@@ -1,51 +1,36 @@
 /**
- * Atoumoulin - AI Actions
+ * Atoumoulin AI
+ * action.js
  *
- * Une Action représente toujours une ACTION COMPLÈTE.
+ * Représentation canonique des ACTIONS COMPLÈTES de l'IA.
  *
- * Exemple :
+ * Une action complète contient tout ce qui est nécessaire pour
+ * déterminer un résultat de simulation.
  *
- * {
- *   type: "card",
- *   card: 13,
- *   cardIndex: 2,
- *   target: 1,
- *   tableCardIndex: 7
- * }
+ * Exemples :
  *
- * Le moteur stratégique pourra ensuite :
+ *   13 -> joueur 2 -> carte table 7
  *
- *   action
- *      ↓
- *   simulation
- *      ↓
- *   évaluation
+ *   21 -> -20 -> joueur 1
  *
- * IMPORTANT :
+ *   Joker -> échange de scores -> joueur 3
  *
- * Ce fichier ne décide PAS quelle action est meilleure.
+ *   Double13 -> joueur 2 -> cartes 4 et 8
  *
- * Son rôle est uniquement :
- *
- * 1. déterminer ce qui est légal ;
- * 2. construire les possibilités complètes ;
- * 3. fournir les paramètres permettant au moteur réel
- *    d'exécuter l'action.
+ * Ce module NE choisit jamais la meilleure action.
  */
 
 export const ACTION_TYPES = Object.freeze({
-  PLAY_CARD: "play_card",
-  PLAY_DOUBLE: "play_double",
+    PLAY_CARD: "play_card",
+    PLAY_DOUBLE: "play_double",
 
-  CHOOSE_TARGET: "choose_target",
-  CHOOSE_TABLE_CARD: "choose_table_card",
-  CHOOSE_TABLE_CARDS: "choose_table_cards",
+    TARGET: "target",
+    TABLE_CARD: "table_card",
+    TABLE_CARDS: "table_cards",
 
-  CHOOSE_21_EFFECT: "choose_21_effect",
-  CHOOSE_JOKER_EFFECT: "choose_joker_effect",
-
-  CONTINUE: "continue",
-  TERMINATE: "terminate"
+    EFFECT: "effect",
+    CONTINUE: "continue",
+    TERMINATE: "terminate"
 });
 
 
@@ -54,66 +39,118 @@ export const ACTION_TYPES = Object.freeze({
  * ========================================================== */
 
 function clone(value) {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return value;
-  }
-
-  if (
-    typeof structuredClone === "function"
-  ) {
-    try {
-      return structuredClone(value);
-    } catch {}
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(clone);
-  }
-
-  if (
-    typeof value === "object"
-  ) {
-    const result = {};
-
-    for (
-      const [key, item]
-      of Object.entries(value)
-    ) {
-      result[key] = clone(item);
+    if (value === null || value === undefined) {
+        return value;
     }
 
-    return result;
-  }
+    if (typeof structuredClone === "function") {
+        try {
+            return structuredClone(value);
+        } catch {}
+    }
 
-  return value;
+    if (Array.isArray(value)) {
+        return value.map(clone);
+    }
+
+    if (typeof value === "object") {
+        const result = {};
+
+        for (const [key, item] of Object.entries(value)) {
+            result[key] = clone(item);
+        }
+
+        return result;
+    }
+
+    return value;
+}
+
+
+function normalizeNumber(value) {
+    const number = Number(value);
+
+    return Number.isFinite(number)
+        ? number
+        : null;
+}
+
+
+function cardValue(card) {
+    if (
+        card &&
+        typeof card === "object"
+    ) {
+        if ("valeur" in card) {
+            return card.valeur;
+        }
+
+        if ("value" in card) {
+            return card.value;
+        }
+    }
+
+    return card;
 }
 
 
 function sameCard(a, b) {
-  return a === b;
+    return String(cardValue(a)) === String(cardValue(b));
 }
 
 
-function isNumberCard(card) {
-  return (
-    typeof card === "number" &&
-    Number.isFinite(card)
-  );
+function getPlayer(state, playerIndex) {
+    return state?.players?.find(
+        player =>
+            Number(player.id) === Number(playerIndex)
+    ) ?? state?.players?.[playerIndex] ?? null;
 }
 
 
-function isOpponent(
-  state,
-  index,
-  botIndex
-) {
-  return (
-    Number(index) !==
-    Number(botIndex)
-  );
+function getOpponentPlayers(state, botIndex) {
+    return (state?.players ?? []).filter(
+        player =>
+            Number(player.id) !== Number(botIndex)
+    );
+}
+
+
+function getPlayerName(state, playerIndex) {
+    return getPlayer(state, playerIndex)?.name ?? null;
+}
+
+
+function getCardOwner(card) {
+    if (!card || typeof card !== "object") {
+        return null;
+    }
+
+    return (
+        card.proprietaire ??
+        card.owner ??
+        null
+    );
+}
+
+
+function getTableCardValue(card) {
+    if (!card || typeof card !== "object") {
+        return null;
+    }
+
+    return normalizeNumber(
+        card.valeur ?? card.value
+    );
+}
+
+
+function isPointCard(card) {
+    const value = getTableCardValue(card);
+
+    return (
+        value !== null &&
+        value !== 0
+    );
 }
 
 
@@ -124,362 +161,565 @@ function isOpponent(
 /**
  * Retourne les valeurs pouvant former un double.
  *
- * Une valeur présente 3 fois ou plus ne produit qu'un seul
- * double.
+ * Trois exemplaires d'une carte donnent toujours UN seul
+ * double. Le troisième exemplaire reste disponible pour
+ * les tours futurs.
  */
-export function findDoubles(hand) {
-  const counts = new Map();
+export function findDoubles(hand = []) {
+    const counts = new Map();
 
-  for (const card of hand) {
-    counts.set(
-      card,
-      (counts.get(card) ?? 0) + 1
-    );
-  }
+    for (const rawCard of hand) {
+        const card = cardValue(rawCard);
+        const key = String(card);
 
-  const doubles = [];
-
-  for (
-    const [card, count]
-    of counts.entries()
-  ) {
-    if (count >= 2) {
-      doubles.push(card);
+        counts.set(
+            key,
+            {
+                value: card,
+                count: (counts.get(key)?.count ?? 0) + 1
+            }
+        );
     }
-  }
 
-  return doubles;
+    return Array.from(counts.values())
+        .filter(entry => entry.count >= 2)
+        .map(entry => entry.value);
 }
 
 
 /**
- * Retourne exactement deux indices pour chaque double.
- *
- * Trois 7 donnent donc :
- *
- * [index7a, index7b]
- *
- * et le troisième 7 reste en main.
+ * Retourne exactement deux indices d'une valeur.
  */
 export function getDoubleIndices(
-  hand,
-  value
+    hand = [],
+    value
 ) {
-  const result = [];
+    const indices = [];
 
-  for (
-    let i = 0;
-    i < hand.length;
-    i++
-  ) {
-    if (
-      sameCard(
-        hand[i],
-        value
-      )
-    ) {
-      result.push(i);
+    for (let index = 0; index < hand.length; index++) {
+        if (sameCard(hand[index], value)) {
+            indices.push(index);
 
-      if (result.length === 2) {
-        break;
-      }
+            if (indices.length === 2) {
+                break;
+            }
+        }
     }
-  }
 
-  return result;
+    return indices;
 }
 
 
 /* ============================================================
- * PRIORITÉ DES ACTIONS
+ * CONSTRUCTEURS
+ * ========================================================== */
+
+export function createCardAction({
+    card,
+    cardIndex,
+    target = null,
+    effect = null,
+    value = null,
+    tableCardIndex = null,
+    tableCardIndices = [],
+    ownTableCardIndex = null,
+    targetTableCardIndex = null,
+    metadata = {}
+} = {}) {
+    const normalizedCard = cardValue(card);
+
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.PLAY_CARD,
+            card: normalizedCard,
+            cardIndex,
+            target,
+            effect,
+            value,
+            tableCardIndex,
+            tableCardIndices,
+            ownTableCardIndex,
+            targetTableCardIndex
+        }),
+
+        type: ACTION_TYPES.PLAY_CARD,
+
+        card: normalizedCard,
+        cardIndex,
+
+        target,
+
+        effect,
+        value,
+
+        tableCardIndex,
+        tableCardIndices: Array.isArray(tableCardIndices)
+            ? tableCardIndices.slice()
+            : [],
+
+        ownTableCardIndex,
+        targetTableCardIndex,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createDoubleAction({
+    card,
+    indices,
+    target = null,
+    effect = null,
+    value = null,
+    tableCardIndex = null,
+    tableCardIndices = [],
+    ownTableCardIndex = null,
+    targetTableCardIndex = null,
+    metadata = {}
+} = {}) {
+    const normalizedCard = cardValue(card);
+    const normalizedIndices = Array.isArray(indices)
+        ? indices.slice(0, 2)
+        : [];
+
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.PLAY_DOUBLE,
+            card: normalizedCard,
+            indices: normalizedIndices,
+            target,
+            effect,
+            value,
+            tableCardIndex,
+            tableCardIndices,
+            ownTableCardIndex,
+            targetTableCardIndex
+        }),
+
+        type: ACTION_TYPES.PLAY_DOUBLE,
+
+        card: normalizedCard,
+        cardIndex: null,
+        indices: normalizedIndices,
+
+        target,
+
+        effect,
+        value,
+
+        tableCardIndex,
+        tableCardIndices: Array.isArray(tableCardIndices)
+            ? tableCardIndices.slice()
+            : [],
+
+        ownTableCardIndex,
+        targetTableCardIndex,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createTargetAction({
+    card = null,
+    cardIndex = null,
+    target,
+    effect = null,
+    value = null,
+    metadata = {}
+} = {}) {
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.TARGET,
+            card,
+            cardIndex,
+            target,
+            effect,
+            value
+        }),
+
+        type: ACTION_TYPES.TARGET,
+
+        card,
+        cardIndex,
+
+        target,
+
+        effect,
+        value,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createTableCardAction({
+    card = null,
+    cardIndex = null,
+    target = null,
+    tableCardIndex,
+    effect = null,
+    value = null,
+    metadata = {}
+} = {}) {
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.TABLE_CARD,
+            card,
+            cardIndex,
+            target,
+            tableCardIndex,
+            effect,
+            value
+        }),
+
+        type: ACTION_TYPES.TABLE_CARD,
+
+        card,
+        cardIndex,
+
+        target,
+
+        tableCardIndex,
+
+        effect,
+        value,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createTableCardsAction({
+    card = null,
+    cardIndex = null,
+    target = null,
+    tableCardIndices = [],
+    effect = null,
+    value = null,
+    metadata = {}
+} = {}) {
+    const indices = Array.isArray(tableCardIndices)
+        ? tableCardIndices.slice()
+        : [];
+
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.TABLE_CARDS,
+            card,
+            cardIndex,
+            target,
+            tableCardIndices: indices,
+            effect,
+            value
+        }),
+
+        type: ACTION_TYPES.TABLE_CARDS,
+
+        card,
+        cardIndex,
+
+        target,
+
+        tableCardIndices: indices,
+
+        effect,
+        value,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createEffectAction({
+    card = null,
+    cardIndex = null,
+    effect,
+    value = null,
+    target = null,
+    metadata = {}
+} = {}) {
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.EFFECT,
+            card,
+            cardIndex,
+            effect,
+            value,
+            target
+        }),
+
+        type: ACTION_TYPES.EFFECT,
+
+        card,
+        cardIndex,
+
+        effect,
+        value,
+        target,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createContinueAction({
+    card = null,
+    cardIndex = null,
+    target = null,
+    effect = "continue",
+    metadata = {}
+} = {}) {
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.CONTINUE,
+            card,
+            cardIndex,
+            target,
+            effect
+        }),
+
+        type: ACTION_TYPES.CONTINUE,
+
+        card,
+        cardIndex,
+        target,
+
+        effect,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+export function createTerminateAction({
+    card = null,
+    cardIndex = null,
+    target = null,
+    effect = "terminate",
+    metadata = {}
+} = {}) {
+    return {
+        id: buildActionId({
+            type: ACTION_TYPES.TERMINATE,
+            card,
+            cardIndex,
+            target,
+
+            effect
+        }),
+
+        type: ACTION_TYPES.TERMINATE,
+
+        card,
+        cardIndex,
+        target,
+
+        effect,
+
+        complete: true,
+
+        metadata: clone(metadata)
+    };
+}
+
+
+/* ============================================================
+ * IDENTIFIANTS
+ * ========================================================== */
+
+export function buildActionId(data = {}) {
+    const parts = [
+        data.type,
+        data.card,
+        data.cardIndex,
+        Array.isArray(data.indices)
+            ? data.indices.join(",")
+            : null,
+        data.target,
+        data.effect,
+        data.value,
+        data.tableCardIndex,
+        Array.isArray(data.tableCardIndices)
+            ? data.tableCardIndices.join(",")
+            : null,
+        data.ownTableCardIndex,
+        data.targetTableCardIndex
+    ];
+
+    return parts
+        .filter(
+            value =>
+                value !== null &&
+                value !== undefined &&
+                value !== ""
+        )
+        .map(String)
+        .join(":");
+}
+
+
+/* ============================================================
+ * ACTIONS DE BASE
  * ========================================================== */
 
 /**
- * Détermine les actions de base légalement disponibles.
- *
- * PRIORITÉ EXACTE :
+ * Priorité obligatoire :
  *
  * 1. Double 7
  * 2. 7 simple
  * 3. Double X
  * 4. Carte simple
- *
- * Une fois qu'une priorité supérieure existe, les catégories
- * inférieures ne sont PAS générées.
  */
 export function getBaseActions(
-  state,
-  botIndex
+    state,
+    botIndex
 ) {
-  const player =
-    state.players?.[botIndex];
+    const player =
+        getPlayer(state, botIndex);
 
-  if (!player) {
-    return [];
-  }
+    if (!player) {
+        return [];
+    }
 
-  const hand =
-    Array.isArray(player.main)
-      ? player.main
-      : [];
+    const hand =
+        Array.isArray(player.main)
+            ? player.main
+            : [];
 
-  if (hand.length === 0) {
-    return [];
-  }
-
-
-  /* ----------------------------------------------------------
-   * 1. DOUBLE 7
-   * -------------------------------------------------------- */
-
-  const sevenIndices =
-    getDoubleIndices(
-      hand,
-      7
-    );
-
-  if (
-    sevenIndices.length >= 2
-  ) {
-    return [
-      createDoubleAction(
-        7,
-        sevenIndices
-      )
-    ];
-  }
+    if (!hand.length) {
+        return [];
+    }
 
 
-  /* ----------------------------------------------------------
-   * 2. 7 SIMPLE
-   * -------------------------------------------------------- */
+    /* --------------------------------------------------------
+     * DOUBLE 7
+     * ------------------------------------------------------ */
 
-  const sevenIndex =
-    hand.findIndex(
-      card => card === 7
-    );
+    const doubleSeven =
+        getDoubleIndices(hand, 7);
 
-  if (sevenIndex !== -1) {
-    return [
-      createCardAction(
-        7,
-        sevenIndex
-      )
-    ];
-  }
+    if (doubleSeven.length === 2) {
+        return [
+            createDoubleAction({
+                card: 7,
+                indices: doubleSeven
+            })
+        ];
+    }
 
 
-  /* ----------------------------------------------------------
-   * 3. DOUBLES
-   * -------------------------------------------------------- */
+    /* --------------------------------------------------------
+     * 7 SIMPLE
+     * ------------------------------------------------------ */
 
-  const doubles =
-    findDoubles(hand);
-
-  if (doubles.length > 0) {
-    return doubles.map(
-      value => {
-        const indices =
-          getDoubleIndices(
-            hand,
-            value
-          );
-
-        return createDoubleAction(
-          value,
-          indices
+    const sevenIndex =
+        hand.findIndex(
+            card => sameCard(card, 7)
         );
-      }
+
+    if (sevenIndex !== -1) {
+        return [
+            createCardAction({
+                card: 7,
+                cardIndex: sevenIndex
+            })
+        ];
+    }
+
+
+    /* --------------------------------------------------------
+     * DOUBLE X
+     * ------------------------------------------------------ */
+
+    const doubles =
+        findDoubles(hand);
+
+    if (doubles.length) {
+        return doubles.map(
+            value =>
+                createDoubleAction({
+                    card: value,
+                    indices:
+                        getDoubleIndices(
+                            hand,
+                            value
+                        )
+                })
+        );
+    }
+
+
+    /* --------------------------------------------------------
+     * CARTES SIMPLES
+     * ------------------------------------------------------ */
+
+    return hand.map(
+        (card, index) =>
+            createCardAction({
+                card: cardValue(card),
+                cardIndex: index
+            })
     );
-  }
-
-
-  /* ----------------------------------------------------------
-   * 4. CARTES SIMPLES
-   * -------------------------------------------------------- */
-
-  return hand.map(
-    (card, index) =>
-      createCardAction(
-        card,
-        index
-      )
-  );
 }
 
 
 /* ============================================================
- * CRÉATION DES ACTIONS
+ * CIBLES
  * ========================================================== */
 
-function createCardAction(
-  card,
-  cardIndex
-) {
-  return {
-    id:
-      `card:${card}:${cardIndex}`,
-
-    type:
-      ACTION_TYPES.PLAY_CARD,
-
-    card,
-
-    cardIndex,
-
-    indices: [
-      cardIndex
-    ],
-
-    complete: true
-  };
-}
-
-
-function createDoubleAction(
-  card,
-  indices
-) {
-  return {
-    id:
-      `double:${String(card)}:${indices.join(",")}`,
-
-    type:
-      ACTION_TYPES.PLAY_DOUBLE,
-
-    card,
-
-    cardIndex: null,
-
-    indices:
-      indices.slice(),
-
-    complete: true
-  };
-}
-
-
-/* ============================================================
- * ACTIONS SECONDAIRES
- * ========================================================== */
-
-/**
- * Génère les cibles légales.
- */
 export function getAvailableTargets(
-  state,
-  botIndex,
-  predicate = null
+    state,
+    botIndex,
+    predicate = null
 ) {
-  const players =
-    state.players ?? [];
-
-  return players
-    .filter(
-      player =>
-        isOpponent(
-          state,
-          player.id,
-          botIndex
+    return getOpponentPlayers(
+        state,
+        botIndex
+    )
+        .filter(
+            player =>
+                !predicate ||
+                predicate(player)
         )
-    )
-    .filter(
-      player =>
-        !predicate ||
-        predicate(player)
-    )
-    .map(
-      player => ({
-        id:
-          `target:${player.id}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TARGET,
-
-        target:
-          player.id,
-
-        complete:
-          true
-      })
-    );
+        .map(
+            player =>
+                createTargetAction({
+                    target: player.id
+                })
+        );
 }
 
 
-/**
- * Cibles possédant au moins une carte à points sur la table.
- *
- * Utilisé notamment par :
- *
- * - 1
- * - Double 1
- * - 13
- * - Double 13
- * - 19
- * - Double 19
- */
-export function getPlayersWithPointCards(
-  state,
-  botIndex
-) {
-  const table =
-    state.table ?? [];
-
-  const players =
-    state.players ?? [];
-
-  const result = [];
-
-  for (const player of players) {
-    if (
-      Number(player.id) ===
-      Number(botIndex)
-    ) {
-      continue;
-    }
-
-    const hasCard =
-      table.some(
-        card =>
-          card?.proprietaire ===
-            player.name &&
-          Number(card?.valeur) !== 0
-      );
-
-    if (hasCard) {
-      result.push(player.id);
-    }
-  }
-
-  return result;
-}
-
-
-/**
- * Cibles possédant au moins une carte en main.
- *
- * Utilisé notamment par le 17.
- */
 export function getPlayersWithCards(
-  state,
-  botIndex
+    state,
+    botIndex
 ) {
-  return (
-    state.players ?? []
-  )
-    .filter(
-      player =>
-        Number(player.id) !==
-        Number(botIndex)
+    return getOpponentPlayers(
+        state,
+        botIndex
     )
-    .filter(
-      player =>
-        Number(player.cardCount) > 0
-    )
-    .map(
-      player =>
-        player.id
-    );
+        .filter(
+            player =>
+                Number(player.cardCount ?? 0) > 0
+        )
+        .map(
+            player => player.id
+        );
 }
 
 
@@ -488,137 +728,170 @@ export function getPlayersWithCards(
  * ========================================================== */
 
 export function getPointCardsOfPlayer(
-  state,
-  playerId
+    state,
+    playerId
 ) {
-  const player =
-    state.players?.[playerId];
+    const player =
+        getPlayer(state, playerId);
 
-  if (!player) {
-    return [];
-  }
+    if (!player) {
+        return [];
+    }
 
-  return (
-    state.table ?? []
-  )
-    .map(
-      (card, index) => ({
-        card,
-        index
-      })
-    )
-    .filter(
-      ({ card }) =>
-        card?.proprietaire ===
-          player.name &&
-        Number(card?.valeur) !== 0
-    );
+    const playerName =
+        player.name;
+
+    return (state.table ?? [])
+        .map(
+            (card, index) => ({
+                card,
+                index
+            })
+        )
+        .filter(
+            ({ card }) => {
+                const owner =
+                    getCardOwner(card);
+
+                return (
+                    (
+                        owner === playerName ||
+                        String(owner) === String(playerId)
+                    ) &&
+                    isPointCard(card)
+                );
+            }
+        );
 }
 
 
 export function getLastPointCardOfPlayer(
-  state,
-  playerId
+    state,
+    playerId
 ) {
-  const cards =
-    getPointCardsOfPlayer(
-      state,
-      playerId
-    );
+    const cards =
+        getPointCardsOfPlayer(
+            state,
+            playerId
+        );
 
-  if (cards.length === 0) {
-    return null;
-  }
-
-  return cards[
-    cards.length - 1
-  ];
+    return cards.length
+        ? cards[cards.length - 1]
+        : null;
 }
 
 
-/**
- * Le 13 peut choisir une carte adverse.
- */
-export function getStealableCards13(
-  state,
-  targetId
+export function getPlayersWithPointCards(
+    state,
+    botIndex
 ) {
-  return getPointCardsOfPlayer(
+    return getOpponentPlayers(
+        state,
+        botIndex
+    )
+        .filter(
+            player =>
+                getPointCardsOfPlayer(
+                    state,
+                    player.id
+                ).length > 0
+        )
+        .map(
+            player => player.id
+        );
+}
+
+
+/* ============================================================
+ * 13
+ * ========================================================== */
+
+export function getStealableCards13(
     state,
     targetId
-  ).map(
-    ({ card, index }) => ({
-      id:
-        `card13:${targetId}:${index}`,
-
-      type:
-        ACTION_TYPES.CHOOSE_TABLE_CARD,
-
-      target:
-        targetId,
-
-      tableCardIndex:
-        index,
-
-      value:
-        card.valeur,
-
-      complete:
-        true
-    })
-  );
+) {
+    return getPointCardsOfPlayer(
+        state,
+        targetId
+    ).map(
+        ({ card, index }) =>
+            createTableCardAction({
+                card: 13,
+                target: targetId,
+                tableCardIndex: index,
+                value:
+                    getTableCardValue(card),
+                metadata: {
+                    stolenValue:
+                        getTableCardValue(card)
+                }
+            })
+    );
 }
 
 
-/**
- * Le Double 13 peut prendre jusqu'à deux cartes.
- */
+/* ============================================================
+ * DOUBLE 13
+ * ========================================================== */
+
 export function getStealableCardsDouble13(
-  state,
-  targetId
+    state,
+    targetId
 ) {
-  const cards =
-    getPointCardsOfPlayer(
-      state,
-      targetId
-    );
+    const cards =
+        getPointCardsOfPlayer(
+            state,
+            targetId
+        );
 
-  /*
-   * Si une seule carte existe,
-   * le moteur autorise une seule carte.
-   */
-  if (cards.length <= 2) {
-    return [
-      cards.map(
-        ({ index }) => index
-      )
-    ];
-  }
-
-  /*
-   * Toutes les combinaisons de deux cartes
-   * constituent des possibilités distinctes.
-   */
-  const result = [];
-
-  for (
-    let i = 0;
-    i < cards.length;
-    i++
-  ) {
-    for (
-      let j = i + 1;
-      j < cards.length;
-      j++
-    ) {
-      result.push([
-        cards[i].index,
-        cards[j].index
-      ]);
+    if (!cards.length) {
+        return [];
     }
-  }
 
-  return result;
+    /*
+     * Une seule carte : elle constitue la seule possibilité.
+     */
+    if (cards.length === 1) {
+        return [
+            createTableCardsAction({
+                card: 13,
+                target: targetId,
+                tableCardIndices: [
+                    cards[0].index
+                ]
+            })
+        ];
+    }
+
+    const result = [];
+
+    /*
+     * Toutes les combinaisons de deux cartes.
+     */
+    for (
+        let i = 0;
+        i < cards.length;
+        i++
+    ) {
+        for (
+            let j = i + 1;
+            j < cards.length;
+            j++
+        ) {
+            result.push(
+                createTableCardsAction({
+                    card: 13,
+                    target: targetId,
+                    tableCardIndices: [
+                        cards[i].index,
+                        cards[j].index
+                    ]
+                })
+            );
+        }
+    }
+
+    return result;
 }
 
 
@@ -626,65 +899,51 @@ export function getStealableCardsDouble13(
  * 15
  * ========================================================== */
 
-/**
- * Le 15 normal double une carte à points appartenant au bot.
- */
 export function getDouble15Targets(
-  state,
-  botIndex
-) {
-  return getPointCardsOfPlayer(
     state,
     botIndex
-  ).map(
-    ({ card, index }) => ({
-      id:
-        `15:${index}`,
-
-      type:
-        ACTION_TYPES.CHOOSE_TABLE_CARD,
-
-      tableCardIndex:
-        index,
-
-      value:
-        card.valeur,
-
-      complete:
-        true
-    })
-  );
+) {
+    return getPointCardsOfPlayer(
+        state,
+        botIndex
+    ).map(
+        ({ card, index }) =>
+            createTableCardAction({
+                card: 15,
+                tableCardIndex: index,
+                value:
+                    getTableCardValue(card)
+            })
+    );
 }
 
 
 /**
- * Double 15 triple une carte appartenant au bot.
+ * Double 15 = triplement de la carte ciblée.
+ *
+ * Le nom historique "getDouble15Targets" reste réservé
+ * au 15 simple. Cette fonction décrit explicitement
+ * le comportement du Double 15.
  */
-export function getDouble15Targets(
-  state,
-  botIndex
-) {
-  return getPointCardsOfPlayer(
+export function getTriple15Targets(
     state,
     botIndex
-  ).map(
-    ({ card, index }) => ({
-      id:
-        `double15:${index}`,
-
-      type:
-        ACTION_TYPES.CHOOSE_TABLE_CARD,
-
-      tableCardIndex:
-        index,
-
-      value:
-        card.valeur,
-
-      complete:
-        true
-    })
-  );
+) {
+    return getPointCardsOfPlayer(
+        state,
+        botIndex
+    ).map(
+        ({ card, index }) =>
+            createTableCardAction({
+                card: 15,
+                tableCardIndex: index,
+                value:
+                    getTableCardValue(card),
+                metadata: {
+                    multiplier: 3
+                }
+            })
+    );
 }
 
 
@@ -692,69 +951,127 @@ export function getDouble15Targets(
  * 19
  * ========================================================== */
 
-/**
- * Le 19 échange la dernière carte à points du bot avec
- * la dernière carte à points d'un adversaire.
- */
 export function get19Targets(
-  state,
-  botIndex
+    state,
+    botIndex
 ) {
-  const own =
-    getLastPointCardOfPlayer(
-      state,
-      botIndex
-    );
+    const own =
+        getLastPointCardOfPlayer(
+            state,
+            botIndex
+        );
 
-  if (!own) {
-    return [];
-  }
+    if (!own) {
+        return [];
+    }
 
-  const result = [];
+    const result = [];
 
-  for (
-    const player
-    of state.players ?? []
-  ) {
-    if (
-      Number(player.id) ===
-      Number(botIndex)
+    for (
+        const opponent
+        of getOpponentPlayers(
+            state,
+            botIndex
+        )
     ) {
-      continue;
+        const target =
+            getLastPointCardOfPlayer(
+                state,
+                opponent.id
+            );
+
+        if (!target) {
+            continue;
+        }
+
+        result.push(
+            createTargetAction({
+                card: 19,
+                target: opponent.id,
+                metadata: {
+                    ownTableCardIndex:
+                        own.index,
+
+                    targetTableCardIndex:
+                        target.index
+                }
+            })
+        );
     }
 
-    const target =
-      getLastPointCardOfPlayer(
-        state,
-        player.id
-      );
+    return result;
+}
 
-    if (!target) {
-      continue;
+
+/* ============================================================
+ * DOUBLE 19
+ * ========================================================== */
+
+/**
+ * Le moteur actuel échange les dernières cartes de points.
+ *
+ * Si deux cartes sont disponibles des deux côtés, la simulation
+ * pourra en traiter jusqu'à deux.
+ */
+export function getDouble19Targets(
+    state,
+    botIndex
+) {
+    const own =
+        getPointCardsOfPlayer(
+            state,
+            botIndex
+        );
+
+    if (!own.length) {
+        return [];
     }
 
-    result.push({
-      id:
-        `19:${player.id}`,
+    const result = [];
 
-      type:
-        ACTION_TYPES.CHOOSE_TARGET,
+    for (
+        const opponent
+        of getOpponentPlayers(
+            state,
+            botIndex
+        )
+    ) {
+        const target =
+            getPointCardsOfPlayer(
+                state,
+                opponent.id
+            );
 
-      target:
-        player.id,
+        if (!target.length) {
+            continue;
+        }
 
-      ownTableCardIndex:
-        own.index,
+        const ownIndices =
+            own
+                .slice(-2)
+                .map(item => item.index);
 
-      targetTableCardIndex:
-        target.index,
+        const targetIndices =
+            target
+                .slice(-2)
+                .map(item => item.index);
 
-      complete:
-        true
-    });
-  }
+        result.push(
+            createTargetAction({
+                card: 19,
+                target: opponent.id,
+                metadata: {
+                    ownTableCardIndices:
+                        ownIndices,
 
-  return result;
+                    targetTableCardIndices:
+                        targetIndices
+                }
+            })
+        );
+    }
+
+    return result;
 }
 
 
@@ -762,126 +1079,48 @@ export function get19Targets(
  * 21
  * ========================================================== */
 
-/**
- * Les deux effets possibles du 21 normal.
- */
-export function get21Effects() {
-  return [
-    {
-      id:
-        "21:+20",
-
-      type:
-        ACTION_TYPES.CHOOSE_21_EFFECT,
-
-      value:
-        20,
-
-      complete:
-        true
-    },
-
-    {
-      id:
-        "21:-20",
-
-      type:
-        ACTION_TYPES.CHOOSE_21_EFFECT,
-
-      value:
-        -20,
-
-      complete:
-        false
-    }
-  ];
-}
-
-
-/**
- * Cibles nécessaires au -20.
- */
-export function get21Targets(
-  state,
-  botIndex
-) {
-  return getAvailableTargets(
+export function get21Actions(
     state,
-    botIndex
-  ).map(
-    action => ({
-      ...action,
-
-      id:
-        `21:-20:${action.target}`,
-
-      value:
-        -20,
-
-      complete:
-        true
-    })
-  );
-}
-
-
-/**
- * Double 21.
- */
-export function getDouble21Effects() {
-  return [
-    {
-      id:
-        "double21:+40",
-
-      type:
-        ACTION_TYPES.CHOOSE_21_EFFECT,
-
-      value:
-        40,
-
-      complete:
-        true
-    },
-
-    {
-      id:
-        "double21:-40",
-
-      type:
-        ACTION_TYPES.CHOOSE_21_EFFECT,
-
-      value:
-        -40,
-
-      complete:
-        false
-    }
-  ];
-}
-
-
-export function getDouble21Targets(
-  state,
-  botIndex
+    botIndex,
+    card = 21
 ) {
-  return getAvailableTargets(
-    state,
-    botIndex
-  ).map(
-    action => ({
-      ...action,
+    const multiplier =
+        card === 21
+            ? 1
+            : 2;
 
-      id:
-        `double21:-40:${action.target}`,
+    const positive =
+        20 * multiplier;
 
-      value:
-        -40,
+    const negative =
+        -20 * multiplier;
 
-      complete:
-        true
-    })
-  );
+    const actions = [
+        createEffectAction({
+            card,
+            effect: "score",
+            value: positive
+        })
+    ];
+
+    for (
+        const opponent
+        of getOpponentPlayers(
+            state,
+            botIndex
+        )
+    ) {
+        actions.push(
+            createEffectAction({
+                card,
+                effect: "score_target",
+                value: negative,
+                target: opponent.id
+            })
+        );
+    }
+
+    return actions;
 }
 
 
@@ -889,593 +1128,175 @@ export function getDouble21Targets(
  * JOKER
  * ========================================================== */
 
-export function getJokerEffects() {
-  return [
-    {
-      id:
-        "joker:+10",
+export function getJokerActions(
+    state,
+    botIndex
+) {
+    const actions = [
+        createEffectAction({
+            card: "Joker",
+            effect: "score",
+            value: 10
+        }),
 
-      type:
-        ACTION_TYPES.CHOOSE_JOKER_EFFECT,
+        createEffectAction({
+            card: "Joker",
+            effect: "score",
+            value: 22
+        })
+    ];
 
-      value:
-        10,
-
-      complete:
-        true
-    },
-
-    {
-      id:
-        "joker:+22",
-
-      type:
-        ACTION_TYPES.CHOOSE_JOKER_EFFECT,
-
-      value:
-        22,
-
-      complete:
-        true
-    },
-
-    {
-      id:
-        "joker:exchange",
-
-      type:
-        ACTION_TYPES.CHOOSE_JOKER_EFFECT,
-
-      value:
-        "echange",
-
-      complete:
-        false
+    for (
+        const opponent
+        of getOpponentPlayers(
+            state,
+            botIndex
+        )
+    ) {
+        actions.push(
+            createEffectAction({
+                card: "Joker",
+                effect: "exchange_scores",
+                target: opponent.id
+            })
+        );
     }
-  ];
+
+    return actions;
 }
 
 
 /* ============================================================
- * ACTIONS EN COURS
+ * 17
  * ========================================================== */
 
-/**
- * Transforme l'état actuel du moteur en possibilités complètes.
- *
- * Cette fonction est fondamentale :
- *
- * generateActions()
- *
- * est appelée :
- *
- * - au début du tour ;
- * - après une action intermédiaire ;
- * - dans les simulations futures.
- */
-export function generateActions(
-  state,
-  botIndex
+export function get17Actions(
+    state,
+    botIndex,
+    card = 17
 ) {
-  if (!state) {
-    return [];
-  }
-
-  const action =
-    state.action;
-
-  /*
-   * ----------------------------------------------------------
-   * Début de tour
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === null ||
-    action === undefined
-  ) {
-    return getBaseActions(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 1 / Double 1
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "vol1" ||
-    action === "double1"
-  ) {
-    const targets =
-      getPlayersWithPointCards(
+    return getPlayersWithCards(
         state,
         botIndex
-      );
-
-    return targets.map(
-      target => ({
-        id:
-          `${action}:${target}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TARGET,
-
-        target,
-
-        complete:
-          true
-      })
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 3 / Double 3
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte3" ||
-    action === "double3"
-  ) {
-    return getAvailableTargets(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 9
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte9" ||
-    action === "double9"
-  ) {
-    return getAvailableTargets(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 13
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte13"
-  ) {
-    return getAvailableTargets(
-      state,
-      botIndex
-    )
-      .filter(
-        target =>
-          getStealableCards13(
-            state,
-            target.target
-          ).length > 0
-      )
-      .map(
-        target => ({
-          ...target,
-
-          id:
-            `13:${target.target}`,
-
-          type:
-            ACTION_TYPES.CHOOSE_TARGET
-        })
-      );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 13 : choix de carte
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte13choix"
-  ) {
-    /*
-     * La cible est conservée dans l'état du moteur.
-     */
-    const target =
-      state.target;
-
-    if (
-      target === null ||
-      target === undefined
-    ) {
-      return [];
-    }
-
-    return getStealableCards13(
-      state,
-      target
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 13
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double13"
-  ) {
-    return getAvailableTargets(
-      state,
-      botIndex
-    )
-      .filter(
-        target =>
-          getStealableCards13(
-            state,
-            target.target
-          ).length > 0
-      )
-      .map(
-        target => ({
-          ...target,
-
-          id:
-            `double13:${target.target}`
-        })
-      );
-  }
-
-
-  if (
-    action === "double13choix"
-  ) {
-    const target =
-      state.target;
-
-    if (
-      target === null ||
-      target === undefined
-    ) {
-      return [];
-    }
-
-    return getStealableCardsDouble13(
-      state,
-      target
     ).map(
-      indices => ({
-        id:
-          `double13:${target}:${indices.join(",")}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TABLE_CARDS,
-
-        target,
-
-        tableCardIndices:
-          indices,
-
-        complete:
-          true
-      })
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 15
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte15"
-  ) {
-    return getDouble15Targets(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 15
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double15"
-  ) {
-    return getDouble15Targets(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 17
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte17"
-  ) {
-    return getPlayersWithCards(
-      state,
-      botIndex
-    ).map(
-      target => ({
-        id:
-          `17:${target}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TARGET,
-
-        target,
-
-        complete:
-          true
-      })
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 17 révélé
-   * --------------------------------------------------------
-   *
-   * Aucune décision stratégique supplémentaire n'est nécessaire
-   * ici : la carte volée doit être jouée.
-   */
-
-  if (
-    action === "carte17revelee"
-  ) {
-    return [
-      {
-        id:
-          "17:continue",
-
-        type:
-          ACTION_TYPES.CONTINUE,
-
-        complete:
-          true
-      }
-    ];
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 17
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double17"
-  ) {
-    return getPlayersWithCards(
-      state,
-      botIndex
-    ).map(
-      target => ({
-        id:
-          `double17:${target}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TARGET,
-
-        target,
-
-        complete:
-          true
-      })
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 17 : cartes révélées
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double17revelee"
-  ) {
-    const cards =
-      Array.isArray(
-        state.double17Cards
-      )
-        ? state.double17Cards
-        : [];
-
-    return cards.map(
-      (_, index) => ({
-        id:
-          `double17:card:${index}`,
-
-        type:
-          ACTION_TYPES.CHOOSE_TABLE_CARD,
-
-        cardIndex:
-          index,
-
-        complete:
-          true
-      })
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 17 : jouer
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double17jouer"
-  ) {
-    return [
-      {
-        id:
-          "double17:continue",
-
-        type:
-          ACTION_TYPES.CONTINUE,
-
-        complete:
-          true
-      }
-    ];
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 19
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte19"
-  ) {
-    return get19Targets(
-      state,
-      botIndex
-    );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Double 19
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "double19"
-  ) {
-    return getAvailableTargets(
-      state,
-      botIndex
-    )
-      .filter(
         target =>
-          getPointCardsOfPlayer(
-            state,
-            target.target
-          ).length > 0
-      )
-      .map(
-        target => ({
-          ...target,
+            createTargetAction({
+                card,
+                target,
 
-          id:
-            `double19:${target.target}`
+                /*
+                 * Le contenu de la carte volée reste inconnu.
+                 */
+                metadata: {
+                    hiddenInformation: true,
+                    stolenCardKnown: false,
+                    revealRequired: true
+                }
+            })
+    );
+}
+
+
+/* ============================================================
+ * 9
+ * ========================================================== */
+
+export function get9Actions(
+    state,
+    botIndex,
+    card = 9
+) {
+    return getAvailableTargets(
+        state,
+        botIndex
+    ).map(
+        action => ({
+            ...action,
+
+            id:
+                `${card}:${action.target}`,
+
+            type:
+                ACTION_TYPES.TARGET,
+
+            card,
+
+            effect:
+                "swap_hands",
+
+            complete:
+                true,
+
+            metadata: {
+                hiddenInformation:
+                    card === 9
+            }
         })
-      );
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * 21
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "carte21"
-  ) {
-    return get21Effects();
-  }
-
-
-  if (
-    action === "carte21cible"
-  ) {
-    return get21Targets(
-      state,
-      botIndex
     );
-  }
+}
 
 
-  /*
-   * ----------------------------------------------------------
-   * Double 21
-   * --------------------------------------------------------
-   */
+/* ============================================================
+ * 3
+ * ========================================================== */
 
-  if (
-    action === "double21"
-  ) {
-    return getDouble21Effects();
-  }
+export function get3Actions(
+    state,
+    botIndex,
+    card = 3
+) {
+    const value =
+        card === 3
+            ? -20
+            : -40;
 
+    return getAvailableTargets(
+        state,
+        botIndex
+    ).map(
+        action => ({
+            ...action,
 
-  if (
-    action === "double21cible"
-  ) {
-    return getDouble21Targets(
-      state,
-      botIndex
+            id:
+                `${card}:${action.target}`,
+
+            card,
+
+            effect:
+                "score_target",
+
+            value,
+
+            complete:
+                true
+        })
     );
-  }
+}
 
 
-  /*
-   * ----------------------------------------------------------
-   * Joker
-   * --------------------------------------------------------
-   */
+/* ============================================================
+ * 1
+ * ========================================================== */
 
-  if (
-    action === "joker"
-  ) {
-    return getJokerEffects();
-  }
-
-
-  /*
-   * ----------------------------------------------------------
-   * Autres étapes
-   * --------------------------------------------------------
-   */
-
-  if (
-    action === "doubleJoker"
-  ) {
-    return [];
-  }
-
-
-  /*
-   * Une action inconnue n'est jamais inventée.
-   */
-  return [];
+export function get1Actions(
+    state,
+    botIndex,
+    card = 1
+) {
+    return getPlayersWithPointCards(
+        state,
+        botIndex
+    ).map(
+        target =>
+            createTargetAction({
+                card,
+                target,
+                effect: "steal_latest_point",
+                metadata: {
+                    hiddenInformation: false
+                }
+            })
+    );
 }
 
 
@@ -1483,50 +1304,369 @@ export function generateActions(
  * VALIDATION
  * ========================================================== */
 
-/**
- * Vérifie qu'une action générée appartient bien aux possibilités
- * produites par le générateur.
- *
- * Utile pour empêcher le moteur stratégique de fabriquer lui-même
- * une action illégale.
- */
-export function isGeneratedActionLegal(
-  state,
-  botIndex,
-  candidate
-) {
-  if (!candidate) {
-    return false;
-  }
-
-  const actions =
-    generateActions(
-      state,
-      botIndex
+export function isCompleteAction(action) {
+    return !!(
+        action &&
+        action.complete === true &&
+        typeof action.type === "string" &&
+        typeof action.id === "string"
     );
+}
 
-  return actions.some(
-    action =>
-      action.id ===
-      candidate.id
-  );
+
+export function assertCompleteActions(
+    actions
+) {
+    if (!Array.isArray(actions)) {
+        throw new Error(
+            "La liste d'actions doit être un tableau."
+        );
+    }
+
+    for (const action of actions) {
+        if (!isCompleteAction(action)) {
+            throw new Error(
+                `Action incomplète détectée : ${
+                    action?.id ?? "sans identifiant"
+                }`
+            );
+        }
+    }
+
+    return true;
 }
 
 
 /**
- * Toutes les possibilités doivent être complètes avant
- * d'être envoyées à l'évaluation stratégique.
+ * Signature stable utilisée par le moteur de recherche.
  */
-export function assertCompleteActions(
-  actions
-) {
-  for (const action of actions) {
-    if (!action.complete) {
-      throw new Error(
-        `Action incomplète détectée : ${action.id}`
-      );
+export function actionSignature(action) {
+    if (!action) {
+        return "null";
     }
-  }
 
-  return true;
+    return JSON.stringify({
+        id: action.id,
+        type: action.type,
+        card: action.card,
+        cardIndex: action.cardIndex,
+        indices: action.indices,
+        target: action.target,
+        effect: action.effect,
+        value: action.value,
+        tableCardIndex:
+            action.tableCardIndex,
+        tableCardIndices:
+            action.tableCardIndices,
+        ownTableCardIndex:
+            action.ownTableCardIndex,
+        targetTableCardIndex:
+            action.targetTableCardIndex
+    });
 }
+
+
+/* ============================================================
+ * VALIDATION PAR RAPPORT À L'ÉTAT
+ * ========================================================== */
+
+export function isActionApplicable(
+    state,
+    botIndex,
+    action
+) {
+    if (!isCompleteAction(action)) {
+        return false;
+    }
+
+    if (
+        Number(state?.currentPlayer) !==
+        Number(botIndex)
+    ) {
+        return false;
+    }
+
+    const player =
+        getPlayer(state, botIndex);
+
+    if (!player) {
+        return false;
+    }
+
+    const hand =
+        Array.isArray(player.main)
+            ? player.main
+            : [];
+
+    /*
+     * Vérification carte principale.
+     */
+    if (
+        action.card !== null &&
+        action.card !== undefined &&
+        action.cardIndex !== null &&
+        action.cardIndex !== undefined
+    ) {
+        if (
+            action.cardIndex < 0 ||
+            action.cardIndex >= hand.length
+        ) {
+            return false;
+        }
+
+        if (
+            !sameCard(
+                hand[action.cardIndex],
+                action.card
+            )
+        ) {
+            return false;
+        }
+    }
+
+    /*
+     * Vérification double.
+     */
+    if (
+        action.type === ACTION_TYPES.PLAY_DOUBLE
+    ) {
+        if (
+            !Array.isArray(action.indices) ||
+            action.indices.length !== 2
+        ) {
+            return false;
+        }
+
+        for (const index of action.indices) {
+            if (
+                index < 0 ||
+                index >= hand.length
+            ) {
+                return false;
+            }
+
+            if (
+                !sameCard(
+                    hand[index],
+                    action.card
+                )
+            ) {
+                return false;
+            }
+        }
+    }
+
+    /*
+     * Vérification cible.
+     */
+    if (
+        action.target !== null &&
+        action.target !== undefined
+    ) {
+        const target =
+            getPlayer(
+                state,
+                action.target
+            );
+
+        if (!target) {
+            return false;
+        }
+
+        if (
+            Number(target.id) ===
+            Number(botIndex)
+        ) {
+            return false;
+        }
+    }
+
+    /*
+     * Vérification carte de table.
+     */
+    if (
+        action.tableCardIndex !== null &&
+        action.tableCardIndex !== undefined
+    ) {
+        if (
+            !state.table?.[
+                action.tableCardIndex
+            ]
+        ) {
+            return false;
+        }
+    }
+
+    /*
+     * Vérification plusieurs cartes.
+     */
+    if (
+        Array.isArray(
+            action.tableCardIndices
+        )
+    ) {
+        for (
+            const index
+            of action.tableCardIndices
+        ) {
+            if (
+                !state.table?.[index]
+            ) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+/* ============================================================
+ * DÉDUPLICATION / TRI
+ * ========================================================== */
+
+export function deduplicateActions(
+    actions
+) {
+    const map = new Map();
+
+    for (const action of actions ?? []) {
+        if (!isCompleteAction(action)) {
+            continue;
+        }
+
+        map.set(
+            actionSignature(action),
+            action
+        );
+    }
+
+    return Array.from(
+        map.values()
+    );
+}
+
+
+export function actionPriority(action) {
+    if (!action) {
+        return Number.MAX_SAFE_INTEGER;
+    }
+
+    if (
+        action.type === ACTION_TYPES.PLAY_DOUBLE &&
+        Number(action.card) === 7
+    ) {
+        return 1;
+    }
+
+    if (
+        action.type === ACTION_TYPES.PLAY_CARD &&
+        Number(action.card) === 7
+    ) {
+        return 2;
+    }
+
+    if (
+        action.type === ACTION_TYPES.PLAY_DOUBLE
+    ) {
+        return 3;
+    }
+
+    if (
+        action.type === ACTION_TYPES.PLAY_CARD
+    ) {
+        return 4;
+    }
+
+    return 5;
+}
+
+
+export function sortActions(
+    actions
+) {
+    return deduplicateActions(
+        actions
+    ).sort(
+        (a, b) =>
+            actionPriority(a) -
+            actionPriority(b)
+    );
+}
+
+
+/* ============================================================
+ * VÉRIFICATION FINALE
+ * ========================================================== */
+
+export function validateActions(
+    state,
+    botIndex,
+    actions
+) {
+    assertCompleteActions(actions);
+
+    return actions.filter(
+        action =>
+            isActionApplicable(
+                state,
+                botIndex,
+                action
+            )
+    );
+}
+
+
+/* ============================================================
+ * EXPORT GLOBAL
+ * ========================================================== */
+
+export default {
+    ACTION_TYPES,
+
+    findDoubles,
+    getDoubleIndices,
+
+    createCardAction,
+    createDoubleAction,
+    createTargetAction,
+    createTableCardAction,
+    createTableCardsAction,
+    createEffectAction,
+    createContinueAction,
+    createTerminateAction,
+
+    getBaseActions,
+    getAvailableTargets,
+    getPlayersWithCards,
+    getPlayersWithPointCards,
+
+    getPointCardsOfPlayer,
+    getLastPointCardOfPlayer,
+
+    getStealableCards13,
+    getStealableCardsDouble13,
+
+    getDouble15Targets,
+    getTriple15Targets,
+
+    get19Targets,
+    getDouble19Targets,
+
+    get21Actions,
+    getJokerActions,
+    get17Actions,
+    get9Actions,
+    get3Actions,
+    get1Actions,
+
+    isCompleteAction,
+    assertCompleteActions,
+    actionSignature,
+    isActionApplicable,
+
+    deduplicateActions,
+    actionPriority,
+    sortActions,
+    validateActions
+};
