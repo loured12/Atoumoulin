@@ -1,44 +1,40 @@
-/**
- * Atoumoulin AI
- * simulation.js
- *
- * Moteur de simulation virtuelle.
- *
- * IMPORTANT :
- * Ce fichier ne doit JAMAIS modifier la partie réelle.
- *
- * Une simulation reçoit un GameState puis crée une copie
- * indépendante sur laquelle les actions peuvent être testées.
- *
- * Architecture :
- *
- *     état réel
- *         ↓
- *     copie virtuelle
- *         ↓
- *     action complète
- *         ↓
- *     nouvel état
- *         ↓
- *     évaluation
- *
- * Les actions sont représentées comme des objets complets :
- *
- * {
- *     type: "card",
- *     cardIndex: 2,
- *     target: 1,
- *     effect: "..."
- * }
- *
- * Une carte seule n'est donc jamais considérée comme une
- * possibilité complète lorsqu'elle nécessite une cible ou
- * un choix supplémentaire.
- */
+import {
+    cloneState,
+    getPlayer,
+    getSelf,
+    getOpponents,
+    getPlayerTableCards,
+    getLatestPointCard,
+    getLatestPointCards,
+    getVictoryTarget,
+    hasExactTarget,
+    getCardsOut,
+    getTotalDeckSize
+} from "./state.js";
 
 import {
-    AtoumoulinGameState
-} from "./game-state.js";
+    ACTION_TYPES,
+    actionSignature
+} from "./action.js";
+
+
+/* ============================================================
+ * CONSTANTES
+ * ========================================================== */
+
+const SIMULATION_VERSION = 2;
+
+const CARD_1 = 1;
+const CARD_3 = 3;
+const CARD_9 = 9;
+const CARD_11 = 11;
+const CARD_13 = 13;
+const CARD_15 = 15;
+const CARD_17 = 17;
+const CARD_19 = 19;
+const CARD_21 = 21;
+
+const JOKER = "Joker";
 
 
 /* ============================================================
@@ -46,91 +42,273 @@ import {
  * ========================================================== */
 
 function clone(value) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-        return value;
+    if (value === undefined) {
+        return undefined;
     }
 
-    if (
-        typeof structuredClone === "function"
-    ) {
-        try {
-            return structuredClone(value);
-        } catch {}
+    return JSON.parse(
+        JSON.stringify(value)
+    );
+}
+
+
+function numberValue(card) {
+    if (card === null || card === undefined) {
+        return null;
     }
 
-    if (Array.isArray(value)) {
-        return value.map(clone);
+    if (typeof card === "number") {
+        return card;
     }
 
-    if (typeof value === "object") {
+    if (typeof card === "string") {
+        const n = Number(card);
 
-        const result = {};
+        return Number.isFinite(n)
+            ? n
+            : card;
+    }
 
-        for (
-            const [key, item]
-            of Object.entries(value)
-        ) {
-            result[key] =
-                clone(item);
+    if (typeof card === "object") {
+        if (card.valeur !== undefined) {
+            return numberValue(card.valeur);
         }
 
-        return result;
+        if (card.value !== undefined) {
+            return numberValue(card.value);
+        }
+    }
+
+    return null;
+}
+
+
+function cardIs(card, value) {
+    return numberValue(card) === value ||
+        card === value;
+}
+
+
+function isPointCard(card) {
+    const value = numberValue(card);
+
+    return (
+        value !== null &&
+        value !== 0
+    );
+}
+
+
+function getHand(player) {
+    if (!player) {
+        return [];
+    }
+
+    if (Array.isArray(player.main)) {
+        return player.main;
+    }
+
+    if (Array.isArray(player.hand)) {
+        return player.hand;
+    }
+
+    return [];
+}
+
+
+function setHand(player, hand) {
+    if (Array.isArray(player.main)) {
+        player.main = hand;
+        return;
+    }
+
+    player.hand = hand;
+}
+
+
+function getTable(state) {
+    if (Array.isArray(state.table)) {
+        return state.table;
+    }
+
+    if (Array.isArray(state.cartesTable)) {
+        return state.cartesTable;
+    }
+
+    state.table = [];
+    return state.table;
+}
+
+
+function getDiscard(state) {
+    if (Array.isArray(state.discard)) {
+        return state.discard;
+    }
+
+    if (Array.isArray(state.defaussePouvoirs)) {
+        return state.defaussePouvoirs;
+    }
+
+    state.discard = [];
+    return state.discard;
+}
+
+
+function getPlayerId(player, fallback) {
+    if (!player) {
+        return fallback;
+    }
+
+    if (player.id !== undefined) {
+        return Number(player.id);
+    }
+
+    if (player.index !== undefined) {
+        return Number(player.index);
+    }
+
+    return fallback;
+}
+
+
+function tableOwner(card) {
+    if (!card || typeof card !== "object") {
+        return null;
+    }
+
+    if (card.proprietaire !== undefined) {
+        return card.proprietaire;
+    }
+
+    if (card.owner !== undefined) {
+        return card.owner;
+    }
+
+    if (card.playerId !== undefined) {
+        return card.playerId;
+    }
+
+    return null;
+}
+
+
+function tableValue(card) {
+    return numberValue(card);
+}
+
+
+function setTableValue(card, value) {
+    if (
+        card &&
+        typeof card === "object"
+    ) {
+        if (card.valeur !== undefined) {
+            card.valeur = value;
+        } else {
+            card.value = value;
+        }
+
+        return card;
     }
 
     return value;
 }
 
 
-function clamp(
-    value,
-    min = 0,
-    max = 100
-) {
+function setTableOwner(card, owner) {
+    if (
+        card &&
+        typeof card === "object"
+    ) {
+        if (card.proprietaire !== undefined) {
+            card.proprietaire = owner;
+        } else {
+            card.owner = owner;
+        }
+    }
 
-    return Math.max(
-        min,
-        Math.min(
-            max,
-            Number(value) || 0
-        )
+    return card;
+}
+
+
+function getPlayerScore(player) {
+    return Number(
+        player?.score ?? 0
     );
 }
 
 
-/* ============================================================
- * TYPES D'ACTIONS
- * ========================================================== */
+function setPlayerScore(player, score) {
+    player.score = Number(score);
+}
 
-/**
- * Types génériques utilisés par l'IA.
- *
- * Ils ne remplacent pas les fonctions du moteur du jeu.
- * Ils servent à représenter une possibilité complète avant
- * son exécution.
- */
 
-export const ACTION_TYPES =
-    Object.freeze({
+function getTargetScore(state) {
+    if (
+        Number.isFinite(
+            Number(state?.targetScore)
+        )
+    ) {
+        return Number(
+            state.targetScore
+        );
+    }
 
-        CARD:
-            "card",
+    return getVictoryTarget(
+        state
+    );
+}
 
-        DOUBLE:
-            "double",
 
-        TARGET:
-            "target",
+function advancePlayer(state) {
+    const players =
+        Array.isArray(state.players)
+            ? state.players
+            : [];
 
-        EFFECT:
-            "effect",
+    if (!players.length) {
+        return;
+    }
 
-        COMBINATION:
-            "combination"
+    const current =
+        Number(
+            state.currentPlayer ?? 0
+        );
+
+    state.currentPlayer =
+        (current + 1) %
+        players.length;
+}
+
+
+function pushEvent(
+    state,
+    type,
+    data = {}
+) {
+    if (!Array.isArray(state.events)) {
+        state.events = [];
+    }
+
+    state.events.push({
+        type,
+        ...clone(data)
     });
+}
+
+
+function reveal(
+    result,
+    information
+) {
+    if (!result.revealedInformation) {
+        result.revealedInformation = [];
+    }
+
+    result.revealedInformation.push(
+        clone(information)
+    );
+}
 
 
 /* ============================================================
@@ -138,122 +316,63 @@ export const ACTION_TYPES =
  * ========================================================== */
 
 export class SimulatedAction {
-
     constructor({
-        type,
-        cardIndex = null,
+        type = ACTION_TYPES.EFFECT,
         card = null,
+        cardIndex = null,
         cards = [],
         target = null,
+        tableCard = null,
+        tableCards = [],
         effect = null,
         value = null,
-        parameters = {},
-        description = ""
+        metadata = {},
+        hiddenInformation = false,
+        uncertainty = null,
+        commands = []
     } = {}) {
+        this.type = type;
+        this.card = card;
+        this.cardIndex = cardIndex;
+        this.cards = cards;
+        this.target = target;
+        this.tableCard = tableCard;
+        this.tableCards = tableCards;
+        this.effect = effect;
+        this.value = value;
+        this.metadata = metadata;
+        this.hiddenInformation =
+            hiddenInformation;
 
-        this.type =
-            type;
+        this.uncertainty =
+            uncertainty;
 
-        this.cardIndex =
-            cardIndex;
-
-        this.card =
-            clone(card);
-
-        this.cards =
-            clone(cards);
-
-        this.target =
-            target;
-
-        this.effect =
-            effect;
-
-        this.value =
-            value;
-
-        this.parameters =
-            clone(parameters);
-
-        this.description =
-            description;
+        this.commands =
+            commands;
     }
 
-
-    clone() {
-
-        return new SimulatedAction({
-            type:
-                this.type,
-
-            cardIndex:
-                this.cardIndex,
-
-            card:
-                clone(this.card),
-
-            cards:
-                clone(this.cards),
-
-            target:
-                this.target,
-
-            effect:
-                this.effect,
-
-            value:
-                this.value,
-
-            parameters:
-                clone(this.parameters),
-
-            description:
-                this.description
-        });
-    }
-
-
-    /**
-     * Identifiant stable permettant de comparer deux
-     * possibilités.
-     */
     signature() {
-
         return JSON.stringify({
-            type:
-                this.type,
-
-            cardIndex:
-                this.cardIndex,
-
-            card:
-                this.card,
-
-            cards:
-                this.cards,
-
-            target:
-                this.target,
-
-            effect:
-                this.effect,
-
-            value:
-                this.value,
-
-            parameters:
-                this.parameters
+            type: this.type,
+            card: this.card,
+            cardIndex: this.cardIndex,
+            cards: this.cards,
+            target: this.target,
+            tableCard: this.tableCard,
+            tableCards: this.tableCards,
+            effect: this.effect,
+            value: this.value,
+            metadata: this.metadata
         });
     }
 }
 
 
 /* ============================================================
- * RÉSULTAT DE SIMULATION
+ * RÉSULTAT
  * ========================================================== */
 
 export class SimulationResult {
-
     constructor({
         state,
         action,
@@ -265,40 +384,23 @@ export class SimulationResult {
         scoreDelta = {},
         metadata = {}
     } = {}) {
-
-        this.state =
-            state;
-
-        this.action =
-            action;
-
-        this.legal =
-            !!legal;
-
-        this.completed =
-            !!completed;
-
-        this.error =
-            error;
-
-        this.events =
-            clone(events);
-
+        this.state = state;
+        this.action = action;
+        this.legal = legal;
+        this.completed = completed;
+        this.error = error;
+        this.events = events;
         this.revealedInformation =
-            clone(
-                revealedInformation
-            );
+            revealedInformation;
 
         this.scoreDelta =
-            clone(scoreDelta);
+            scoreDelta;
 
         this.metadata =
-            clone(metadata);
+            metadata;
     }
 
-
-    isUsable() {
-
+    get isUsable() {
         return (
             this.legal &&
             this.completed &&
@@ -313,526 +415,315 @@ export class SimulationResult {
  * ========================================================== */
 
 export class VirtualGameState {
+    constructor(source) {
+        this.data =
+            clone(
+                source?.data ??
+                source
+            );
 
-    constructor(
-        source,
-        metadata = {}
-    ) {
-
-        if (
-            source instanceof
-            AtoumoulinGameState
-        ) {
-
-            this.data =
-                source.toMutableObject();
-
-            this.botIndex =
-                source.botIndex;
-
-        } else {
-
-            this.data =
-                clone(source);
-
-            this.botIndex =
-                Number(
-                    source?.botIndex ??
-                    0
-                );
+        if (!this.data) {
+            throw new Error(
+                "État de simulation absent."
+            );
         }
 
-        this.metadata =
-            clone(metadata);
+        if (!Array.isArray(this.data.players)) {
+            this.data.players = [];
+        }
 
-        this.events =
-            [];
+        if (!Array.isArray(this.data.table)) {
+            this.data.table =
+                Array.isArray(
+                    this.data.cartesTable
+                )
+                    ? this.data.cartesTable
+                    : [];
+        }
 
-        this.revealedInformation =
-            [];
+        if (!Array.isArray(this.data.discard)) {
+            this.data.discard =
+                Array.isArray(
+                    this.data.defaussePouvoirs
+                )
+                    ? this.data.defaussePouvoirs
+                    : [];
+        }
 
-        this.previous =
-            null;
+        if (!Array.isArray(this.data.events)) {
+            this.data.events = [];
+        }
+
+        this.data.simulationVersion =
+            SIMULATION_VERSION;
     }
 
-
-    /* ========================================================
-     * ACCÈS
-     * ====================================================== */
-
     get players() {
-
         return this.data.players;
     }
 
-
     get table() {
-
         return this.data.table;
     }
 
-
     get discard() {
-
         return this.data.discard;
     }
 
-
     get deckCount() {
-
-        return this.data.deckCount;
+        return Number(
+            this.data.deckCount ?? 0
+        );
     }
 
+    set deckCount(value) {
+        this.data.deckCount =
+            Math.max(
+                0,
+                Number(value) || 0
+            );
+    }
 
     get currentPlayer() {
-
-        return this.data.currentPlayer;
+        return Number(
+            this.data.currentPlayer ?? 0
+        );
     }
 
+    set currentPlayer(value) {
+        this.data.currentPlayer =
+            Number(value);
+    }
 
     get action() {
-
         return this.data.action;
     }
 
+    set action(value) {
+        this.data.action = value;
+    }
 
     get target() {
-
         return this.data.target;
     }
 
-
-    get roundEnded() {
-
-        return !!this.data.roundEnded;
+    set target(value) {
+        this.data.target = value;
     }
 
-
-    get winner() {
-
-        return this.data.winner;
+    player(index) {
+        return this.players[
+            Number(index)
+        ];
     }
 
-
-    /* ========================================================
-     * JOUEURS
-     * ====================================================== */
-
-    getPlayer(index) {
-
-        return (
-            this.players[
-                Number(index)
-            ] ??
-            null
+    score(index) {
+        return getPlayerScore(
+            this.player(index)
         );
     }
 
-
-    getBot() {
-
-        return this.getPlayer(
-            this.botIndex
-        );
-    }
-
-
-    getOpponents() {
-
-        return this.players.filter(
-            player =>
-                player.id !==
-                this.botIndex
-        );
-    }
-
-
-    /* ========================================================
-     * COPIE
-     * ====================================================== */
-
-    clone() {
-
-        const result =
-            new VirtualGameState(
-                this.data,
-                this.metadata
-            );
-
-        result.events =
-            clone(
-                this.events
-            );
-
-        result.revealedInformation =
-            clone(
-                this.revealedInformation
-            );
-
-        result.previous =
-            this.previous;
-
-        return result;
-    }
-
-
-    /* ========================================================
-     * SCORE
-     * ====================================================== */
-
-    getScore(
-        playerIndex
-    ) {
-
+    addScore(index, delta) {
         const player =
-            this.getPlayer(
-                playerIndex
-            );
-
-        return player
-            ? Number(player.score) || 0
-            : null;
-    }
-
-
-    setScore(
-        playerIndex,
-        score
-    ) {
-
-        const player =
-            this.getPlayer(
-                playerIndex
-            );
+            this.player(index);
 
         if (!player) {
-            return false;
-        }
-
-        player.score =
-            Number(score) || 0;
-
-        return true;
-    }
-
-
-    addScore(
-        playerIndex,
-        amount
-    ) {
-
-        const current =
-            this.getScore(
-                playerIndex
-            );
-
-        if (
-            current === null
-        ) {
-            return false;
-        }
-
-        return this.setScore(
-            playerIndex,
-            current +
-            Number(amount || 0)
-        );
-    }
-
-
-    /* ========================================================
-     * MAIN
-     * ====================================================== */
-
-    getHand(
-        playerIndex
-    ) {
-
-        const player =
-            this.getPlayer(
-                playerIndex
-            );
-
-        if (!player) {
-            return [];
-        }
-
-        return Array.isArray(
-            player.main
-        )
-            ? player.main
-            : [];
-    }
-
-
-    removeCard(
-        playerIndex,
-        cardIndex
-    ) {
-
-        const hand =
-            this.getHand(
-                playerIndex
-            );
-
-        if (
-            cardIndex < 0 ||
-            cardIndex >=
-                hand.length
-        ) {
-            return null;
-        }
-
-        return hand.splice(
-            cardIndex,
-            1
-        )[0];
-    }
-
-
-    addCard(
-        playerIndex,
-        card
-    ) {
-
-        const player =
-            this.getPlayer(
-                playerIndex
-            );
-
-        if (!player) {
-            return false;
-        }
-
-        if (!Array.isArray(
-            player.main
-        )) {
-            player.main = [];
-        }
-
-        player.main.push(
-            clone(card)
-        );
-
-        player.cardCount =
-            player.main.length;
-
-        return true;
-    }
-
-
-    /* ========================================================
-     * TABLE
-     * ====================================================== */
-
-    addTableCard(card) {
-
-        if (!Array.isArray(
-            this.data.table
-        )) {
-            this.data.table = [];
-        }
-
-        this.data.table.push(
-            clone(card)
-        );
-
-        return true;
-    }
-
-
-    removeTableCard(
-        index
-    ) {
-
-        if (
-            index < 0 ||
-            index >=
-                this.data.table.length
-        ) {
-            return null;
-        }
-
-        return this.data.table.splice(
-            index,
-            1
-        )[0];
-    }
-
-
-    /* ========================================================
-     * DÉFAUSSE
-     * ====================================================== */
-
-    addDiscard(card) {
-
-        if (!Array.isArray(
-            this.data.discard
-        )) {
-            this.data.discard = [];
-        }
-
-        this.data.discard.push(
-            clone(card)
-        );
-    }
-
-
-    /* ========================================================
-     * PIOCHE
-     * ====================================================== */
-
-    drawUnknownCard() {
-
-        if (
-            this.data.deckCount <= 0
-        ) {
-            return null;
-        }
-
-        this.data.deckCount--;
-
-        /*
-         * La valeur de la carte tirée n'est pas inventée.
-         *
-         * Pour une simulation stratégique, une carte inconnue
-         * est représentée par null.
-         */
-        return null;
-    }
-
-
-    /* ========================================================
-     * TOUR
-     * ====================================================== */
-
-    setCurrentPlayer(
-        playerIndex
-    ) {
-
-        this.data.currentPlayer =
-            Number(playerIndex);
-
-        return true;
-    }
-
-
-    advancePlayer() {
-
-        const count =
-            this.players.length;
-
-        if (
-            count <= 0
-        ) {
             return;
         }
 
-        this.data.currentPlayer =
-            (
-                Number(
-                    this.data.currentPlayer
-                ) + 1
-            ) %
-            count;
-    }
-
-
-    /* ========================================================
-     * ACTION EN COURS
-     * ====================================================== */
-
-    setAction(
-        action
-    ) {
-
-        this.data.action =
-            action;
-
-        return true;
-    }
-
-
-    setTarget(
-        target
-    ) {
-
-        this.data.target =
-            target;
-
-        return true;
-    }
-
-
-    /* ========================================================
-     * ÉVÉNEMENTS
-     * ====================================================== */
-
-    addEvent(
-        event
-    ) {
-
-        this.events.push(
-            clone(event)
+        setPlayerScore(
+            player,
+            this.score(index) +
+            Number(delta)
         );
     }
 
+    hand(index) {
+        return getHand(
+            this.player(index)
+        );
+    }
 
-    revealInformation(
-        information
+    removeHandCard(
+        index,
+        cardIndex
     ) {
+        const hand =
+            this.hand(index);
 
-        const value =
-            clone(information);
+        if (
+            cardIndex === null ||
+            cardIndex === undefined ||
+            cardIndex < 0 ||
+            cardIndex >= hand.length
+        ) {
+            return null;
+        }
 
-        this.revealedInformation.push(
-            value
+        const [
+            card
+        ] =
+            hand.splice(
+                cardIndex,
+                1
+            );
+
+        return card;
+    }
+
+    addHandCard(
+        index,
+        card
+    ) {
+        const player =
+            this.player(index);
+
+        if (!player) {
+            return;
+        }
+
+        const hand =
+            getHand(player);
+
+        hand.push(card);
+
+        setHand(
+            player,
+            hand
+        );
+    }
+
+    addTableCard(card) {
+        this.table.push(card);
+    }
+
+    addDiscard(card) {
+        this.discard.push(card);
+    }
+
+    drawUnknownCard(
+        playerIndex
+    ) {
+        if (this.deckCount <= 0) {
+            return null;
+        }
+
+        /*
+         * La carte est inconnue.
+         *
+         * On ne fabrique volontairement pas une valeur
+         * arbitraire. On représente l'incertitude par un
+         * objet spécial.
+         */
+        const unknown = {
+            unknown: true,
+            owner: Number(playerIndex),
+            location: "hand",
+            simulation: true
+        };
+
+        this.deckCount -= 1;
+
+        this.addHandCard(
+            playerIndex,
+            unknown
         );
 
-        this.addEvent({
-            type:
-                "information-revealed",
+        return unknown;
+    }
 
-            information:
-                value
+    finishRound(
+        winnerIndex = null
+    ) {
+        this.data.roundEnded = true;
+
+        if (
+            winnerIndex !== null &&
+            winnerIndex !== undefined
+        ) {
+            this.data.roundWinner =
+                Number(winnerIndex);
+        }
+
+        pushEvent(
+            this.data,
+            "round_end",
+            {
+                winner:
+                    winnerIndex
+            }
+        );
+    }
+
+    signature() {
+        return JSON.stringify({
+            players:
+                this.players.map(
+                    (player, index) => ({
+                        id:
+                            getPlayerId(
+                                player,
+                                index
+                            ),
+
+                        score:
+                            getPlayerScore(
+                                player
+                            ),
+
+                        cardCount:
+                            getHand(
+                                player
+                            ).length,
+
+                        hand:
+                            getHand(
+                                player
+                            ).map(
+                                card =>
+                                    card?.unknown
+                                        ? "?"
+                                        : numberValue(
+                                            card
+                                        )
+                            )
+                    })
+                ),
+
+            table:
+                this.table.map(
+                    card => ({
+                        value:
+                            tableValue(
+                                card
+                            ),
+
+                        owner:
+                            tableOwner(
+                                card
+                            )
+                    })
+                ),
+
+            deckCount:
+                this.deckCount,
+
+            currentPlayer:
+                this.currentPlayer,
+
+            action:
+                this.action,
+
+            target:
+                this.target,
+
+            roundEnded:
+                !!this.data.roundEnded
         });
     }
 
-
-    /* ========================================================
-     * FIN DE PARTIE
-     * ====================================================== */
-
-    setWinner(
-        playerIndex
-    ) {
-
-        const player =
-            this.getPlayer(
-                playerIndex
-            );
-
-        if (!player) {
-            return false;
-        }
-
-        this.data.winner =
-            player.name;
-
-        this.data.roundEnded =
-            true;
-
-        return true;
-    }
-
-
-    /* ========================================================
-     * SIGNATURE
-     * ====================================================== */
-
-    signature() {
-
-        return JSON.stringify(
+    toObject() {
+        return clone(
             this.data
         );
     }
@@ -840,912 +731,2138 @@ export class VirtualGameState {
 
 
 /* ============================================================
- * SIMULATEUR
+ * VALIDATION
  * ========================================================== */
 
-export class AtoumoulinSimulator {
-
-    constructor(
-        gameState,
-        options = {}
-    ) {
-
-        if (!gameState) {
-
-            throw new Error(
-                "Le simulateur nécessite un GameState."
-            );
-        }
-
-        this.gameState =
-            gameState;
-
-        this.options = {
-
-            /*
-             * Le simulateur ne révèle aucune information
-             * cachée par défaut.
-             */
-            revealHidden:
-                false,
-
-            /*
-             * Autorise les transitions génériques.
-             */
-            allowGenericTransitions:
-                true,
-
-            /*
-             * Permet de brancher ultérieurement les règles
-             * exactes de chaque carte.
-             */
-            actionHandlers:
-                {},
-
-            ...options
-        };
-    }
-
-
-    /* ========================================================
-     * CRÉATION D'UN ÉTAT
-     * ====================================================== */
-
-    createInitialState() {
-
-        return new VirtualGameState(
-            this.gameState
-        );
-    }
-
-
-    /* ========================================================
-     * SIMULATION PRINCIPALE
-     * ====================================================== */
-
-    simulate(
-        action
-    ) {
-
-        const normalized =
-            action instanceof
-            SimulatedAction
-                ? action
-                : new SimulatedAction(
-                    action
-                );
-
-
-        /*
-         * On crée TOUJOURS une copie.
-         */
-        const state =
-            this.createInitialState();
-
-
-        /*
-         * On mémorise l'état précédent.
-         */
-        state.previous =
-            this.gameState.signature();
-
-
-        /*
-         * Vérification minimale.
-         */
-        const validation =
-            this.validateAction(
-                normalized,
-                state
-            );
-
-        if (!validation.valid) {
-
-            return new SimulationResult({
-
-                state,
-
-                action:
-                    normalized,
-
-                legal:
-                    false,
-
-                completed:
-                    false,
-
-                error:
-                    validation.reason
-            });
-        }
-
-
-        /*
-         * Cherche un gestionnaire spécifique.
-         */
-        const handler =
-            this.getHandler(
-                normalized
-            );
-
-
-        try {
-
-            if (handler) {
-
-                handler(
-                    state,
-                    normalized,
-                    this
-                );
-
-            } else if (
-                this.options
-                    .allowGenericTransitions
-            ) {
-
-                this.applyGenericAction(
-                    state,
-                    normalized
-                );
-
-            } else {
-
-                return new SimulationResult({
-
-                    state,
-
-                    action:
-                        normalized,
-
-                    legal:
-                        false,
-
-                    completed:
-                        false,
-
-                    error:
-                        "Aucun simulateur disponible pour cette action."
-                });
-            }
-
-
-            /*
-             * Vérifie les conditions générales de fin.
-             */
-            this.checkEndConditions(
-                state
-            );
-
-
-            /*
-             * Calcule les différences de score.
-             */
-            const scoreDelta =
-                this.calculateScoreDelta(
-                    this.gameState,
-                    state
-                );
-
-
-            return new SimulationResult({
-
-                state,
-
-                action:
-                    normalized,
-
-                legal:
-                    true,
-
-                completed:
-                    true,
-
-                events:
-                    state.events,
-
-                revealedInformation:
-                    state.revealedInformation,
-
-                scoreDelta,
-
-                metadata: {
-
-                    source:
-                        handler
-                            ? "specific-handler"
-                            : "generic-handler"
-                }
-            });
-
-        } catch (error) {
-
-            return new SimulationResult({
-
-                state,
-
-                action:
-                    normalized,
-
-                legal:
-                    false,
-
-                completed:
-                    false,
-
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : String(error)
-            });
-        }
-    }
-
-
-    /* ========================================================
-     * HANDLER
-     * ====================================================== */
-
-    getHandler(
-        action
-    ) {
-
-        /*
-         * Priorité à un identifiant explicite.
-         */
-        if (
-            action.effect &&
-            typeof
-                this.options
-                    .actionHandlers[
-                    action.effect
-                ] === "function"
-        ) {
-
-            return this.options
-                .actionHandlers[
-                    action.effect
-                ];
-        }
-
-
-        /*
-         * Puis au type.
-         */
-        if (
-            typeof
-                this.options
-                    .actionHandlers[
-                    action.type
-                ] === "function"
-        ) {
-
-            return this.options
-                .actionHandlers[
-                    action.type
-                ];
-        }
-
-        return null;
-    }
-
-
-    /* ========================================================
-     * VALIDATION
-     * ====================================================== */
-
-    validateAction(
-        action,
-        state
-    ) {
-
-        if (!action) {
-
-            return {
-                valid:
-                    false,
-
-                reason:
-                    "Action absente."
-            };
-        }
-
-
-        if (
-            !action.type
-        ) {
-
-            return {
-                valid:
-                    false,
-
-                reason:
-                    "Type d'action absent."
-            };
-        }
-
-
-        /*
-         * Une action du bot doit être effectuée pendant son
-         * tour, sauf lorsqu'une action spéciale est explicitement
-         * prévue.
-         */
-        if (
-            state.currentPlayer !==
-            state.botIndex
-        ) {
-
-            return {
-                valid:
-                    false,
-
-                reason:
-                    "Ce n'est pas le tour du bot."
-            };
-        }
-
-
-        /*
-         * Vérification de carte.
-         */
-        if (
-            action.cardIndex !==
-            null &&
-            action.cardIndex !==
-            undefined
-        ) {
-
-            const hand =
-                state.getHand(
-                    state.botIndex
-                );
-
-            if (
-                action.cardIndex < 0 ||
-                action.cardIndex >=
-                    hand.length
-            ) {
-
-                return {
-                    valid:
-                        false,
-
-                    reason:
-                        "Index de carte invalide."
-                };
-            }
-        }
-
-
-        /*
-         * Une cible doit être un adversaire.
-         */
-        if (
-            action.target !==
-            null &&
-            action.target !==
-            undefined
-        ) {
-
-            const target =
-                state.getPlayer(
-                    action.target
-                );
-
-            if (!target) {
-
-                return {
-                    valid:
-                        false,
-
-                    reason:
-                        "Cible inexistante."
-                };
-            }
-
-
-            if (
-                Number(action.target) ===
-                Number(state.botIndex)
-            ) {
-
-                /*
-                 * Certaines cartes peuvent cibler soi-même.
-                 * On laisse les handlers spécifiques décider.
-                 */
-                if (
-                    action.parameters
-                        ?.allowSelfTarget !==
-                    true
-                ) {
-
-                    return {
-                        valid:
-                            false,
-
-                        reason:
-                            "Cette action cible le bot lui-même."
-                    };
-                }
-            }
-        }
-
-
+function validateAction(
+    state,
+    action
+) {
+    if (!action) {
         return {
-            valid:
-                true
+            valid: false,
+            reason: "Action absente."
         };
     }
 
-
-    /* ========================================================
-     * ACTION GÉNÉRIQUE
-     * ====================================================== */
-
-    applyGenericAction(
-        state,
-        action
-    ) {
-
-        /*
-         * Cette fonction ne prétend pas connaître les règles
-         * détaillées de chaque carte.
-         *
-         * Elle représente uniquement la structure générique
-         * d'une action :
-         *
-         *     carte consommée
-         *     cible enregistrée
-         *     effet enregistré
-         *
-         * Les règles précises seront branchées ensuite.
-         */
-
-
-        if (
-            action.cardIndex !==
-            null &&
-            action.cardIndex !==
-            undefined
-        ) {
-
-            const card =
-                state.removeCard(
-                    state.botIndex,
-                    action.cardIndex
-                );
-
-            state.addEvent({
-                type:
-                    "card-played",
-
-                player:
-                    state.botIndex,
-
-                card:
-                    clone(card)
-            });
-        }
-
-
-        if (
-            action.target !==
-            null &&
-            action.target !==
-            undefined
-        ) {
-
-            state.setTarget(
-                action.target
-            );
-
-            state.addEvent({
-                type:
-                    "target-selected",
-
-                player:
-                    state.botIndex,
-
-                target:
-                    action.target
-            });
-        }
-
-
-        if (action.effect) {
-
-            state.addEvent({
-                type:
-                    "effect",
-
-                effect:
-                    action.effect,
-
-                parameters:
-                    clone(
-                        action.parameters
-                    )
-            });
-        }
-
-
-        /*
-         * Une action générique est considérée comme terminée.
-         *
-         * Les handlers spéciaux pourront au contraire laisser
-         * une action en cours.
-         */
-        state.setAction(
-            null
+    const playerIndex =
+        Number(
+            state.currentPlayer ?? 0
         );
 
-
-        /*
-         * Dans une simulation simple, on passe au joueur
-         * suivant.
-         */
-        state.advancePlayer();
-    }
-
-
-    /* ========================================================
-     * FIN DE PARTIE
-     * ====================================================== */
-
-    checkEndConditions(
-        state
+    if (
+        action.target !== null &&
+        action.target !== undefined
     ) {
+        const target =
+            state.players[
+                Number(action.target)
+            ];
 
-        /*
-         * La cible exacte dépend du jeu.
-         *
-         * Le simulateur ne fixe volontairement pas une valeur
-         * en dur ici.
-         *
-         * Cette fonction pourra utiliser la règle exacte lorsque
-         * la constante de cible sera branchée au moteur.
-         */
-        for (
-            const player
-            of state.players
-        ) {
-
-            if (
-                player &&
-                player.score ===
-                state.data.targetScore
-            ) {
-
-                state.setWinner(
-                    player.id
-                );
-
-                return true;
-            }
+        if (!target) {
+            return {
+                valid: false,
+                reason:
+                    "Cible inexistante."
+            };
         }
 
-        return false;
-    }
-
-
-    /* ========================================================
-     * DIFFÉRENCE DE SCORE
-     * ====================================================== */
-
-    calculateScoreDelta(
-        before,
-        after
-    ) {
-
-        const result = {};
-
-        for (
-            const player
-            of before.players
+        if (
+            Number(action.target) ===
+            playerIndex
         ) {
-
-            const previous =
-                Number(
-                    player.score
-                ) || 0;
-
-            const nextPlayer =
-                after.getPlayer(
-                    player.id
-                );
-
-            const next =
-                nextPlayer
-                    ? Number(
-                        nextPlayer.score
-                    ) || 0
-                    : previous;
-
-            result[
-                player.id
-            ] =
-                next -
-                previous;
+            return {
+                valid: false,
+                reason:
+                    "La cible est le joueur actif."
+            };
         }
-
-        return result;
     }
+
+    return {
+        valid: true,
+        reason: null
+    };
 }
 
 
 /* ============================================================
- * SIMULATION D'UNE ACTION
+ * CARTES DE MAIN
  * ========================================================== */
 
-export function simulateAction(
-    gameState,
+function playCardFromHand(
+    state,
     action,
-    options = {}
+    result
 ) {
+    const playerIndex =
+        state.currentPlayer;
 
-    const simulator =
-        new AtoumoulinSimulator(
-            gameState,
-            options
+    let cardIndex =
+        action.cardIndex;
+
+    if (
+        cardIndex === null ||
+        cardIndex === undefined
+    ) {
+        cardIndex =
+            state.hand(
+                playerIndex
+            ).findIndex(
+                card =>
+                    numberValue(card) ===
+                    numberValue(
+                        action.card
+                    )
+            );
+    }
+
+    const card =
+        state.removeHandCard(
+            playerIndex,
+            cardIndex
         );
 
-    return simulator.simulate(
-        action
+    if (card === null) {
+        throw new Error(
+            "Carte introuvable dans la main."
+        );
+    }
+
+    result.metadata.playedCard =
+        clone(card);
+
+    pushEvent(
+        state.data,
+        "play_card",
+        {
+            player:
+                playerIndex,
+
+            card:
+                numberValue(card),
+
+            cardIndex
+        }
+    );
+
+    return card;
+}
+
+
+/* ============================================================
+ * CARTES DE TABLE
+ * ========================================================== */
+
+function findTableCardIndex(
+    state,
+    action,
+    owner = null
+) {
+    if (
+        action.tableCardIndex !==
+        undefined
+    ) {
+        return Number(
+            action.tableCardIndex
+        );
+    }
+
+    if (
+        action.cardIndex !== null &&
+        action.cardIndex !== undefined
+    ) {
+        return Number(
+            action.cardIndex
+        );
+    }
+
+    const requested =
+        numberValue(
+            action.tableCard
+        );
+
+    if (requested === null) {
+        return -1;
+    }
+
+    return state.table.findIndex(
+        card => {
+            if (
+                owner !== null &&
+                Number(
+                    tableOwner(card)
+                ) !== Number(owner)
+            ) {
+                return false;
+            }
+
+            return (
+                tableValue(card) ===
+                requested
+            );
+        }
+    );
+}
+
+
+function removeTableCard(
+    state,
+    index
+) {
+    if (
+        index < 0 ||
+        index >= state.table.length
+    ) {
+        return null;
+    }
+
+    return state.table.splice(
+        index,
+        1
+    )[0] ?? null;
+}
+
+
+/* ============================================================
+ * 1
+ * ========================================================== */
+
+function applyCard1(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const target =
+        Number(action.target);
+
+    const count =
+        double ? 2 : 1;
+
+    const indices = [];
+
+    for (
+        let i = state.table.length - 1;
+        i >= 0 &&
+        indices.length < count;
+        i--
+    ) {
+        const card =
+            state.table[i];
+
+        if (
+            Number(
+                tableOwner(card)
+            ) === target &&
+            isPointCard(card)
+        ) {
+            indices.push(i);
+        }
+    }
+
+    /*
+     * L'action réelle peut ne rien voler si la cible
+     * ne possède aucune carte de score.
+     */
+    for (const index of indices) {
+        const card =
+            removeTableCard(
+                state,
+                index
+            );
+
+        if (!card) {
+            continue;
+        }
+
+        state.addTableCard(
+            setTableOwner(
+                card,
+                state.currentPlayer
+            )
+        );
+    }
+
+    drawAfterEffect(
+        state
+    );
+
+    pushEvent(
+        state.data,
+        double
+            ? "double1"
+            : "card1",
+        {
+            player:
+                state.currentPlayer,
+
+            target,
+
+            stolen:
+                indices.length
+        }
     );
 }
 
 
 /* ============================================================
- * SIMULATION DE PLUSIEURS ACTIONS
+ * 3
  * ========================================================== */
 
-export function simulateActions(
-    gameState,
-    actions,
-    options = {}
+function applyCard3(
+    state,
+    action,
+    result,
+    double = false
 ) {
+    const target =
+        Number(action.target);
 
-    const simulator =
-        new AtoumoulinSimulator(
-            gameState,
-            options
-        );
+    const delta =
+        double ? -40 : -20;
 
-    const results = [];
+    state.addScore(
+        target,
+        delta
+    );
 
-    for (
-        const action
-        of actions
-    ) {
+    /*
+     * Le moteur associe l'effet 3 à une carte de score
+     * négative sur la table de la cible.
+     */
+    state.addTableCard({
+        valeur: delta,
+        value: delta,
+        proprietaire: target,
+        owner: target,
+        linked: true,
+        liee: true,
+        source: double
+            ? "double3"
+            : "3"
+    });
 
-        results.push(
-            simulator.simulate(
-                action
-            )
-        );
-    }
+    drawAfterEffect(
+        state
+    );
 
-    return results;
+    pushEvent(
+        state.data,
+        double
+            ? "double3"
+            : "card3",
+        {
+            target,
+            delta
+        }
+    );
 }
 
 
 /* ============================================================
- * SIMULATION D'UNE LIGNE
+ * 9
  * ========================================================== */
 
-/**
- * Permettra plus tard de faire :
- *
- * action 1
- *   ↓
- * état 1
- *   ↓
- * action 2
- *   ↓
- * état 2
- *   ↓
- * action 3
- *   ↓
- * état 3
- *
- * C'est la base de la recherche profondeur 2, 3, etc.
- */
-export function simulateLine(
-    gameState,
-    actions,
-    options = {}
+function applyCard9(
+    state,
+    action,
+    result,
+    double = false
 ) {
+    const target =
+        Number(action.target);
 
+    const own =
+        state.hand(
+            state.currentPlayer
+        );
+
+    const opponent =
+        state.hand(
+            target
+        );
+
+    /*
+     * Pour une simulation stratégique, on échange les
+     * représentations connues/cachées sans révéler leur contenu.
+     */
+    const ownCopy =
+        own.map(
+            card => clone(card)
+        );
+
+    const opponentCopy =
+        opponent.map(
+            card => clone(card)
+        );
+
+    state.players[
+        state.currentPlayer
+    ].main =
+        opponentCopy;
+
+    state.players[
+        target
+    ].main =
+        ownCopy;
+
+    /*
+     * Si le format utilise hand plutôt que main.
+     */
+    if (
+        !Array.isArray(
+            state.players[
+                state.currentPlayer
+            ].main
+        )
+    ) {
+        setHand(
+            state.players[
+                state.currentPlayer
+            ],
+            opponentCopy
+        );
+    }
+
+    if (
+        !Array.isArray(
+            state.players[target].main
+        )
+    ) {
+        setHand(
+            state.players[target],
+            ownCopy
+        );
+    }
+
+    result.revealedInformation =
+        double
+            ? [
+                {
+                    type:
+                        "double9_hand_visibility",
+
+                    target,
+
+                    cardCount:
+                        opponentCopy.length,
+
+                    /*
+                     * Les cartes effectivement visibles sont
+                     * conservées dans le scénario.
+                     */
+                    cards:
+                        opponentCopy
+                }
+            ]
+            : [];
+
+    pushEvent(
+        state.data,
+        double
+            ? "double9"
+            : "card9",
+        {
+            player:
+                state.currentPlayer,
+
+            target
+        }
+    );
+}
+
+
+/* ============================================================
+ * 11
+ * ========================================================== */
+
+function applyCard11(
+    state,
+    action,
+    double = false
+) {
+    const multiplier =
+        double ? 2 : 1;
+
+    const value =
+        Number(
+            action.value ??
+            action.metadata?.value ??
+            10
+        );
+
+    /*
+     * +10 / -10 pour 11
+     * +20 / -20 pour Double11.
+     */
+    const delta =
+        value === 0
+            ? 10 * multiplier
+            : Math.sign(value) *
+              Math.abs(value) *
+              multiplier;
+
+    state.addScore(
+        state.currentPlayer,
+        delta
+    );
+
+    state.addTableCard({
+        valeur: delta,
+        value: delta,
+        proprietaire:
+            state.currentPlayer,
+        owner:
+            state.currentPlayer,
+        linked: true,
+        liee: true,
+        source:
+            double
+                ? "double11"
+                : "11"
+    });
+
+    drawAfterEffect(
+        state
+    );
+
+    pushEvent(
+        state.data,
+        double
+            ? "double11"
+            : "card11",
+        {
+            delta
+        }
+    );
+}
+
+
+/* ============================================================
+ * 13
+ * ========================================================== */
+
+function getSelectedTableIndices(
+    action,
+    count
+) {
+    if (
+        Array.isArray(
+            action.tableCardIndices
+        )
+    ) {
+        return action.tableCardIndices
+            .slice(0, count)
+            .map(Number);
+    }
+
+    if (
+        Array.isArray(
+            action.tableCards
+        )
+    ) {
+        return action.tableCards
+            .slice(0, count)
+            .map(Number);
+    }
+
+    if (
+        action.tableCardIndex !==
+        undefined
+    ) {
+        return [
+            Number(
+                action.tableCardIndex
+            )
+        ];
+    }
+
+    return [];
+}
+
+
+function applyCard13(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const target =
+        Number(action.target);
+
+    const count =
+        double ? 2 : 1;
+
+    let indices =
+        getSelectedTableIndices(
+            action,
+            count
+        );
+
+    if (!indices.length) {
+        indices =
+            state.table
+                .map(
+                    (card, index) => ({
+                        card,
+                        index
+                    })
+                )
+                .filter(
+                    ({ card }) =>
+                        Number(
+                            tableOwner(card)
+                        ) === target &&
+                        isPointCard(card)
+                )
+                .slice(
+                    double ? -2 : -1
+                )
+                .map(
+                    ({ index }) =>
+                        index
+                );
+    }
+
+    /*
+     * Supprimer dans l'ordre inverse pour conserver
+     * les indices.
+     */
+    indices =
+        [...new Set(indices)]
+            .sort(
+                (a, b) =>
+                    b - a
+            );
+
+    let stolen = 0;
+
+    for (const index of indices) {
+        const card =
+            state.table[index];
+
+        if (!card) {
+            continue;
+        }
+
+        if (
+            Number(
+                tableOwner(card)
+            ) !== target
+        ) {
+            continue;
+        }
+
+        if (!isPointCard(card)) {
+            continue;
+        }
+
+        const removed =
+            removeTableCard(
+                state,
+                index
+            );
+
+        if (!removed) {
+            continue;
+        }
+
+        state.addTableCard(
+            setTableOwner(
+                removed,
+                state.currentPlayer
+            )
+        );
+
+        stolen += 1;
+    }
+
+    drawAfterEffect(
+        state
+    );
+
+    pushEvent(
+        state.data,
+        double
+            ? "double13"
+            : "card13",
+        {
+            target,
+            stolen
+        }
+    );
+}
+
+
+/* ============================================================
+ * 15
+ * ========================================================== */
+
+function applyCard15(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const owner =
+        state.currentPlayer;
+
+    const multiplier =
+        double ? 3 : 2;
+
+    const index =
+        findTableCardIndex(
+            state,
+            action,
+            owner
+        );
+
+    if (
+        index < 0
+    ) {
+        throw new Error(
+            "Carte de score introuvable pour 15."
+        );
+    }
+
+    const card =
+        state.table[index];
+
+    const current =
+        tableValue(card);
+
+    if (
+        !Number.isFinite(current) ||
+        current === 0
+    ) {
+        throw new Error(
+            "La carte ciblée par 15 n'est pas une carte de score."
+        );
+    }
+
+    const updated =
+        current * multiplier;
+
+    setTableValue(
+        card,
+        updated
+    );
+
+    pushEvent(
+        state.data,
+        double
+            ? "double15"
+            : "card15",
+        {
+            index,
+            previous: current,
+            value: updated,
+            multiplier
+        }
+    );
+}
+
+
+/* ============================================================
+ * 17
+ * ========================================================== */
+
+function applyCard17(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const target =
+        Number(action.target);
+
+    const count =
+        double ? 2 : 1;
+
+    /*
+     * La carte volée est inconnue avant le tirage.
+     *
+     * On ne choisit donc PAS arbitrairement une carte réelle.
+     * On ajoute des cartes inconnues.
+     */
+    const stolenCards = [];
+
+    for (
+        let i = 0;
+        i < count;
+        i++
+    ) {
+        const unknown = {
+            unknown: true,
+
+            source:
+                double
+                    ? "double17"
+                    : "17",
+
+            stolenFrom:
+                target,
+
+            location:
+                "hand",
+
+            owner:
+                state.currentPlayer
+        };
+
+        state.addHandCard(
+            state.currentPlayer,
+            unknown
+        );
+
+        stolenCards.push(
+            unknown
+        );
+    }
+
+    result.metadata.hidden =
+        true;
+
+    result.metadata.stolenCards =
+        stolenCards.length;
+
+    result.metadata.uncertain =
+        true;
+
+    /*
+     * Les cartes viennent de la main adverse.
+     * Leur nombre est réduit dans la représentation adverse.
+     */
+    const opponent =
+        state.player(target);
+
+    if (opponent) {
+        const hand =
+            getHand(opponent);
+
+        for (
+            let i = 0;
+            i < count &&
+            hand.length > 0;
+            i++
+        ) {
+            hand.pop();
+        }
+    }
+
+    pushEvent(
+        state.data,
+        double
+            ? "double17"
+            : "card17",
+        {
+            target,
+            stolen:
+                count,
+
+            hidden:
+                true
+        }
+    );
+
+    reveal(
+        result,
+        {
+            type:
+                double
+                    ? "double17_hidden"
+                    : "17_hidden",
+
+            target,
+
+            count
+        }
+    );
+}
+
+
+/* ============================================================
+ * 19
+ * ========================================================== */
+
+function applyCard19(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const own =
+        state.currentPlayer;
+
+    const target =
+        Number(action.target);
+
+    const count =
+        double ? 2 : 1;
+
+    let ownIndices =
+        getSelectedTableIndices(
+            action,
+            count
+        );
+
+    let targetIndices =
+        Array.isArray(
+            action.targetTableCardIndices
+        )
+            ? action.targetTableCardIndices
+                .slice(0, count)
+                .map(Number)
+            : [];
+
+    if (!ownIndices.length) {
+        ownIndices =
+            getLatestOwnedPointIndices(
+                state,
+                own,
+                count
+            );
+    }
+
+    if (!targetIndices.length) {
+        targetIndices =
+            getLatestOwnedPointIndices(
+                state,
+                target,
+                count
+            );
+    }
+
+    const pairs =
+        Math.min(
+            ownIndices.length,
+            targetIndices.length
+        );
+
+    for (
+        let i = 0;
+        i < pairs;
+        i++
+    ) {
+        const ownIndex =
+            ownIndices[i];
+
+        const targetIndex =
+            targetIndices[i];
+
+        const ownCard =
+            state.table[
+                ownIndex
+            ];
+
+        const targetCard =
+            state.table[
+                targetIndex
+            ];
+
+        if (
+            !ownCard ||
+            !targetCard
+        ) {
+            continue;
+        }
+
+        if (
+            Number(
+                tableOwner(ownCard)
+            ) !== own ||
+            Number(
+                tableOwner(targetCard)
+            ) !== target
+        ) {
+            continue;
+        }
+
+        const ownValue =
+            tableValue(
+                ownCard
+            );
+
+        const targetValue =
+            tableValue(
+                targetCard
+            );
+
+        setTableOwner(
+            ownCard,
+            target
+        );
+
+        setTableOwner(
+            targetCard,
+            own
+        );
+
+        /*
+         * Les valeurs restent attachées aux cartes :
+         * seul leur propriétaire change.
+         */
+        setTableValue(
+            ownCard,
+            ownValue
+        );
+
+        setTableValue(
+            targetCard,
+            targetValue
+        );
+    }
+
+    pushEvent(
+        state.data,
+        double
+            ? "double19"
+            : "card19",
+        {
+            target,
+            exchanged:
+                pairs
+        }
+    );
+}
+
+
+function getLatestOwnedPointIndices(
+    state,
+    owner,
+    count
+) {
+    const result = [];
+
+    for (
+        let i = state.table.length - 1;
+        i >= 0 &&
+        result.length < count;
+        i--
+    ) {
+        const card =
+            state.table[i];
+
+        if (
+            Number(
+                tableOwner(card)
+            ) !== Number(owner)
+        ) {
+            continue;
+        }
+
+        if (!isPointCard(card)) {
+            continue;
+        }
+
+        result.push(i);
+    }
+
+    return result;
+}
+
+
+/* ============================================================
+ * 21
+ * ========================================================== */
+
+function applyCard21(
+    state,
+    action,
+    result,
+    double = false
+) {
+    const multiplier =
+        double ? 2 : 1;
+
+    const target =
+        action.target === null ||
+        action.target === undefined
+            ? null
+            : Number(
+                action.target
+            );
+
+    let delta =
+        Number(
+            action.value
+        );
+
+    if (!Number.isFinite(delta)) {
+        delta =
+            action.effect ===
+            "minus"
+                ? -20
+                : 20;
+    }
+
+    delta *= multiplier;
+
+    const recipient =
+        target === null
+            ? state.currentPlayer
+            : target;
+
+    state.addScore(
+        recipient,
+        delta
+    );
+
+    state.addTableCard({
+        valeur: delta,
+        value: delta,
+
+        proprietaire:
+            recipient,
+
+        owner:
+            recipient,
+
+        linked: true,
+        liee: true,
+
+        source:
+            double
+                ? "double21"
+                : "21"
+    });
+
+    drawAfterEffect(
+        state
+    );
+
+    pushEvent(
+        state.data,
+        double
+            ? "double21"
+            : "card21",
+        {
+            target,
+            delta
+        }
+    );
+}
+
+
+/* ============================================================
+ * JOKER
+ * ========================================================== */
+
+function applyJoker(
+    state,
+    action,
+    result
+) {
+    const effect =
+        action.effect ??
+        action.metadata?.effect;
+
+    if (
+        effect ===
+        "exchange_scores"
+    ) {
+        const target =
+            Number(
+                action.target
+            );
+
+        exchangeScores(
+            state,
+            state.currentPlayer,
+            target
+        );
+
+        pushEvent(
+            state.data,
+            "joker_exchange",
+            {
+                target
+            }
+        );
+
+        return;
+    }
+
+    const value =
+        Number(
+            action.value ??
+            action.metadata?.value
+        );
+
+    if (!Number.isFinite(value)) {
+        throw new Error(
+            "Valeur Joker absente."
+        );
+    }
+
+    state.addScore(
+        state.currentPlayer,
+        value
+    );
+
+    state.addTableCard({
+        valeur: value,
+        value,
+
+        proprietaire:
+            state.currentPlayer,
+
+        owner:
+            state.currentPlayer,
+
+        linked: true,
+        liee: true,
+
+        source:
+            "Joker"
+    });
+
+    pushEvent(
+        state.data,
+        "joker",
+        {
+            value
+        }
+    );
+}
+
+
+function exchangeScores(
+    state,
+    first,
+    second
+) {
+    const firstPlayer =
+        state.player(first);
+
+    const secondPlayer =
+        state.player(second);
+
+    if (
+        !firstPlayer ||
+        !secondPlayer
+    ) {
+        return;
+    }
+
+    const firstScore =
+        getPlayerScore(
+            firstPlayer
+        );
+
+    const secondScore =
+        getPlayerScore(
+            secondPlayer
+        );
+
+    setPlayerScore(
+        firstPlayer,
+        secondScore
+    );
+
+    setPlayerScore(
+        secondPlayer,
+        firstScore
+    );
+}
+
+
+/* ============================================================
+ * PIOCHE
+ * ========================================================== */
+
+function drawAfterEffect(
+    state
+) {
+    if (
+        state.deckCount <= 0
+    ) {
+        return null;
+    }
+
+    return state.drawUnknownCard(
+        state.currentPlayer
+    );
+}
+
+
+/* ============================================================
+ * FIN DE MANCHE
+ * ========================================================== */
+
+function checkEndConditions(
+    state,
+    result
+) {
+    const target =
+        getTargetScore(
+            state.data
+        );
+
+    /*
+     * Victoire exacte :
+     * elle termine immédiatement la manche.
+     */
+    for (
+        let i = 0;
+        i < state.players.length;
+        i++
+    ) {
+        const score =
+            getPlayerScore(
+                state.players[i]
+            );
+
+        if (
+            score === target
+        ) {
+            state.finishRound(i);
+
+            result.metadata.roundEnded =
+                true;
+
+            result.metadata.winner =
+                i;
+
+            return;
+        }
+    }
+
+    /*
+     * Si les cartes sont épuisées sans score exact,
+     * le joueur le plus proche de la cible gagne.
+     *
+     * Cette règle est appliquée uniquement lorsque la pioche
+     * est réellement vide.
+     */
+    if (
+        state.deckCount <= 0
+    ) {
+        let winner = null;
+        let bestDistance = Infinity;
+
+        for (
+            let i = 0;
+            i < state.players.length;
+            i++
+        ) {
+            const score =
+                getPlayerScore(
+                    state.players[i]
+                );
+
+            const distance =
+                Math.abs(
+                    target - score
+                );
+
+            if (
+                distance <
+                bestDistance
+            ) {
+                bestDistance =
+                    distance;
+
+                winner = i;
+            }
+        }
+
+        if (
+            winner !== null
+        ) {
+            state.finishRound(
+                winner
+            );
+
+            result.metadata.roundEnded =
+                true;
+
+            result.metadata.winner =
+                winner;
+        }
+    }
+}
+
+
+/* ============================================================
+ * DISPATCH
+ * ========================================================== */
+
+function applyAction(
+    state,
+    action,
+    result
+) {
+    const card =
+        numberValue(
+            action.card
+        );
+
+    const isDouble =
+        action.type ===
+        ACTION_TYPES.PLAY_DOUBLE ||
+        action.metadata?.double === true;
+
+    /*
+     * Une action PLAY_CARD / PLAY_DOUBLE doit d'abord
+     * retirer la carte de la main.
+     */
+    if (
+        action.type ===
+            ACTION_TYPES.PLAY_CARD ||
+        action.type ===
+            ACTION_TYPES.PLAY_DOUBLE
+    ) {
+        playCardFromHand(
+            state,
+            action,
+            result
+        );
+    }
+
+    /*
+     * Les actions produites par action-generator peuvent
+     * représenter directement l'effet complet sans avoir
+     * besoin d'un second PLAY_CARD.
+     */
+
+    if (
+        card === CARD_1
+    ) {
+        applyCard1(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_3
+    ) {
+        applyCard3(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_9
+    ) {
+        applyCard9(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_11
+    ) {
+        applyCard11(
+            state,
+            action,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_13
+    ) {
+        applyCard13(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_15
+    ) {
+        applyCard15(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_17
+    ) {
+        applyCard17(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_19
+    ) {
+        applyCard19(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        card === CARD_21
+    ) {
+        applyCard21(
+            state,
+            action,
+            result,
+            isDouble
+        );
+
+        return;
+    }
+
+    if (
+        action.card === JOKER ||
+        action.card === "Joker"
+    ) {
+        applyJoker(
+            state,
+            action,
+            result
+        );
+
+        return;
+    }
+
+    /*
+     * 7 et cartes normales :
+     * la carte a simplement été jouée.
+     *
+     * Leur résolution détaillée sera prise en compte par
+     * le moteur de règles lorsqu'elles ont un effet spécifique.
+     */
+    if (
+        card === 7 ||
+        card === 2 ||
+        card === 4 ||
+        card === 5 ||
+        card === 6 ||
+        card === 8 ||
+        card === 10 ||
+        card === 12 ||
+        card === 14 ||
+        card === 16 ||
+        card === 18 ||
+        card === 20
+    ) {
+        drawAfterEffect(
+            state
+        );
+
+        return;
+    }
+
+    /*
+     * Action intermédiaire.
+     */
+    if (
+        action.type ===
+        ACTION_TYPES.CONTINUE
+    ) {
+        state.action = null;
+
+        return;
+    }
+
+    if (
+        action.type ===
+        ACTION_TYPES.TERMINATE
+    ) {
+        state.action = null;
+
+        return;
+    }
+
+    throw new Error(
+        `Action de simulation inconnue : ${
+            action.effect ??
+            action.type ??
+            "inconnue"
+        }`
+    );
+}
+
+
+/* ============================================================
+ * SIMULATION PRINCIPALE
+ * ========================================================== */
+
+export function simulateAction(
+    sourceState,
+    action
+) {
+    if (
+        !sourceState
+    ) {
+        return new SimulationResult({
+            state: null,
+            action,
+            legal: false,
+            completed: false,
+            error:
+                "État source absent."
+        });
+    }
+
+    const validation =
+        validateAction(
+            sourceState,
+            action
+        );
+
+    if (!validation.valid) {
+        return new SimulationResult({
+            state: null,
+            action,
+            legal: false,
+            completed: false,
+            error:
+                validation.reason
+        });
+    }
+
+    let virtual;
+
+    try {
+        virtual =
+            new VirtualGameState(
+                sourceState
+            );
+    } catch (error) {
+        return new SimulationResult({
+            state: null,
+            action,
+            legal: false,
+            completed: false,
+            error:
+                error.message
+        });
+    }
+
+    const beforeScores =
+        virtual.players.map(
+            player =>
+                getPlayerScore(player)
+        );
+
+    const result =
+        new SimulationResult({
+            state: virtual,
+            action,
+            legal: true,
+            completed: false
+        });
+
+    try {
+        applyAction(
+            virtual,
+            action,
+            result
+        );
+
+        checkEndConditions(
+            virtual,
+            result
+        );
+
+        /*
+         * Sauf si la simulation vient de terminer la manche,
+         * on passe au joueur suivant.
+         */
+        if (
+            !virtual.data.roundEnded &&
+            action.type !==
+                ACTION_TYPES.CONTINUE &&
+            action.type !==
+                ACTION_TYPES.TERMINATE
+        ) {
+            advancePlayer(
+                virtual.data
+            );
+        }
+
+        virtual.action =
+            null;
+
+        virtual.target =
+            null;
+
+        result.state =
+            virtual;
+
+        result.events =
+            virtual.data.events
+                .slice();
+
+        result.scoreDelta = {};
+
+        virtual.players.forEach(
+            (player, index) => {
+                const after =
+                    getPlayerScore(
+                        player
+                    );
+
+                result.scoreDelta[index] =
+                    after -
+                    beforeScores[index];
+            }
+        );
+
+        result.completed =
+            true;
+
+        result.metadata.progress =
+            calculateProgress(
+                virtual
+            );
+
+        result.metadata.cardsOut =
+            calculateCardsOut(
+                virtual
+            );
+
+        result.metadata.target =
+            getTargetScore(
+                virtual.data
+            );
+
+        return result;
+
+    } catch (error) {
+        return new SimulationResult({
+            state: null,
+            action,
+            legal: true,
+            completed: false,
+            error:
+                error.message,
+
+            events:
+                virtual.data.events
+        });
+    }
+}
+
+
+/* ============================================================
+ * SIMULATION DE LIGNES
+ * ========================================================== */
+
+export function simulateActions(
+    sourceState,
+    actions = []
+) {
     let current =
-        gameState;
+        sourceState;
 
     const results = [];
 
-
     for (
-        const action
-        of actions
+        const action of actions
     ) {
-
         const result =
             simulateAction(
                 current,
-                action,
-                options
+                action
             );
 
         results.push(
             result
         );
 
-
         if (
-            !result.isUsable()
+            !result.isUsable
         ) {
-
-            return {
-                success:
-                    false,
-
-                state:
-                    current,
-
-                results,
-
-                failedAt:
-                    results.length - 1,
-
-                error:
-                    result.error
-            };
+            break;
         }
-
 
         current =
             result.state;
     }
 
+    return results;
+}
+
+
+export function simulateLine(
+    sourceState,
+    actions = []
+) {
+    const results =
+        simulateActions(
+            sourceState,
+            actions
+        );
+
+    const last =
+        results[
+            results.length - 1
+        ];
 
     return {
-        success:
-            true,
+        initialState:
+            sourceState,
 
-        state:
-            current,
+        actions:
+            actions.slice(),
 
         results,
 
-        failedAt:
-            null,
+        finalState:
+            last?.isUsable
+                ? last.state
+                : null,
 
-        error:
-            null
+        completed:
+            results.length ===
+                actions.length &&
+            results.every(
+                result =>
+                    result.isUsable
+            )
     };
 }
 
 
 /* ============================================================
- * COMPARAISON D'ÉTATS
+ * MESURES
+ * ========================================================== */
+
+function calculateCardsOut(
+    state
+) {
+    const players =
+        state.players
+            .map(
+                player =>
+                    getHand(player).length
+            )
+            .reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            );
+
+    return (
+        players +
+        state.table.length +
+        state.discard.length
+    );
+}
+
+
+function calculateProgress(
+    state
+) {
+    const total =
+        getTotalCardCountSafe(
+            state
+        );
+
+    if (total <= 0) {
+        return 0;
+    }
+
+    return Math.max(
+        0,
+        Math.min(
+            1,
+            calculateCardsOut(
+                state
+            ) / total
+        )
+    );
+}
+
+
+function getTotalCardCountSafe(
+    state
+) {
+    const players =
+        state.players.length;
+
+    if (
+        players <= 3
+    ) {
+        return 44;
+    }
+
+    return (
+        (players - 1) *
+        22
+    );
+}
+
+
+/* ============================================================
+ * COMPARAISONS
  * ========================================================== */
 
 export function statesEqual(
     first,
     second
 ) {
-
-    if (!first || !second) {
-        return false;
-    }
-
-    const firstSignature =
-        typeof first.signature ===
-        "function"
+    const a =
+        first?.signature
             ? first.signature()
             : JSON.stringify(first);
 
-    const secondSignature =
-        typeof second.signature ===
-        "function"
+    const b =
+        second?.signature
             ? second.signature()
             : JSON.stringify(second);
 
-    return (
-        firstSignature ===
-        secondSignature
-    );
+    return a === b;
 }
 
-
-/* ============================================================
- * DISTANCE ENTRE ÉTATS
- * ========================================================== */
 
 export function stateDifference(
     before,
     after
 ) {
+    const beforeObject =
+        before?.toObject
+            ? before.toObject()
+            : before?.data ??
+              before;
 
-    const difference = {
+    const afterObject =
+        after?.toObject
+            ? after.toObject()
+            : after?.data ??
+              after;
 
-        score:
-            {},
+    return {
+        scores: {
+            before:
+                beforeObject.players?.map(
+                    player =>
+                        Number(
+                            player.score ??
+                            0
+                        )
+                ) ?? [],
 
-        handSize:
-            {},
+            after:
+                afterObject.players?.map(
+                    player =>
+                        Number(
+                            player.score ??
+                            0
+                        )
+                ) ?? []
+        },
 
-        deck:
-            0,
+        hands: {
+            before:
+                beforeObject.players?.map(
+                    player =>
+                        Array.isArray(
+                            player.main
+                        )
+                            ? player.main.length
+                            : Array.isArray(
+                                player.hand
+                            )
+                                ? player.hand.length
+                                : 0
+                ) ?? [],
 
-        table:
-            0,
+            after:
+                afterObject.players?.map(
+                    player =>
+                        Array.isArray(
+                            player.main
+                        )
+                            ? player.main.length
+                            : Array.isArray(
+                                player.hand
+                            )
+                                ? player.hand.length
+                                : 0
+                ) ?? []
+        },
 
-        currentPlayer:
-            null,
+        table: {
+            before:
+                beforeObject.table ??
+                beforeObject.cartesTable ??
+                [],
 
-        actionChanged:
-            false
-    };
+            after:
+                afterObject.table ??
+                afterObject.cartesTable ??
+                []
+        },
 
+        deckCount: {
+            before:
+                Number(
+                    beforeObject.deckCount ??
+                    0
+                ),
 
-    for (
-        const player
-        of before.players
-    ) {
+            after:
+                Number(
+                    afterObject.deckCount ??
+                    0
+                )
+        },
 
-        const next =
-            after.getPlayer(
-                player.id
-            );
+        roundEnded: {
+            before:
+                !!beforeObject.roundEnded,
 
-        if (!next) {
-            continue;
+            after:
+                !!afterObject.roundEnded
         }
-
-        difference.score[
-            player.id
-        ] =
-            (
-                Number(next.score) || 0
-            ) -
-            (
-                Number(player.score) || 0
-            );
+    };
+}
 
 
-        difference.handSize[
-            player.id
-        ] =
-            (
-                next.main?.length ??
-                next.cardCount ??
-                0
-            ) -
-            (
-                player.main?.length ??
-                player.cardCount ??
-                0
-            );
+/* ============================================================
+ * CONVERSIONS
+ * ========================================================== */
+
+export function toSimulatedAction(
+    action
+) {
+    if (!action) {
+        return null;
     }
 
+    if (
+        action instanceof
+        SimulatedAction
+    ) {
+        return action;
+    }
 
-    difference.deck =
-        after.deckCount -
-        before.deckCount;
+    return new SimulatedAction({
+        type:
+            action.type ??
+            ACTION_TYPES.EFFECT,
 
+        card:
+            action.card ?? null,
 
-    difference.table =
-        after.table.length -
-        before.table.length;
+        cardIndex:
+            action.cardIndex ??
+            null,
 
+        cards:
+            action.cards ??
+            [],
 
-    difference.currentPlayer =
-        after.currentPlayer;
+        target:
+            action.target ??
+            null,
 
+        tableCard:
+            action.tableCard ??
+            null,
 
-    difference.actionChanged =
-        before.action !==
-        after.action;
+        tableCards:
+            action.tableCards ??
+            [],
 
+        effect:
+            action.effect ??
+            null,
 
-    return difference;
+        value:
+            action.value ??
+            null,
+
+        metadata:
+            action.metadata ??
+            {},
+
+        hiddenInformation:
+            action.hiddenInformation ??
+            action.metadata?.hiddenInformation ??
+            false,
+
+        uncertainty:
+            action.uncertainty ??
+            null,
+
+        commands:
+            action.commands ??
+            []
+    });
 }
+
+
+/* ============================================================
+ * API
+ * ========================================================== */
+
+export function createSimulationState(
+    state
+) {
+    return new VirtualGameState(
+        state
+    );
+}
+
+
+export function cloneSimulationState(
+    state
+) {
+    return new VirtualGameState(
+        state
+    );
+}
+
+
+export default {
+    SimulatedAction,
+    SimulationResult,
+    VirtualGameState,
+
+    simulateAction,
+    simulateActions,
+    simulateLine,
+
+    createSimulationState,
+    cloneSimulationState,
+
+    toSimulatedAction,
+
+    statesEqual,
+    stateDifference
+};
