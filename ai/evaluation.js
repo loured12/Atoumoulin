@@ -1,2112 +1,2635 @@
 import {
-  getPlayer,
-  getOpponents,
-  getKnownHand,
-  getPlayerTableCards,
-  getPlayerPointCards,
-  getGameProgress,
-  getVictoryTarget,
-  getTargetDistance
+    getPlayer,
+    getSelf,
+    getOpponents,
+    getPlayerPointCards,
+    getOpponentPointCards,
+    getLatestPointCard,
+    getTargetDistance,
+    getVictoryTarget,
+    getGameProgress,
+    getGamePhase,
+    getCardsOut,
+    getTotalDeckSize,
+    hasExactTarget,
+    isAboveTarget
 } from "./state.js";
 
-import { AI_CONFIG } from "./config.js";
 
-/*
- * ============================================================
- * OUTILS GÉNÉRAUX
- * ============================================================
- */
-
-function clamp(value, min = 0, max = 100) {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  return Math.max(min, Math.min(max, value));
-}
-
-function safeNumber(value, fallback = 0) {
-  return Number.isFinite(Number(value))
-    ? Number(value)
-    : fallback;
-}
-
-function average(values) {
-  const valid = values.filter(Number.isFinite);
-
-  if (valid.length === 0) {
-    return 0;
-  }
-
-  return (
-    valid.reduce((sum, value) => sum + value, 0) /
-    valid.length
-  );
-}
-
-function unique(values) {
-  return [...new Set(values)];
-}
-
-function normalizeScore(value, minimum, maximum) {
-  if (maximum <= minimum) {
-    return 50;
-  }
-
-  return clamp(
-    ((value - minimum) / (maximum - minimum)) * 100
-  );
-}
-
-/*
- * ============================================================
+/* ============================================================
  * CONFIGURATION
- * ============================================================
- */
+ * ========================================================== */
 
-function getWeights() {
-  return {
-    personalImpact:
-      AI_CONFIG?.weights?.personalImpact ?? 0.40,
+const WEIGHTS = {
+    personalImpact: 0.40,
+    opponentImpact: 0.30,
+    futurePotential: 0.15,
+    opportunityCost: 0.10,
+    risk: 0.05
+};
 
-    opponentImpact:
-      AI_CONFIG?.weights?.opponentImpact ?? 0.30,
 
-    futurePotential:
-      AI_CONFIG?.weights?.futurePotential ?? 0.15,
+const FINISH_TURN_VALUES = {
+    1: 100,
+    2: 70,
+    3: 45,
+    4: 25
+};
 
-    opportunityCost:
-      AI_CONFIG?.weights?.opportunityCost ?? 0.10,
 
-    risk:
-      AI_CONFIG?.weights?.risk ?? 0.05
-  };
-}
+const CERTAINTY_VALUES = {
+    certain: 100,
+    veryProbable: 80,
+    possible: 55,
+    low: 30,
+    impossible: 0
+};
 
-/*
- * ============================================================
- * FINISH / RETURN
- * ============================================================
- */
 
-/**
- * Valeur associée au nombre minimal de tours nécessaires
- * pour atteindre exactement la cible.
- */
-export function getTurnValue(turns) {
-  if (!Number.isFinite(turns)) {
-    return 0;
-  }
+/* ============================================================
+ * UTILITAIRES
+ * ========================================================== */
 
-  if (turns <= 1) return 100;
-  if (turns === 2) return 70;
-  if (turns === 3) return 45;
-  if (turns === 4) return 25;
-
-  return 10;
-}
-
-/**
- * Convertit une certitude qualitative en pourcentage.
- */
-export function getCertaintyValue(certainty) {
-  if (typeof certainty === "number") {
-    return clamp(certainty);
-  }
-
-  switch (String(certainty || "").toLowerCase()) {
-    case "certain":
-      return 100;
-
-    case "tres_probable":
-    case "très_probable":
-    case "very_probable":
-      return 80;
-
-    case "possible":
-      return 55;
-
-    case "faible":
-    case "low":
-      return 30;
-
-    case "impossible":
-      return 0;
-
-    default:
-      return 50;
-  }
-}
-
-/**
- * FinishPotential =
- *
- * TurnValue × Certainty / 100
- */
-export function calculateFinishPotential({
-  turns,
-  certainty
-}) {
-  const turnValue = getTurnValue(turns);
-  const certaintyValue = getCertaintyValue(certainty);
-
-  return clamp(
-    turnValue * certaintyValue / 100
-  );
-}
-
-/**
- * Estime le nombre minimal de tours nécessaires à partir
- * des résultats fournis par la simulation.
- *
- * Cette fonction accepte plusieurs formats afin de rester
- * compatible avec les modules de simulation existants.
- */
-export function estimateTurnsToTarget(
-  state,
-  playerIndex,
-  result = {}
+function clamp(
+    value,
+    min = 0,
+    max = 100
 ) {
-  const target = getVictoryTarget(state);
-  const player = getPlayer(state, playerIndex);
+    const n =
+        Number(value);
 
-  if (player.score === target) {
-    return 0;
-  }
+    if (!Number.isFinite(n)) {
+        return min;
+    }
 
-  if (
-    result.exactTarget === true ||
-    result.reachesTarget === true
-  ) {
-    return 1;
-  }
-
-  if (Number.isFinite(result.turnsToTarget)) {
-    return Math.max(1, result.turnsToTarget);
-  }
-
-  if (Number.isFinite(result.minTurns)) {
-    return Math.max(1, result.minTurns);
-  }
-
-  /*
-   * Estimation prudente si le simulateur ne fournit pas encore
-   * de recherche de fin complète.
-   */
-  const distance = target - player.score;
-
-  if (distance <= 0) {
-    return 1;
-  }
-
-  const expectedGain =
-    safeNumber(result.expectedGain, 10);
-
-  if (expectedGain <= 0) {
-    return Infinity;
-  }
-
-  return Math.max(
-    1,
-    Math.ceil(distance / expectedGain)
-  );
+    return Math.max(
+        min,
+        Math.min(max, n)
+    );
 }
 
-/*
- * ============================================================
- * PROGRESSION
- * ============================================================
- */
 
-/**
- * PathsToTarget :
- * nombre de chemins distincts permettant de progresser
- * vers la cible.
- */
-export function calculatePathsToTarget(
-  state,
-  playerIndex,
-  possibilities = []
+function safeDivide(
+    numerator,
+    denominator,
+    fallback = 0
 ) {
-  if (!Array.isArray(possibilities)) {
-    return 0;
-  }
+    const n =
+        Number(numerator);
 
-  const target = getVictoryTarget(state);
-  const player = getPlayer(state, playerIndex);
+    const d =
+        Number(denominator);
 
-  const paths = possibilities.filter(possibility => {
-    const score =
-      possibility?.resultingState?.players?.[playerIndex]
-        ?.score;
+    if (
+        !Number.isFinite(n) ||
+        !Number.isFinite(d) ||
+        d === 0
+    ) {
+        return fallback;
+    }
 
-    if (Number.isFinite(score)) {
-      return (
-        score <= target &&
-        score > player.score
-      );
+    return n / d;
+}
+
+
+function normalizePercent(
+    value
+) {
+    return clamp(
+        Number(value)
+    );
+}
+
+
+function cardValue(card) {
+    if (
+        card === null ||
+        card === undefined
+    ) {
+        return null;
     }
 
     if (
-      Number.isFinite(possibility?.scoreGain)
+        typeof card === "number"
     ) {
-      return (
-        possibility.scoreGain > 0 &&
-        player.score + possibility.scoreGain <= target
-      );
+        return card;
     }
 
-    return false;
-  });
+    if (
+        typeof card === "string"
+    ) {
+        const n =
+            Number(card);
 
-  return paths.length;
+        return Number.isFinite(n)
+            ? n
+            : card;
+    }
+
+    if (
+        typeof card === "object"
+    ) {
+        if (
+            card.valeur !== undefined
+        ) {
+            return cardValue(
+                card.valeur
+            );
+        }
+
+        if (
+            card.value !== undefined
+        ) {
+            return cardValue(
+                card.value
+            );
+        }
+    }
+
+    return null;
 }
 
-/**
- * Diversité des chemins stratégiques.
- */
-export function calculateDiversity(possibilities = []) {
-  if (!Array.isArray(possibilities) ||
-      possibilities.length === 0) {
-    return 0;
-  }
 
-  const categories = unique(
-    possibilities
-      .map(action =>
-        action?.category ||
-        action?.type ||
-        action?.kind
-      )
-      .filter(Boolean)
-  );
-
-  const targets = unique(
-    possibilities
-      .map(action =>
-        action?.target ??
-        action?.targetPlayer ??
-        action?.targetId
-      )
-      .filter(value => value !== undefined && value !== null)
-  );
-
-  const effects = unique(
-    possibilities
-      .map(action =>
-        action?.effect ||
-        action?.effectType
-      )
-      .filter(Boolean)
-  );
-
-  const categoryScore =
-    Math.min(100, categories.length * 25);
-
-  const targetScore =
-    Math.min(100, targets.length * 20);
-
-  const effectScore =
-    Math.min(100, effects.length * 20);
-
-  return clamp(
-    categoryScore * 0.45 +
-    targetScore * 0.30 +
-    effectScore * 0.25
-  );
-}
-
-/**
- * Qualité globale des cartes restantes.
- */
-export function calculateCardQuality(
-  state,
-  playerIndex,
-  possibilities = []
+function isDoubleAction(
+    action
 ) {
-  const player = getPlayer(state, playerIndex);
-  const hand = getKnownHand(player);
-
-  if (hand.length === 0) {
-    return 100;
-  }
-
-  const actions = possibilities.length;
-
-  const doubles = countDoubles(hand);
-
-  const finishActions = possibilities.filter(
-    action =>
-      action?.finishPotential >= 70 ||
-      action?.reachesTarget === true ||
-      action?.exactTarget === true
-  ).length;
-
-  const manipulationActions = possibilities.filter(
-    action =>
-      action?.manipulation === true ||
-      action?.category === "manipulation"
-  ).length;
-
-  const synergyActions = possibilities.filter(
-    action =>
-      action?.synergy === true ||
-      action?.category === "synergy"
-  ).length;
-
-  const actionScore =
-    Math.min(100, actions * 10);
-
-  const finishScore =
-    Math.min(100, finishActions * 25);
-
-  const manipulationScore =
-    Math.min(100, manipulationActions * 20);
-
-  const doubleScore =
-    Math.min(100, doubles * 25);
-
-  const synergyScore =
-    Math.min(100, synergyActions * 20);
-
-  return clamp(
-    actionScore * 0.25 +
-    finishScore * 0.25 +
-    manipulationScore * 0.20 +
-    doubleScore * 0.15 +
-    synergyScore * 0.15
-  );
+    return (
+        action?.type ===
+            "PLAY_DOUBLE" ||
+        action?.metadata?.double === true
+    );
 }
 
-/**
- * Progression générale.
+
+function getActionCard(
+    action
+) {
+    return cardValue(
+        action?.card
+    );
+}
+
+
+function getPlayerScore(
+    player
+) {
+    return Number(
+        player?.score ?? 0
+    );
+}
+
+
+function getHand(
+    player
+) {
+    if (
+        Array.isArray(
+            player?.main
+        )
+    ) {
+        return player.main;
+    }
+
+    if (
+        Array.isArray(
+            player?.hand
+        )
+    ) {
+        return player.hand;
+    }
+
+    return [];
+}
+
+
+function getAllPointCards(
+    state,
+    playerIndex
+) {
+    return getPlayerPointCards(
+        state,
+        playerIndex
+    ) ?? [];
+}
+
+
+function getTable(
+    state
+) {
+    return (
+        state?.table ??
+        state?.cartesTable ??
+        []
+    );
+}
+
+
+function getTableOwner(
+    card
+) {
+    if (!card) {
+        return null;
+    }
+
+    return (
+        card.proprietaire ??
+        card.owner ??
+        card.playerId ??
+        null
+    );
+}
+
+
+function getTableValue(
+    card
+) {
+    return cardValue(
+        card
+    );
+}
+
+
+function getTargetScore(
+    state
+) {
+    return getVictoryTarget(
+        state
+    );
+}
+
+
+function getScoreDistance(
+    state,
+    playerIndex
+) {
+    return getTargetDistance(
+        state,
+        playerIndex
+    );
+}
+
+
+function actionCount(
+    state,
+    playerIndex
+) {
+    if (
+        typeof state?.getLegalActions ===
+        "function"
+    ) {
+        return state
+            .getLegalActions(
+                playerIndex
+            )
+            ?.length ?? 0;
+    }
+
+    if (
+        Array.isArray(
+            state?.legalActions
+        )
+    ) {
+        return state.legalActions.length;
+    }
+
+    return estimateActionCount(
+        state,
+        playerIndex
+    );
+}
+
+
+function estimateActionCount(
+    state,
+    playerIndex
+) {
+    const player =
+        getPlayer(
+            state,
+            playerIndex
+        );
+
+    const hand =
+        getHand(player);
+
+    if (!hand.length) {
+        return 0;
+    }
+
+    const counts =
+        new Map();
+
+    for (const card of hand) {
+        const value =
+            cardValue(card);
+
+        counts.set(
+            value,
+            (counts.get(value) ?? 0) + 1
+        );
+    }
+
+    /*
+     * Cette estimation respecte les priorités :
+     * double 7 > 7 > double > simple.
+     */
+    if (
+        (counts.get(7) ?? 0) >= 2
+    ) {
+        return 1;
+    }
+
+    if (
+        (counts.get(7) ?? 0) === 1
+    ) {
+        return 1;
+    }
+
+    let doubles = 0;
+
+    for (
+        const [
+            value,
+            count
+        ] of counts
+    ) {
+        if (
+            count >= 2
+        ) {
+            doubles += 1;
+        }
+    }
+
+    if (doubles > 0) {
+        return doubles;
+    }
+
+    return hand.length;
+}
+
+
+/* ============================================================
+ * FINITION
+ * ========================================================== */
+
+export function getFinishTurnValue(
+    turns
+) {
+    const n =
+        Number(turns);
+
+    if (
+        !Number.isFinite(n) ||
+        n <= 0
+    ) {
+        return 0;
+    }
+
+    if (
+        FINISH_TURN_VALUES[n] !==
+        undefined
+    ) {
+        return FINISH_TURN_VALUES[n];
+    }
+
+    return 10;
+}
+
+
+export function getCertaintyValue(
+    certainty
+) {
+    if (
+        typeof certainty ===
+        "number"
+    ) {
+        return clamp(
+            certainty
+        );
+    }
+
+    return (
+        CERTAINTY_VALUES[
+            certainty
+        ] ??
+        0
+    );
+}
+
+
+export function calculateFinishPotential({
+    turns = Infinity,
+    certainty = "impossible"
+} = {}) {
+    const turnValue =
+        getFinishTurnValue(
+            turns
+        );
+
+    const certaintyValue =
+        getCertaintyValue(
+            certainty
+        );
+
+    return clamp(
+        turnValue *
+        certaintyValue /
+        100
+    );
+}
+
+
+/*
+ * Estimation locale de la finition.
+ *
+ * Cette fonction ne prétend pas connaître le futur.
+ * Elle mesure uniquement la situation actuelle.
  */
+export function estimateFinishPotential(
+    state,
+    playerIndex
+) {
+    if (
+        hasExactTarget(
+            state,
+            playerIndex
+        )
+    ) {
+        return 100;
+    }
+
+    const distance =
+        Math.abs(
+            getScoreDistance(
+                state,
+                playerIndex
+            )
+        );
+
+    if (
+        !Number.isFinite(distance)
+    ) {
+        return 0;
+    }
+
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    const pointCards =
+        getAllPointCards(
+            state,
+            playerIndex
+        );
+
+    const positivePoints =
+        pointCards
+            .map(cardValue)
+            .filter(
+                value =>
+                    Number.isFinite(value) &&
+                    value > 0
+            );
+
+    /*
+     * Une possibilité directe vers la cible est très forte.
+     */
+    const direct =
+        positivePoints.some(
+            value =>
+                value === distance
+        );
+
+    if (direct) {
+        return 100;
+    }
+
+    /*
+     * Une carte proche de la distance crée une possibilité,
+     * sans être considérée comme une finition certaine.
+     */
+    const closest =
+        positivePoints.length
+            ? Math.min(
+                ...positivePoints.map(
+                    value =>
+                        Math.abs(
+                            distance -
+                            value
+                        )
+                )
+            )
+            : Infinity;
+
+    let base = 0;
+
+    if (
+        closest === 0
+    ) {
+        base = 100;
+    } else if (
+        closest <= 5
+    ) {
+        base = 80;
+    } else if (
+        closest <= 15
+    ) {
+        base = 55;
+    } else if (
+        closest <= 30
+    ) {
+        base = 30;
+    }
+
+    /*
+     * Plus il existe de possibilités, plus la situation
+     * offre de chemins vers la cible.
+     */
+    const possibilityBonus =
+        Math.min(
+            20,
+            actions * 2
+        );
+
+    return clamp(
+        base +
+        possibilityBonus
+    );
+}
+
+
+/* ============================================================
+ * PROGRESSION
+ * ========================================================== */
+
 export function calculateProgression({
-  scoreImprovement = 0,
-  pathsToTarget = 0,
-  diversity = 0,
-  cardQuality = 0,
-  adaptation = 0
-}) {
-  const improvementScore =
-    clamp(scoreImprovement);
-
-  const pathScore =
-    clamp(pathsToTarget);
-
-  return clamp(
-    (
-      improvementScore * 25 +
-      pathScore * 30 +
-      clamp(diversity) * 20 +
-      clamp(cardQuality) * 15 +
-      clamp(adaptation) * 10
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * STABILITÉ
- * ============================================================
- */
-
-export function calculateStability({
-  backupPlans = 0,
-  diversity = 0,
-  independenceFromUncertainty = 0,
-  recovery = 0
-}) {
-  return clamp(
-    (
-      clamp(backupPlans) * 35 +
-      clamp(diversity) * 30 +
-      clamp(independenceFromUncertainty) * 20 +
-      clamp(recovery) * 15
-    ) / 100
-  );
-}
-
-/**
- * Flexibilité d'un état.
- */
-export function calculateFlexibility({
-  planDiversity = 0,
-  independence = 0,
-  opponentAdaptation = 0,
-  eventAdaptation = 0
-}) {
-  return clamp(
-    (
-      clamp(planDiversity) * 35 +
-      clamp(independence) * 25 +
-      clamp(opponentAdaptation) * 25 +
-      clamp(eventAdaptation) * 15
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * POSITION PERSONNELLE
- * ============================================================
- */
-
-export function calculatePosition({
-  finishPotential = 0,
-  progression = 0,
-  stability = 0
-}) {
-  return clamp(
-    (
-      clamp(finishPotential) * 90 +
-      clamp(progression) * 65 +
-      clamp(stability) * 55
-    ) / 210
-  );
-}
-
-/*
- * ============================================================
- * QUALITÉ DE MAIN
- * ============================================================
- */
-
-export function calculateHandQuality({
-  actions = 0,
-  finish = 0,
-  manipulation = 0,
-  doubles = 0,
-  synergies = 0
-}) {
-  return clamp(
-    (
-      clamp(actions) * 25 +
-      clamp(finish) * 25 +
-      clamp(manipulation) * 20 +
-      clamp(doubles) * 15 +
-      clamp(synergies) * 15
-    ) / 100
-  );
-}
-
-export function calculateRemainingPossibilities({
-  actions = 0,
-  diversity = 0,
-  finish = 0,
-  manipulation = 0,
-  responses = 0,
-  plans = 0
-}) {
-  return clamp(
-    (
-      clamp(actions) * 25 +
-      clamp(diversity) * 20 +
-      clamp(finish) * 20 +
-      clamp(manipulation) * 15 +
-      clamp(responses) * 10 +
-      clamp(plans) * 10
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * IMPACT PERSONNEL
- * ============================================================
- */
-
-export function calculatePersonalImpact({
-  position = 0,
-  handQuality = 0,
-  remainingPossibilities = 0
-}) {
-  return clamp(
-    (
-      clamp(position) * 95 +
-      clamp(handQuality) * 60 +
-      clamp(remainingPossibilities) * 45
-    ) / 200
-  );
-}
-
-/*
- * ============================================================
- * DANGER ADVERSE
- * ============================================================
- */
-
-/**
- * Possibilités intéressantes d'un adversaire.
- */
-export function calculatePossibilities(
-  state,
-  playerIndex,
-  possibilities = []
-) {
-  const actions = Array.isArray(possibilities)
-    ? possibilities
-    : [];
-
-  if (actions.length === 0) {
-    return 0;
-  }
-
-  const categories = unique(
-    actions.map(action =>
-      action?.category ||
-      action?.type ||
-      action?.kind
-    ).filter(Boolean)
-  );
-
-  const manipulation = actions.filter(
-    action =>
-      action?.manipulation === true
-  ).length;
-
-  const reduction = actions.filter(
-    action =>
-      action?.scoreReduction === true ||
-      safeNumber(action?.scoreDelta) < 0
-  ).length;
-
-  const finish = actions.filter(
-    action =>
-      action?.exactTarget === true ||
-      action?.reachesTarget === true ||
-      action?.finishPotential >= 70
-  ).length;
-
-  const diversity =
-    Math.min(100, categories.length * 20);
-
-  const actionVolume =
-    Math.min(100, actions.length * 8);
-
-  const manipulationScore =
-    Math.min(100, manipulation * 15);
-
-  const reductionScore =
-    Math.min(100, reduction * 15);
-
-  const finishScore =
-    Math.min(100, finish * 25);
-
-  return clamp(
-    actionVolume * 0.20 +
-    diversity * 0.20 +
-    manipulationScore * 0.20 +
-    reductionScore * 0.15 +
-    finishScore * 0.25
-  );
-}
-
-export function calculateOpponentDanger({
-  finishReturn = 0,
-  position = 0,
-  possibilities = 0,
-  stability = 0
-}) {
-  return clamp(
-    (
-      clamp(finishReturn) * 50 +
-      clamp(position) * 20 +
-      clamp(possibilities) * 20 +
-      clamp(stability) * 10
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * FUTURE POTENTIAL
- * ============================================================
- */
-
-export function calculateFuturePotential({
-  futurePossibilities = 0,
-  handAfterAction = 0,
-  flexibility = 0,
-  creation = 0
-}) {
-  return clamp(
-    (
-      clamp(futurePossibilities) * 35 +
-      clamp(handAfterAction) * 30 +
-      clamp(flexibility) * 30 +
-      clamp(creation) * 10
-    ) / 105
-  );
-}
-
-/**
- * Potentiel futur d'un adversaire.
- */
-export function calculateOpponentFuturePotential({
-  progression = 0,
-  manipulation = 0,
-  cardQuality = 0,
-  creation = 0
-}) {
-  return clamp(
-    (
-      clamp(progression) * 40 +
-      clamp(manipulation) * 30 +
-      clamp(cardQuality) * 20 +
-      clamp(creation) * 10
-    ) / 100
-  );
-}
-
-/**
- * Situation globale d'un adversaire.
- */
-export function calculateOpponentSituation({
-  danger = 0,
-  futurePotential = 0,
-  stability = 0
-}) {
-  return clamp(
-    (
-      clamp(danger) * 100 +
-      clamp(futurePotential) * 65 +
-      clamp(stability) * 50
-    ) / 215
-  );
-}
-
-/*
- * ============================================================
- * IMPACT ADVERSAIRE
- * ============================================================
- */
-
-/**
- * Mesure l'évolution de la situation d'un adversaire.
- *
- * Une diminution de sa situation est positive pour l'IA.
- */
-export function calculateOpponentImpact(
-  beforeSituation,
-  afterSituation
-) {
-  const before = clamp(beforeSituation);
-  const after = clamp(afterSituation);
-
-  const reduction = before - after;
-
-  /*
-   * 50 = aucune évolution.
-   * >50 = situation adverse réduite.
-   * <50 = situation adverse améliorée.
-   */
-  return clamp(
-    50 + reduction / 2
-  );
-}
-
-/**
- * Impact global contre tous les adversaires.
- *
- * On conserve :
- * - le danger maximal ;
- * - la moyenne ;
- *
- * afin d'éviter qu'un grand nombre d'adversaires faibles
- * masque un adversaire réellement dangereux.
- */
-export function calculateGlobalOpponentImpact(
-  impacts = [],
-  situationsBefore = [],
-  situationsAfter = []
-) {
-  if (impacts.length === 0) {
-    return 50;
-  }
-
-  const validImpacts = impacts
-    .filter(Number.isFinite)
-    .map(clamp);
-
-  if (validImpacts.length === 0) {
-    return 50;
-  }
-
-  const maxDanger =
-    Math.max(...situationsBefore.map(clamp), 0);
-
-  const averageImpact =
-    average(validImpacts);
-
-  const averageBefore =
-    average(situationsBefore);
-
-  const averageAfter =
-    average(situationsAfter);
-
-  const globalReduction =
-    averageBefore - averageAfter;
-
-  /*
-   * Une réduction importante de l'adversaire le plus dangereux
-   * doit peser davantage qu'une petite réduction répartie ailleurs.
-   */
-  const dangerousOpponentImpact =
-    clamp(50 + globalReduction / 2);
-
-  return clamp(
-    dangerousOpponentImpact * 0.60 +
-    averageImpact * 0.25 +
-    (100 - maxDanger) * 0.15
-  );
-}
-
-/*
- * ============================================================
- * COÛT D'OPPORTUNITÉ
- * ============================================================
- */
-
-export function calculateOpportunityCost({
-  sacrifice = 0,
-  abandonedAlternatives = 0,
-  rarity = 0
-}) {
-  return clamp(
-    (
-      clamp(sacrifice) * 50 +
-      clamp(abandonedAlternatives) * 30 +
-      clamp(rarity) * 20
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * RISQUE
- * ============================================================
- */
-
-export function calculateRisk({
-  adverseProbability = 0,
-  severity = 0,
-  recoveryDifficulty = 0
-}) {
-  return clamp(
-    (
-      clamp(adverseProbability) * 40 +
-      clamp(severity) * 40 +
-      clamp(recoveryDifficulty) * 20
-    ) / 100
-  );
-}
-
-/*
- * ============================================================
- * SCORE FINAL
- * ============================================================
- */
-
-export function calculateFinalScore({
-  personalImpact = 0,
-  opponentImpact = 0,
-  futurePotential = 0,
-  opportunityCost = 0,
-  risk = 0
-}) {
-  const weights = getWeights();
-
-  return clamp(
-    personalImpact * weights.personalImpact +
-    opponentImpact * weights.opponentImpact +
-    futurePotential * weights.futurePotential -
-    opportunityCost * weights.opportunityCost -
-    risk * weights.risk
-  );
-}
-
-/*
- * ============================================================
- * ÉVALUATION D'UNE ACTION
- * ============================================================
- */
-
-/**
- * Construit l'évaluation complète d'une possibilité.
- *
- * Le résultat est volontairement détaillé :
- * le bot pourra ensuite expliquer/debugger pourquoi
- * une action a été choisie.
- */
-export function evaluateAction({
-  state,
-  playerIndex,
-  action,
-  resultingState,
-  context = {}
-}) {
-  const player = getPlayer(state, playerIndex);
-  const resultingPlayer =
-    resultingState?.players?.[playerIndex] ||
-    player;
-
-  const target =
-    getVictoryTarget(state);
-
-  /*
-   * ----------------------------------------------------------
-   * DONNÉES AVANT / APRÈS
-   * ----------------------------------------------------------
-   */
-
-  const scoreBefore =
-    safeNumber(player.score);
-
-  const scoreAfter =
-    safeNumber(resultingPlayer.score, scoreBefore);
-
-  const scoreImprovement =
-    scoreAfter - scoreBefore;
-
-  /*
-   * ----------------------------------------------------------
-   * FINISH
-   * ----------------------------------------------------------
-   */
-
-  const finishTurns =
-    context.finishTurns ??
-    estimateTurnsToTarget(
-      resultingState || state,
-      playerIndex,
-      context.finish || {}
+    scoreImprovement = 0,
+    pathsToTarget = 0,
+    diversity = 0,
+    cardQuality = 0,
+    adaptation = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(scoreImprovement) * 25 +
+            clamp(pathsToTarget) * 30 +
+            clamp(diversity) * 20 +
+            clamp(cardQuality) * 15 +
+            clamp(adaptation) * 10
+        ) / 100
     );
-
-  const finishCertainty =
-    context.finishCertainty ??
-    context.finish?.certainty ??
-    (
-      context.finish?.certain === true
-        ? 100
-        : undefined
-    );
-
-  const finishPotential =
-    context.finishPotential ??
-    calculateFinishPotential({
-      turns: finishTurns,
-      certainty:
-        finishCertainty ?? 50
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * PROGRESSION
-   * ----------------------------------------------------------
-   */
-
-  const futurePossibilities =
-    context.futurePossibilities ??
-    context.futureActions ??
-    [];
-
-  const pathsToTarget =
-    context.pathsToTarget ??
-    calculatePathsToTarget(
-      resultingState || state,
-      playerIndex,
-      futurePossibilities
-    );
-
-  const diversity =
-    context.diversity ??
-    calculateDiversity(
-      futurePossibilities
-    );
-
-  const cardQuality =
-    context.cardQuality ??
-    calculateCardQuality(
-      resultingState || state,
-      playerIndex,
-      futurePossibilities
-    );
-
-  const adaptation =
-    context.adaptation ??
-    calculateAdaptation(
-      action,
-      resultingState || state,
-      playerIndex,
-      context
-    );
-
-  const progression =
-    context.progression ??
-    calculateProgression({
-      scoreImprovement:
-        calculateScoreImprovement(
-          scoreBefore,
-          scoreAfter,
-          target
-        ),
-
-      pathsToTarget:
-        normalizePathCount(pathsToTarget),
-
-      diversity,
-      cardQuality,
-      adaptation
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * STABILITÉ
-   * ----------------------------------------------------------
-   */
-
-  const backupPlans =
-    context.backupPlans ??
-    calculateBackupPlans(
-      futurePossibilities
-    );
-
-  const independenceFromUncertainty =
-    context.independenceFromUncertainty ??
-    calculateUncertaintyIndependence(
-      action,
-      context
-    );
-
-  const recovery =
-    context.recovery ??
-    calculateRecoveryPotential(
-      futurePossibilities
-    );
-
-  const stability =
-    context.stability ??
-    calculateStability({
-      backupPlans,
-      diversity,
-      independenceFromUncertainty,
-      recovery
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * POSITION
-   * ----------------------------------------------------------
-   */
-
-  const position =
-    context.position ??
-    calculatePosition({
-      finishPotential,
-      progression,
-      stability
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * QUALITÉ DE MAIN
-   * ----------------------------------------------------------
-   */
-
-  const handActions =
-    futurePossibilities.length;
-
-  const finishActions =
-    futurePossibilities.filter(
-      item =>
-        item?.finishPotential >= 70 ||
-        item?.reachesTarget === true ||
-        item?.exactTarget === true
-    ).length;
-
-  const manipulationActions =
-    futurePossibilities.filter(
-      item =>
-        item?.manipulation === true ||
-        item?.category === "manipulation"
-    ).length;
-
-  const doubleActions =
-    futurePossibilities.filter(
-      item =>
-        item?.double === true ||
-        item?.isDouble === true
-    ).length;
-
-  const synergyActions =
-    futurePossibilities.filter(
-      item =>
-        item?.synergy === true
-    ).length;
-
-  const handQuality =
-    context.handQuality ??
-    calculateHandQuality({
-      actions:
-        Math.min(100, handActions * 10),
-
-      finish:
-        Math.min(100, finishActions * 25),
-
-      manipulation:
-        Math.min(100, manipulationActions * 20),
-
-      doubles:
-        Math.min(100, doubleActions * 25),
-
-      synergies:
-        Math.min(100, synergyActions * 20)
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * POSSIBILITÉS RESTANTES
-   * ----------------------------------------------------------
-   */
-
-  const remainingPossibilities =
-    context.remainingPossibilities ??
-    calculateRemainingPossibilities({
-      actions:
-        Math.min(100, handActions * 10),
-
-      diversity,
-
-      finish:
-        Math.min(100, finishActions * 25),
-
-      manipulation:
-        Math.min(100, manipulationActions * 20),
-
-      responses:
-        context.responses ??
-        calculateResponses(
-          futurePossibilities
-        ),
-
-      plans:
-        context.plans ??
-        calculatePlans(
-          futurePossibilities
-        )
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * IMPACT PERSONNEL
-   * ----------------------------------------------------------
-   */
-
-  const personalImpact =
-    context.personalImpact ??
-    calculatePersonalImpact({
-      position,
-      handQuality,
-      remainingPossibilities
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * ADVERSAIRES
-   * ----------------------------------------------------------
-   */
-
-  const opponentEvaluations =
-    context.opponentEvaluations ||
-    [];
-
-  const opponentImpacts =
-    opponentEvaluations.map(
-      item =>
-        Number.isFinite(item.impact)
-          ? item.impact
-          : 50
-    );
-
-  const situationsBefore =
-    opponentEvaluations.map(
-      item =>
-        Number.isFinite(item.situationBefore)
-          ? item.situationBefore
-          : 50
-    );
-
-  const situationsAfter =
-    opponentEvaluations.map(
-      item =>
-        Number.isFinite(item.situationAfter)
-          ? item.situationAfter
-          : 50
-    );
-
-  const opponentImpact =
-    context.opponentImpact ??
-    calculateGlobalOpponentImpact(
-      opponentImpacts,
-      situationsBefore,
-      situationsAfter
-    );
-
-  /*
-   * ----------------------------------------------------------
-   * POTENTIEL FUTUR
-   * ----------------------------------------------------------
-   */
-
-  const futureFlexibility =
-    context.flexibility ??
-    calculateFlexibility({
-      planDiversity:
-        diversity,
-
-      independence:
-        independenceFromUncertainty,
-
-      opponentAdaptation:
-        adaptation,
-
-      eventAdaptation:
-        context.eventAdaptation ??
-        adaptation
-    });
-
-  const futurePotential =
-    context.futurePotential ??
-    calculateFuturePotential({
-      futurePossibilities:
-        calculateFuturePossibilityScore(
-          futurePossibilities
-        ),
-
-      handAfterAction:
-        cardQuality,
-
-      flexibility:
-        futureFlexibility,
-
-      creation:
-        context.creation ??
-        calculateCreationPotential(
-          futurePossibilities
-        )
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * OPPORTUNITY COST
-   * ----------------------------------------------------------
-   */
-
-  const opportunityCost =
-    context.opportunityCost ??
-    calculateOpportunityCost({
-      sacrifice:
-        context.sacrifice ??
-        calculateSacrifice(
-          action,
-          state,
-          playerIndex
-        ),
-
-      abandonedAlternatives:
-        context.abandonedAlternatives ??
-        calculateAbandonedAlternatives(
-          action,
-          context.allActions || []
-        ),
-
-      rarity:
-        context.rarity ??
-        calculateRarity(
-          action,
-          state,
-          playerIndex
-        )
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * RISQUE
-   * ----------------------------------------------------------
-   */
-
-  const risk =
-    context.risk ??
-    calculateRisk({
-      adverseProbability:
-        context.adverseProbability ??
-        calculateAdverseProbability(
-          action,
-          context
-        ),
-
-      severity:
-        context.severity ??
-        calculateRiskSeverity(
-          action,
-          state,
-          playerIndex
-        ),
-
-      recoveryDifficulty:
-        context.recoveryDifficulty ??
-        calculateRecoveryDifficulty(
-          action,
-          context
-        )
-    });
-
-  /*
-   * ----------------------------------------------------------
-   * SCORE FINAL
-   * ----------------------------------------------------------
-   */
-
-  const finalScore =
-    calculateFinalScore({
-      personalImpact,
-      opponentImpact,
-      futurePotential,
-      opportunityCost,
-      risk
-    });
-
-  return {
-    action,
-
-    score: finalScore,
-
-    metrics: {
-      finishPotential,
-      progression,
-      stability,
-      position,
-
-      handQuality,
-      remainingPossibilities,
-
-      personalImpact,
-      opponentImpact,
-
-      futurePotential,
-      opportunityCost,
-      risk
-    },
-
-    details: {
-      scoreBefore,
-      scoreAfter,
-      scoreImprovement,
-
-      finishTurns,
-      finishCertainty,
-
-      pathsToTarget,
-      diversity,
-
-      backupPlans,
-      independenceFromUncertainty,
-      recovery,
-
-      futureFlexibility,
-
-      opponentEvaluations
-    }
-  };
 }
 
-/*
- * ============================================================
- * CALCULS SECONDAIRES
- * ============================================================
- */
 
 function calculateScoreImprovement(
-  before,
-  after,
-  target
+    beforeState,
+    afterState,
+    playerIndex
 ) {
-  const difference = after - before;
+    if (
+        !afterState
+    ) {
+        return 0;
+    }
 
-  if (difference > 0) {
+    const before =
+        getPlayerScore(
+            getPlayer(
+                beforeState,
+                playerIndex
+            )
+        );
+
+    const after =
+        getPlayerScore(
+            getPlayer(
+                afterState,
+                playerIndex
+            )
+        );
+
+    const target =
+        getTargetScore(
+            beforeState
+        );
+
+    if (
+        after === before
+    ) {
+        return 0;
+    }
+
+    /*
+     * Une amélioration vers la cible est positive.
+     */
+    const beforeDistance =
+        Math.abs(
+            target -
+            before
+        );
+
+    const afterDistance =
+        Math.abs(
+            target -
+            after
+        );
+
     return clamp(
-      difference / Math.max(1, target - before) * 100
+        safeDivide(
+            beforeDistance -
+            afterDistance,
+            Math.max(
+                1,
+                beforeDistance
+            )
+        ) * 100
     );
-  }
-
-  if (difference === 0) {
-    return 50;
-  }
-
-  return clamp(
-    50 + difference
-  );
 }
 
-function normalizePathCount(count) {
-  if (!Number.isFinite(count)) {
-    return 0;
-  }
 
-  if (count <= 0) {
-    return 0;
-  }
-
-  return Math.min(
-    100,
-    count * 15
-  );
-}
-
-function calculateBackupPlans(possibilities = []) {
-  if (!possibilities.length) {
-    return 0;
-  }
-
-  const plans = unique(
-    possibilities
-      .map(item =>
-        item?.planType ||
-        item?.category ||
-        item?.kind
-      )
-      .filter(Boolean)
-  );
-
-  return Math.min(
-    100,
-    plans.length * 25
-  );
-}
-
-function calculateUncertaintyIndependence(
-  action,
-  context
+function calculatePathsToTarget(
+    state,
+    playerIndex
 ) {
-  if (
-    action?.uncertain === false ||
-    action?.requiresHiddenInformation === false
-  ) {
-    return 100;
-  }
+    const player =
+        getPlayer(
+            state,
+            playerIndex
+        );
 
-  if (
-    action?.uncertain === true ||
-    action?.requiresHiddenInformation === true
-  ) {
-    return context?.uncertaintyIndependence ?? 30;
-  }
+    const cards =
+        getAllPointCards(
+            state,
+            playerIndex
+        );
 
-  return 60;
-}
+    const distance =
+        Math.abs(
+            getScoreDistance(
+                state,
+                playerIndex
+            )
+        );
 
-function calculateRecoveryPotential(
-  possibilities = []
-) {
-  if (!possibilities.length) {
-    return 0;
-  }
+    if (
+        distance === 0
+    ) {
+        return 100;
+    }
 
-  const recoveryActions =
-    possibilities.filter(
-      item =>
-        item?.recovery === true ||
-        item?.recoveryAction === true ||
-        item?.category === "recovery"
-    ).length;
+    let paths = 0;
 
-  return Math.min(
-    100,
-    recoveryActions * 20
-  );
-}
+    for (
+        const card of cards
+    ) {
+        const value =
+            cardValue(card);
 
-function calculateResponses(
-  possibilities = []
-) {
-  const responses =
-    possibilities.filter(
-      item =>
-        item?.response === true ||
-        item?.category === "response"
-    ).length;
+        if (
+            !Number.isFinite(value)
+        ) {
+            continue;
+        }
 
-  return Math.min(
-    100,
-    responses * 20
-  );
-}
+        if (
+            value === distance
+        ) {
+            paths += 3;
+        } else if (
+            Math.abs(
+                value - distance
+            ) <= 10
+        ) {
+            paths += 1;
+        }
+    }
 
-function calculatePlans(
-  possibilities = []
-) {
-  const plans = unique(
-    possibilities
-      .map(item =>
-        item?.planType ||
-        item?.strategy
-      )
-      .filter(Boolean)
-  );
-
-  return Math.min(
-    100,
-    plans.length * 25
-  );
-}
-
-function calculateFuturePossibilityScore(
-  possibilities = []
-) {
-  if (!possibilities.length) {
-    return 0;
-  }
-
-  const countScore =
-    Math.min(100, possibilities.length * 10);
-
-  const diversity =
-    calculateDiversity(possibilities);
-
-  const finish =
-    Math.min(
-      100,
-      possibilities.filter(
-        item =>
-          item?.finishPotential >= 70 ||
-          item?.reachesTarget === true ||
-          item?.exactTarget === true
-      ).length * 25
+    return clamp(
+        paths * 20
     );
-
-  return clamp(
-    countScore * 0.40 +
-    diversity * 0.30 +
-    finish * 0.30
-  );
 }
 
-function calculateCreationPotential(
-  possibilities = []
+
+function calculateDiversity(
+    state,
+    playerIndex
 ) {
-  const creation =
-    possibilities.filter(
-      item =>
-        item?.creation === true ||
-        item?.createsOptions === true ||
-        item?.category === "creation"
-    ).length;
+    const player =
+        getPlayer(
+            state,
+            playerIndex
+        );
 
-  return Math.min(
-    100,
-    creation * 20
-  );
+    const hand =
+        getHand(player);
+
+    if (!hand.length) {
+        return 0;
+    }
+
+    const values =
+        new Set(
+            hand.map(
+                cardValue
+            )
+        );
+
+    return clamp(
+        safeDivide(
+            values.size,
+            Math.max(
+                1,
+                hand.length
+            )
+        ) * 100
+    );
 }
+
+
+function calculateCardQuality(
+    state,
+    playerIndex
+) {
+    const cards =
+        getAllPointCards(
+            state,
+            playerIndex
+        );
+
+    if (!cards.length) {
+        return 0;
+    }
+
+    const target =
+        getTargetScore(
+            state
+        );
+
+    const score =
+        getPlayerScore(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const distance =
+        Math.abs(
+            target -
+            score
+        );
+
+    let quality = 0;
+
+    for (
+        const card of cards
+    ) {
+        const value =
+            cardValue(card);
+
+        if (
+            !Number.isFinite(value)
+        ) {
+            continue;
+        }
+
+        if (
+            value === distance
+        ) {
+            quality += 100;
+        } else if (
+            Math.abs(
+                value - distance
+            ) <= 10
+        ) {
+            quality += 70;
+        } else if (
+            value > 0
+        ) {
+            quality += 40;
+        }
+    }
+
+    return clamp(
+        safeDivide(
+            quality,
+            cards.length
+        )
+    );
+}
+
 
 function calculateAdaptation(
-  action,
-  state,
-  playerIndex,
-  context
+    state,
+    playerIndex
 ) {
-  let score = 50;
+    const opponents =
+        getOpponents(
+            state,
+            playerIndex
+        );
 
-  if (action?.adaptive === true) {
-    score += 25;
-  }
-
-  if (action?.opponentDependent === true) {
-    score += 10;
-  }
-
-  if (action?.eventDependent === true) {
-    score += 10;
-  }
-
-  if (context?.gamePhase) {
-    score += 5;
-  }
-
-  return clamp(score);
-}
-
-function calculateSacrifice(
-  action,
-  state,
-  playerIndex
-) {
-  if (!action) {
-    return 0;
-  }
-
-  let sacrifice = 0;
-
-  if (
-    action?.double === true ||
-    action?.isDouble === true
-  ) {
-    sacrifice += 20;
-  }
-
-  if (
-    action?.consumesHighValueCard === true
-  ) {
-    sacrifice += 30;
-  }
-
-  if (
-    action?.removesFutureOption === true
-  ) {
-    sacrifice += 30;
-  }
-
-  if (
-    action?.card !== undefined
-  ) {
-    const player = getPlayer(
-      state,
-      playerIndex
-    );
-
-    const hand = getKnownHand(player);
-
-    const occurrences =
-      hand.filter(
-        card => card === action.card
-      ).length;
-
-    if (occurrences === 1) {
-      sacrifice += 15;
+    if (!opponents.length) {
+        return 100;
     }
-  }
 
-  return clamp(sacrifice);
-}
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
 
-function calculateAbandonedAlternatives(
-  action,
-  allActions = []
-) {
-  if (!Array.isArray(allActions) ||
-      allActions.length <= 1) {
-    return 0;
-  }
-
-  const alternatives =
-    allActions.filter(
-      candidate =>
-        candidate !== action &&
-        candidate?.legal !== false
-    );
-
-  if (alternatives.length === 0) {
-    return 0;
-  }
-
-  return Math.min(
-    100,
-    alternatives.length * 8
-  );
-}
-
-function calculateRarity(
-  action,
-  state,
-  playerIndex
-) {
-  if (!action) {
-    return 0;
-  }
-
-  let rarity = 0;
-
-  if (
-    action?.double === true ||
-    action?.isDouble === true
-  ) {
-    rarity += 20;
-  }
-
-  if (
-    action?.card === "Joker"
-  ) {
-    rarity += 20;
-  }
-
-  if (
-    action?.rare === true
-  ) {
-    rarity += 40;
-  }
-
-  return clamp(rarity);
-}
-
-function calculateAdverseProbability(
-  action,
-  context
-) {
-  if (!action) {
-    return 0;
-  }
-
-  if (
-    Number.isFinite(
-      action?.adverseProbability
-    )
-  ) {
-    return clamp(
-      action.adverseProbability
-    );
-  }
-
-  if (
-    Number.isFinite(
-      context?.adverseProbability
-    )
-  ) {
-    return clamp(
-      context.adverseProbability
-    );
-  }
-
-  if (
-    action?.uncertain === true ||
-    action?.requiresHiddenInformation === true
-  ) {
-    return 40;
-  }
-
-  return 10;
-}
-
-function calculateRiskSeverity(
-  action,
-  state,
-  playerIndex
-) {
-  let severity = 0;
-
-  if (
-    action?.losesScore === true
-  ) {
-    severity += 30;
-  }
-
-  if (
-    action?.givesOpponentAdvantage === true
-  ) {
-    severity += 25;
-  }
-
-  if (
-    action?.irreversible === true
-  ) {
-    severity += 20;
-  }
-
-  if (
-    action?.uncertain === true
-  ) {
-    severity += 15;
-  }
-
-  return clamp(severity);
-}
-
-function calculateRecoveryDifficulty(
-  action,
-  context
-) {
-  if (
-    Number.isFinite(
-      action?.recoveryDifficulty
-    )
-  ) {
-    return clamp(
-      action.recoveryDifficulty
-    );
-  }
-
-  if (
-    Number.isFinite(
-      context?.recoveryDifficulty
-    )
-  ) {
-    return clamp(
-      context.recoveryDifficulty
-    );
-  }
-
-  if (
-    action?.irreversible === true
-  ) {
-    return 60;
-  }
-
-  return 20;
-}
-
-/*
- * ============================================================
- * DOUBLES
- * ============================================================
- */
-
-function countDoubles(hand = []) {
-  const counts = new Map();
-
-  for (const card of hand) {
-    const key = String(card);
-
-    counts.set(
-      key,
-      (counts.get(key) || 0) + 1
-    );
-  }
-
-  let doubles = 0;
-
-  for (const count of counts.values()) {
-    if (count >= 2) {
-      doubles++;
-    }
-  }
-
-  return doubles;
-}
-
-/*
- * ============================================================
- * ÉVALUATION D'UN JOUEUR
- * ============================================================
- */
-
-/**
- * Évalue la position actuelle d'un joueur sans action.
- *
- * Utilisé notamment par search.js pour comparer :
- *
- * état avant
- * état après
- */
-export function evaluatePlayerPosition(
-  state,
-  playerIndex,
-  context = {}
-) {
-  const player =
-    getPlayer(state, playerIndex);
-
-  const target =
-    getVictoryTarget(state);
-
-  const distance =
-    getTargetDistance(
-      state,
-      playerIndex
-    );
-
-  const possibilities =
-    context.possibilities || [];
-
-  const finishPotential =
-    context.finishPotential ??
-    estimateCurrentFinishPotential(
-      state,
-      playerIndex,
-      context
-    );
-
-  const progression =
-    context.progression ??
-    calculateCurrentProgression(
-      state,
-      playerIndex,
-      possibilities
-    );
-
-  const stability =
-    context.stability ??
-    calculateStability({
-      backupPlans:
-        calculateBackupPlans(
-          possibilities
-        ),
-
-      diversity:
+    const diversity =
         calculateDiversity(
-          possibilities
-        ),
+            state,
+            playerIndex
+        );
 
-      independenceFromUncertainty:
-        calculateUncertaintyIndependence(
-          null,
-          context
-        ),
-
-      recovery:
-        calculateRecoveryPotential(
-          possibilities
-        )
-    });
-
-  const position =
-    calculatePosition({
-      finishPotential,
-      progression,
-      stability
-    });
-
-  const danger =
-    calculateOpponentDanger({
-      finishReturn:
-        finishPotential,
-
-      position,
-
-      possibilities:
-        calculatePossibilities(
-          state,
-          playerIndex,
-          possibilities
-        ),
-
-      stability
-    });
-
-  const futurePotential =
-    calculateOpponentFuturePotential({
-      progression,
-
-      manipulation:
-        calculateManipulationPotential(
-          possibilities
-        ),
-
-      cardQuality:
-        calculateCardQuality(
-          state,
-          playerIndex,
-          possibilities
-        ),
-
-      creation:
-        calculateCreationPotential(
-          possibilities
-        )
-    });
-
-  const situation =
-    calculateOpponentSituation({
-      danger,
-      futurePotential,
-      stability
-    });
-
-  return {
-    playerId: player.id,
-    score: safeNumber(player.score),
-
-    target,
-
-    distance,
-
-    finishPotential,
-    progression,
-    stability,
-    position,
-
-    danger,
-    futurePotential,
-    situation
-  };
-}
-
-function estimateCurrentFinishPotential(
-  state,
-  playerIndex,
-  context
-) {
-  if (
-    context?.finishPotential !== undefined
-  ) {
     return clamp(
-      context.finishPotential
-    );
-  }
-
-  const player =
-    getPlayer(state, playerIndex);
-
-  const target =
-    getVictoryTarget(state);
-
-  const distance =
-    target - player.score;
-
-  if (distance === 0) {
-    return 100;
-  }
-
-  if (distance < 0) {
-    return 0;
-  }
-
-  if (distance <= 10) {
-    return 70;
-  }
-
-  if (distance <= 20) {
-    return 50;
-  }
-
-  if (distance <= 40) {
-    return 30;
-  }
-
-  return 15;
-}
-
-function calculateCurrentProgression(
-  state,
-  playerIndex,
-  possibilities
-) {
-  const player =
-    getPlayer(state, playerIndex);
-
-  const target =
-    getVictoryTarget(state);
-
-  const distance =
-    target - player.score;
-
-  const scoreProgress =
-    target > 0
-      ? clamp(
-          player.score / target * 100
+        diversity * 0.6 +
+        Math.min(
+            40,
+            actions * 4
         )
-      : 0;
-
-  const paths =
-    calculatePathsToTarget(
-      state,
-      playerIndex,
-      possibilities
     );
-
-  const pathScore =
-    Math.min(100, paths * 15);
-
-  const cardQuality =
-    calculateCardQuality(
-      state,
-      playerIndex,
-      possibilities
-    );
-
-  /*
-   * La distance est volontairement seulement une partie
-   * de la progression.
-   */
-  return clamp(
-    scoreProgress * 0.30 +
-    pathScore * 0.35 +
-    cardQuality * 0.35
-  );
 }
 
-function calculateManipulationPotential(
-  possibilities = []
+
+export function calculateProgressionScore(
+    beforeState,
+    afterState,
+    playerIndex
 ) {
-  if (!possibilities.length) {
-    return 0;
-  }
+    return calculateProgression({
+        scoreImprovement:
+            calculateScoreImprovement(
+                beforeState,
+                afterState,
+                playerIndex
+            ),
 
-  const count =
-    possibilities.filter(
-      action =>
-        action?.manipulation === true ||
-        action?.category === "manipulation"
-    ).length;
+        pathsToTarget:
+            calculatePathsToTarget(
+                afterState ??
+                beforeState,
+                playerIndex
+            ),
 
-  return Math.min(
-    100,
-    count * 20
-  );
+        diversity:
+            calculateDiversity(
+                afterState ??
+                beforeState,
+                playerIndex
+            ),
+
+        cardQuality:
+            calculateCardQuality(
+                afterState ??
+                beforeState,
+                playerIndex
+            ),
+
+        adaptation:
+            calculateAdaptation(
+                afterState ??
+                beforeState,
+                playerIndex
+            )
+    });
 }
 
-/*
- * ============================================================
- * EXPORT GLOBAL
- * ============================================================
- */
 
-/**
- * Évaluation complète prête à être utilisée par search.js
- * ou bot.js.
- */
-export function evaluate({
-  state,
-  playerIndex,
-  action,
-  resultingState,
-  context = {}
-}) {
-  if (!state) {
-    throw new Error(
-      "evaluation.evaluate : state manquant."
+/* ============================================================
+ * STABILITÉ
+ * ========================================================== */
+
+export function calculateStability({
+    backupPlans = 0,
+    diversity = 0,
+    independenceFromUncertainty = 0,
+    recovery = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(backupPlans) * 35 +
+            clamp(diversity) * 30 +
+            clamp(independenceFromUncertainty) * 20 +
+            clamp(recovery) * 15
+        ) / 100
     );
-  }
+}
 
-  if (action && resultingState) {
-    return evaluateAction({
-      state,
-      playerIndex,
-      action,
-      resultingState,
-      context
+
+function calculateBackupPlans(
+    state,
+    playerIndex
+) {
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    if (
+        actions <= 0
+    ) {
+        return 0;
+    }
+
+    if (
+        actions === 1
+    ) {
+        return 20;
+    }
+
+    if (
+        actions === 2
+    ) {
+        return 45;
+    }
+
+    if (
+        actions === 3
+    ) {
+        return 70;
+    }
+
+    return 100;
+}
+
+
+function calculateIndependenceFromUncertainty(
+    state,
+    playerIndex
+) {
+    const player =
+        getPlayer(
+            state,
+            playerIndex
+        );
+
+    const hand =
+        getHand(player);
+
+    if (!hand.length) {
+        return 100;
+    }
+
+    const unknown =
+        hand.filter(
+            card =>
+                card?.unknown === true ||
+                card === null
+        ).length;
+
+    return clamp(
+        100 -
+        safeDivide(
+            unknown,
+            hand.length
+        ) * 100
+    );
+}
+
+
+function calculateRecovery(
+    state,
+    playerIndex
+) {
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    if (
+        hand.length === 0
+    ) {
+        return 0;
+    }
+
+    return clamp(
+        Math.min(
+            100,
+            actions * 15 +
+            hand.length * 5
+        )
+    );
+}
+
+
+export function calculateStabilityScore(
+    state,
+    playerIndex
+) {
+    return calculateStability({
+        backupPlans:
+            calculateBackupPlans(
+                state,
+                playerIndex
+            ),
+
+        diversity:
+            calculateDiversity(
+                state,
+                playerIndex
+            ),
+
+        independenceFromUncertainty:
+            calculateIndependenceFromUncertainty(
+                state,
+                playerIndex
+            ),
+
+        recovery:
+            calculateRecovery(
+                state,
+                playerIndex
+            )
     });
-  }
+}
 
-  return evaluatePlayerPosition(
+
+/* ============================================================
+ * POSITION PERSONNELLE
+ * ========================================================== */
+
+export function calculatePersonalPosition({
+    finish = 0,
+    progression = 0,
+    stability = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(finish) * 90 +
+            clamp(progression) * 65 +
+            clamp(stability) * 55
+        ) / 210
+    );
+}
+
+
+export function evaluatePlayerPosition(
+    state,
+    playerIndex
+) {
+    const finish =
+        estimateFinishPotential(
+            state,
+            playerIndex
+        );
+
+    const progression =
+        calculateProgressionScore(
+            state,
+            state,
+            playerIndex
+        );
+
+    const stability =
+        calculateStabilityScore(
+            state,
+            playerIndex
+        );
+
+    const position =
+        calculatePersonalPosition({
+            finish,
+            progression,
+            stability
+        });
+
+    return {
+        finish,
+        progression,
+        stability,
+        position,
+
+        finalScore:
+            position,
+
+        score:
+            position
+    };
+}
+
+
+/* ============================================================
+ * DANGER ADVERSAIRE
+ * ========================================================== */
+
+export function calculateIndividualDanger({
+    finish = 0,
+    position = 0,
+    possibilities = 0,
+    stability = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(finish) * 50 +
+            clamp(position) * 20 +
+            clamp(possibilities) * 20 +
+            clamp(stability) * 10
+        ) / 100
+    );
+}
+
+
+function calculateOpponentPossibilities(
+    state,
+    opponentIndex
+) {
+    const actions =
+        actionCount(
+            state,
+            opponentIndex
+        );
+
+    const finish =
+        estimateFinishPotential(
+            state,
+            opponentIndex
+        );
+
+    return clamp(
+        Math.min(
+            50,
+            actions * 5
+        ) +
+        finish * 0.5
+    );
+}
+
+
+function calculateOpponentDanger(
+    state,
+    opponentIndex
+) {
+    const finish =
+        estimateFinishPotential(
+            state,
+            opponentIndex
+        );
+
+    const position =
+        evaluatePlayerPosition(
+            state,
+            opponentIndex
+        ).position;
+
+    const possibilities =
+        calculateOpponentPossibilities(
+            state,
+            opponentIndex
+        );
+
+    const stability =
+        calculateStabilityScore(
+            state,
+            opponentIndex
+        );
+
+    return calculateIndividualDanger({
+        finish,
+        position,
+        possibilities,
+        stability
+    });
+}
+
+
+/* ============================================================
+ * POTENTIEL FUTUR ADVERSAIRE
+ * ========================================================== */
+
+export function calculateOpponentFuturePotential({
+    progression = 0,
+    manipulation = 0,
+    cardQuality = 0,
+    creation = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(progression) * 40 +
+            clamp(manipulation) * 30 +
+            clamp(cardQuality) * 20 +
+            clamp(creation) * 10
+        ) / 100
+    );
+}
+
+
+function calculateOpponentManipulation(
+    state,
+    opponentIndex
+) {
+    const actions =
+        actionCount(
+            state,
+            opponentIndex
+        );
+
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                opponentIndex
+            )
+        );
+
+    const special =
+        hand.filter(
+            card => {
+                const value =
+                    cardValue(card);
+
+                return [
+                    1,
+                    3,
+                    9,
+                    13,
+                    15,
+                    17,
+                    19,
+                    21
+                ].includes(value);
+            }
+        ).length;
+
+    return clamp(
+        special * 12 +
+        actions * 2
+    );
+}
+
+
+function calculateOpponentCreation(
+    state,
+    opponentIndex
+) {
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                opponentIndex
+            )
+        );
+
+    const values =
+        new Set(
+            hand.map(
+                cardValue
+            )
+        );
+
+    return clamp(
+        values.size * 8
+    );
+}
+
+
+function calculateOpponentFuture(
+    state,
+    opponentIndex
+) {
+    return calculateOpponentFuturePotential({
+        progression:
+            calculateProgressionScore(
+                state,
+                state,
+                opponentIndex
+            ),
+
+        manipulation:
+            calculateOpponentManipulation(
+                state,
+                opponentIndex
+            ),
+
+        cardQuality:
+            calculateCardQuality(
+                state,
+                opponentIndex
+            ),
+
+        creation:
+            calculateOpponentCreation(
+                state,
+                opponentIndex
+            )
+    });
+}
+
+
+/* ============================================================
+ * SITUATION ADVERSAIRE
+ * ========================================================== */
+
+export function calculateOpponentSituation({
+    danger = 0,
+    futurePotential = 0,
+    stability = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(danger) * 100 +
+            clamp(futurePotential) * 65 +
+            clamp(stability) * 50
+        ) / 215
+    );
+}
+
+
+export function evaluateOpponents(
+    state,
+    playerIndex
+) {
+    const opponents =
+        getOpponents(
+            state,
+            playerIndex
+        );
+
+    if (!opponents.length) {
+        return {
+            opponents: [],
+            maxDanger: 0,
+            averageDanger: 0,
+            situation: 0
+        };
+    }
+
+    const details =
+        opponents.map(
+            opponent => {
+                const index =
+                    Number(
+                        opponent.id
+                    );
+
+                const danger =
+                    calculateOpponentDanger(
+                        state,
+                        index
+                    );
+
+                const futurePotential =
+                    calculateOpponentFuture(
+                        state,
+                        index
+                    );
+
+                const stability =
+                    calculateStabilityScore(
+                        state,
+                        index
+                    );
+
+                const situation =
+                    calculateOpponentSituation({
+                        danger,
+                        futurePotential,
+                        stability
+                    });
+
+                return {
+                    playerIndex: index,
+                    danger,
+                    futurePotential,
+                    stability,
+                    situation
+                };
+            }
+        );
+
+    const dangers =
+        details.map(
+            item =>
+                item.danger
+        );
+
+    const maxDanger =
+        dangers.length
+            ? Math.max(
+                ...dangers
+            )
+            : 0;
+
+    const averageDanger =
+        dangers.length
+            ? dangers.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) /
+              dangers.length
+            : 0;
+
+    const situations =
+        details.map(
+            item =>
+                item.situation
+        );
+
+    const situation =
+        situations.length
+            ? Math.max(
+                ...situations
+            )
+            : 0;
+
+    return {
+        opponents: details,
+        maxDanger,
+        averageDanger,
+        situation
+    };
+}
+
+
+/* ============================================================
+ * IMPACT PERSONNEL
+ * ========================================================== */
+
+export function calculateHandQuality({
+    actions = 0,
+    finish = 0,
+    manipulation = 0,
+    doubles = 0,
+    synergies = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(actions) * 25 +
+            clamp(finish) * 25 +
+            clamp(manipulation) * 20 +
+            clamp(doubles) * 15 +
+            clamp(synergies) * 15
+        ) / 100
+    );
+}
+
+
+export function calculateRemainingPossibilities({
+    actions = 0,
+    diversity = 0,
+    finish = 0,
+    manipulation = 0,
+    responses = 0,
+    plans = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(actions) * 25 +
+            clamp(diversity) * 20 +
+            clamp(finish) * 20 +
+            clamp(manipulation) * 15 +
+            clamp(responses) * 10 +
+            clamp(plans) * 10
+        ) / 100
+    );
+}
+
+
+export function calculatePersonalImpact({
+    position = 0,
+    handQuality = 0,
+    remainingPossibilities = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(position) * 95 +
+            clamp(handQuality) * 60 +
+            clamp(remainingPossibilities) * 45
+        ) / 200
+    );
+}
+
+
+function calculateManipulation(
+    state,
+    playerIndex
+) {
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const special =
+        hand.filter(
+            card =>
+                [
+                    1,
+                    3,
+                    9,
+                    13,
+                    15,
+                    17,
+                    19,
+                    21
+                ].includes(
+                    cardValue(card)
+                )
+        ).length;
+
+    return clamp(
+        special * 12
+    );
+}
+
+
+function calculateDoubles(
+    state,
+    playerIndex
+) {
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const counts =
+        new Map();
+
+    for (
+        const card of hand
+    ) {
+        const value =
+            cardValue(card);
+
+        counts.set(
+            value,
+            (counts.get(value) ?? 0) + 1
+        );
+    }
+
+    let doubles = 0;
+
+    for (
+        const count of counts.values()
+    ) {
+        if (
+            count >= 2
+        ) {
+            doubles += 1;
+        }
+    }
+
+    return clamp(
+        doubles * 20
+    );
+}
+
+
+function calculateSynergies(
+    state,
+    playerIndex
+) {
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const values =
+        hand.map(
+            cardValue
+        );
+
+    let synergy = 0;
+
+    if (
+        values.includes(15)
+    ) {
+        synergy += 25;
+    }
+
+    if (
+        values.includes(17)
+    ) {
+        synergy += 15;
+    }
+
+    if (
+        values.includes(19)
+    ) {
+        synergy += 15;
+    }
+
+    if (
+        values.includes(21)
+    ) {
+        synergy += 15;
+    }
+
+    if (
+        values.includes("Joker") ||
+        values.includes("joker")
+    ) {
+        synergy += 20;
+    }
+
+    return clamp(
+        synergy
+    );
+}
+
+
+function calculatePersonalImpactMetrics(
+    state,
+    playerIndex
+) {
+    const position =
+        evaluatePlayerPosition(
+            state,
+            playerIndex
+        ).position;
+
+    const finish =
+        estimateFinishPotential(
+            state,
+            playerIndex
+        );
+
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    const manipulation =
+        calculateManipulation(
+            state,
+            playerIndex
+        );
+
+    const doubles =
+        calculateDoubles(
+            state,
+            playerIndex
+        );
+
+    const synergies =
+        calculateSynergies(
+            state,
+            playerIndex
+        );
+
+    const diversity =
+        calculateDiversity(
+            state,
+            playerIndex
+        );
+
+    const handQuality =
+        calculateHandQuality({
+            actions:
+                Math.min(
+                    100,
+                    actions * 10
+                ),
+
+            finish,
+            manipulation,
+            doubles,
+            synergies
+        });
+
+    const remainingPossibilities =
+        calculateRemainingPossibilities({
+            actions:
+                Math.min(
+                    100,
+                    actions * 10
+                ),
+
+            diversity,
+            finish,
+            manipulation,
+
+            responses:
+                Math.min(
+                    100,
+                    actions * 8
+                ),
+
+            plans:
+                calculateBackupPlans(
+                    state,
+                    playerIndex
+                )
+        });
+
+    const personalImpact =
+        calculatePersonalImpact({
+            position,
+            handQuality,
+            remainingPossibilities
+        });
+
+    return {
+        position,
+        handQuality,
+        remainingPossibilities,
+        personalImpact
+    };
+}
+
+
+/* ============================================================
+ * POTENTIEL FUTUR PERSONNEL
+ * ========================================================== */
+
+export function calculateFlexibility({
+    planDiversity = 0,
+    independence = 0,
+    opponentAdaptation = 0,
+    eventAdaptation = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(planDiversity) * 35 +
+            clamp(independence) * 25 +
+            clamp(opponentAdaptation) * 25 +
+            clamp(eventAdaptation) * 15
+        ) / 100
+    );
+}
+
+
+export function calculateFuturePotential({
+    futurePossibilities = 0,
+    handAfterAction = 0,
+    flexibility = 0,
+    creation = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(futurePossibilities) * 35 +
+            clamp(handAfterAction) * 30 +
+            clamp(flexibility) * 30 +
+            clamp(creation) * 10
+        ) / 105
+    );
+}
+
+
+function calculateFutureMetrics(
+    state,
+    playerIndex
+) {
+    const actions =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    const diversity =
+        calculateDiversity(
+            state,
+            playerIndex
+        );
+
+    const flexibility =
+        calculateFlexibility({
+            planDiversity:
+                diversity,
+
+            independence:
+                calculateIndependenceFromUncertainty(
+                    state,
+                    playerIndex
+                ),
+
+            opponentAdaptation:
+                calculateAdaptation(
+                    state,
+                    playerIndex
+                ),
+
+            eventAdaptation:
+                calculateStabilityScore(
+                    state,
+                    playerIndex
+                )
+        });
+
+    const futurePossibilities =
+        clamp(
+            Math.min(
+                100,
+                actions * 12
+            )
+        );
+
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const handAfterAction =
+        clamp(
+            Math.min(
+                100,
+                hand.length * 8 +
+                diversity * 0.3
+            )
+        );
+
+    const creation =
+        calculateSynergies(
+            state,
+            playerIndex
+        );
+
+    return {
+        futurePossibilities,
+        handAfterAction,
+        flexibility,
+        creation,
+
+        futurePotential:
+            calculateFuturePotential({
+                futurePossibilities,
+                handAfterAction,
+                flexibility,
+                creation
+            })
+    };
+}
+
+
+/* ============================================================
+ * COÛT D'OPPORTUNITÉ
+ * ========================================================== */
+
+export function calculateOpportunityCost({
+    sacrifice = 0,
+    abandonedAlternatives = 0,
+    rarity = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(sacrifice) * 50 +
+            clamp(abandonedAlternatives) * 30 +
+            clamp(rarity) * 20
+        ) / 100
+    );
+}
+
+
+function calculateActionRarity(
+    state,
+    action,
+    playerIndex
+) {
+    const value =
+        getActionCard(
+            action
+        );
+
+    if (
+        value === null
+    ) {
+        return 0;
+    }
+
+    const hand =
+        getHand(
+            getPlayer(
+                state,
+                playerIndex
+            )
+        );
+
+    const copies =
+        hand.filter(
+            card =>
+                cardValue(card) ===
+                value
+        ).length;
+
+    if (
+        copies <= 0
+    ) {
+        return 0;
+    }
+
+    if (
+        copies >= 3
+    ) {
+        return 20;
+    }
+
+    if (
+        copies === 2
+    ) {
+        return 50;
+    }
+
+    return 80;
+}
+
+
+function calculateOpportunityMetrics(
+    state,
+    action,
+    playerIndex
+) {
+    const alternatives =
+        actionCount(
+            state,
+            playerIndex
+        );
+
+    const rarity =
+        calculateActionRarity(
+            state,
+            action,
+            playerIndex
+        );
+
+    const value =
+        getActionCard(
+            action
+        );
+
+    let sacrifice = 0;
+
+    /*
+     * Cartes à fort potentiel futur.
+     */
+    if (
+        [
+            15,
+            17,
+            19,
+            21
+        ].includes(value)
+    ) {
+        sacrifice += 35;
+    }
+
+    if (
+        value === 1 ||
+        value === 9 ||
+        value === 13
+    ) {
+        sacrifice += 20;
+    }
+
+    if (
+        isDoubleAction(action)
+    ) {
+        sacrifice += 10;
+    }
+
+    const abandonedAlternatives =
+        alternatives <= 1
+            ? 0
+            : clamp(
+                100 -
+                alternatives * 10
+            );
+
+    return {
+        sacrifice:
+            clamp(sacrifice),
+
+        abandonedAlternatives,
+
+        rarity,
+
+        opportunityCost:
+            calculateOpportunityCost({
+                sacrifice,
+                abandonedAlternatives,
+                rarity
+            })
+    };
+}
+
+
+/* ============================================================
+ * RISQUE
+ * ========================================================== */
+
+export function calculateRisk({
+    adverseProbability = 0,
+    severity = 0,
+    recoveryDifficulty = 0
+} = {}) {
+    return clamp(
+        (
+            clamp(adverseProbability) * 40 +
+            clamp(severity) * 40 +
+            clamp(recoveryDifficulty) * 20
+        ) / 100
+    );
+}
+
+
+function calculateRiskMetrics(
+    state,
+    action,
+    playerIndex
+) {
+    const target =
+        action?.target;
+
+    let adverseProbability = 0;
+    let severity = 0;
+    let recoveryDifficulty = 0;
+
+    /*
+     * Les actions à information cachée ont une incertitude
+     * supérieure.
+     */
+    if (
+        action?.metadata?.hiddenInformation
+    ) {
+        adverseProbability += 35;
+    }
+
+    if (
+        action?.hiddenInformation
+    ) {
+        adverseProbability += 20;
+    }
+
+    /*
+     * Une action qui aide potentiellement un adversaire
+     * augmente le risque.
+     */
+    if (
+        target !== null &&
+        target !== undefined
+    ) {
+        const danger =
+            calculateOpponentDanger(
+                state,
+                Number(target)
+            );
+
+        if (
+            danger > 70
+        ) {
+            severity += 30;
+        }
+
+        if (
+            danger > 85
+        ) {
+            severity += 20;
+        }
+    }
+
+    const distance =
+        Math.abs(
+            getScoreDistance(
+                state,
+                playerIndex
+            )
+        );
+
+    if (
+        distance <= 20
+    ) {
+        recoveryDifficulty += 40;
+    } else if (
+        distance <= 40
+    ) {
+        recoveryDifficulty += 20;
+    }
+
+    if (
+        isDoubleAction(action)
+    ) {
+        recoveryDifficulty += 10;
+    }
+
+    return {
+        adverseProbability:
+            clamp(
+                adverseProbability
+            ),
+
+        severity:
+            clamp(
+                severity
+            ),
+
+        recoveryDifficulty:
+            clamp(
+                recoveryDifficulty
+            ),
+
+        risk:
+            calculateRisk({
+                adverseProbability,
+                severity,
+                recoveryDifficulty
+            })
+    };
+}
+
+
+/* ============================================================
+ * IMPACT ADVERSAIRE
+ * ========================================================== */
+
+export function calculateOpponentImpact({
+    situationBefore = 0,
+    situationAfter = 0
+} = {}) {
+    /*
+     * Une réduction de la situation adverse est positive.
+     */
+    const reduction =
+        situationBefore -
+        situationAfter;
+
+    return clamp(
+        reduction
+    );
+}
+
+
+function evaluateOpponentImpact(
+    beforeState,
+    afterState,
+    playerIndex
+) {
+    const before =
+        evaluateOpponents(
+            beforeState,
+            playerIndex
+        );
+
+    const after =
+        evaluateOpponents(
+            afterState ??
+            beforeState,
+            playerIndex
+        );
+
+    return {
+        before:
+            before.situation,
+
+        after:
+            after.situation,
+
+        maxDangerBefore:
+            before.maxDanger,
+
+        maxDangerAfter:
+            after.maxDanger,
+
+        averageDangerBefore:
+            before.averageDanger,
+
+        averageDangerAfter:
+            after.averageDanger,
+
+        opponentImpact:
+            calculateOpponentImpact({
+                situationBefore:
+                    before.situation,
+
+                situationAfter:
+                    after.situation
+            })
+    };
+}
+
+
+/* ============================================================
+ * SCORE FINAL
+ * ========================================================== */
+
+export function calculateFinalScore({
+    personalImpact = 0,
+    opponentImpact = 0,
+    futurePotential = 0,
+    opportunityCost = 0,
+    risk = 0
+} = {}) {
+    return (
+        clamp(personalImpact) *
+            WEIGHTS.personalImpact +
+
+        clamp(opponentImpact) *
+            WEIGHTS.opponentImpact +
+
+        clamp(futurePotential) *
+            WEIGHTS.futurePotential -
+
+        clamp(opportunityCost) *
+            WEIGHTS.opportunityCost -
+
+        clamp(risk) *
+            WEIGHTS.risk
+    );
+}
+
+
+/* ============================================================
+ * ÉVALUATION D'UNE ACTION
+ * ========================================================== */
+
+export function evaluateAction({
+    state,
+    playerIndex = 0,
+    action = null,
+    resultingState = null,
+    context = {}
+} = {}) {
+    if (!state) {
+        return {
+            action,
+            score: 0,
+            finalScore: 0,
+            metrics: {},
+            details: {}
+        };
+    }
+
+    const after =
+        resultingState ??
+        state;
+
+    const personal =
+        calculatePersonalImpactMetrics(
+            after,
+            playerIndex
+        );
+
+    const future =
+        calculateFutureMetrics(
+            after,
+            playerIndex
+        );
+
+    const opponentImpact =
+        evaluateOpponentImpact(
+            state,
+            after,
+            playerIndex
+        );
+
+    const opportunity =
+        calculateOpportunityMetrics(
+            state,
+            action,
+            playerIndex
+        );
+
+    const risk =
+        calculateRiskMetrics(
+            state,
+            action,
+            playerIndex
+        );
+
+    /*
+     * En fin de partie, la distance à la cible devient
+     * progressivement plus importante.
+     *
+     * Elle ne remplace jamais les autres critères.
+     */
+    const phase =
+        getGamePhase(
+            after
+        );
+
+    const distance =
+        Math.abs(
+            getScoreDistance(
+                after,
+                playerIndex
+            )
+        );
+
+    const target =
+        getTargetScore(
+            after
+        );
+
+    const final =
+        calculateFinalScore({
+            personalImpact:
+                personal.personalImpact,
+
+            opponentImpact:
+                opponentImpact.opponentImpact,
+
+            futurePotential:
+                future.futurePotential,
+
+            opportunityCost:
+                opportunity.opportunityCost,
+
+            risk:
+                risk.risk
+        });
+
+    const endgameBonus =
+        calculateEndgameAdjustment({
+            state: after,
+            playerIndex,
+            phase,
+            distance,
+            target,
+            baseScore: final
+        });
+
+    const score =
+        clamp(
+            final +
+            endgameBonus
+        );
+
+    return {
+        action,
+
+        /*
+         * IMPORTANT :
+         * search.js lit directement finalScore.
+         */
+        finalScore: score,
+
+        score,
+
+        metrics: {
+            personalImpact:
+                personal.personalImpact,
+
+            opponentImpact:
+                opponentImpact.opponentImpact,
+
+            futurePotential:
+                future.futurePotential,
+
+            opportunityCost:
+                opportunity.opportunityCost,
+
+            risk:
+                risk.risk,
+
+            endgameAdjustment:
+                endgameBonus
+        },
+
+        details: {
+            personal,
+            future,
+            opponent:
+                opponentImpact,
+            opportunity,
+            risk,
+
+            phase,
+            distance,
+            target
+        },
+
+        context
+    };
+}
+
+
+/* ============================================================
+ * AJUSTEMENT FIN DE PARTIE
+ * ========================================================== */
+
+function calculateEndgameAdjustment({
     state,
     playerIndex,
-    context
-  );
+    phase,
+    distance,
+    target,
+    baseScore
+}) {
+    if (
+        !Number.isFinite(
+            distance
+        )
+    ) {
+        return 0;
+    }
+
+    /*
+     * L'exactitude devient plus importante à mesure que la
+     * partie avance.
+     */
+    const phaseWeight =
+        clamp(
+            Number(phase) * 100
+        );
+
+    if (
+        distance === 0
+    ) {
+        return 20;
+    }
+
+    /*
+     * Une position proche de la cible n'est intéressante
+     * que si elle correspond réellement à un chemin viable.
+     */
+    const closeness =
+        clamp(
+            100 -
+            safeDivide(
+                distance,
+                Math.max(
+                    1,
+                    target
+                )
+            ) * 100
+        );
+
+    return (
+        closeness *
+        (phaseWeight / 100) *
+        0.10
+    );
 }
 
+
+/* ============================================================
+ * ÉVALUATION DE POSITION SEULE
+ * ========================================================== */
+
+export function evaluateState(
+    state,
+    playerIndex
+) {
+    const position =
+        evaluatePlayerPosition(
+            state,
+            playerIndex
+        );
+
+    const future =
+        calculateFutureMetrics(
+            state,
+            playerIndex
+        );
+
+    const opponents =
+        evaluateOpponents(
+            state,
+            playerIndex
+        );
+
+    const personal =
+        calculatePersonalImpactMetrics(
+            state,
+            playerIndex
+        );
+
+    /*
+     * Pour une position sans action, il n'existe pas de coût
+     * d'opportunité ou de risque d'action.
+     */
+    const finalScore =
+        calculateFinalScore({
+            personalImpact:
+                personal.personalImpact,
+
+            opponentImpact:
+                100 -
+                opponents.situation,
+
+            futurePotential:
+                future.futurePotential,
+
+            opportunityCost:
+                0,
+
+            risk:
+                0
+        });
+
+    return {
+        finalScore,
+        score:
+            finalScore,
+
+        position,
+
+        personalImpact:
+            personal,
+
+        futurePotential:
+            future,
+
+        opponents
+    };
+}
+
+
+/* ============================================================
+ * API COMPATIBLE AVEC SEARCH
+ * ========================================================== */
+
+export function evaluate({
+    state,
+    playerIndex = 0,
+    action = null,
+    resultingState = null,
+    context = {}
+} = {}) {
+    /*
+     * Si une action a produit un état, on évalue l'action.
+     */
+    if (
+        action &&
+        resultingState
+    ) {
+        return evaluateAction({
+            state,
+            playerIndex,
+            action,
+            resultingState,
+            context
+        });
+    }
+
+    /*
+     * Sinon on évalue simplement la position actuelle.
+     */
+    return evaluateState(
+        state,
+        playerIndex
+    );
+}
+
+
+/* ============================================================
+ * EXPORT
+ * ========================================================== */
+
+export {
+    WEIGHTS
+};
+
+
 export default {
-  evaluate,
-  evaluateAction,
-  evaluatePlayerPosition,
+    evaluate,
+    evaluateAction,
+    evaluateState,
+    evaluatePlayerPosition,
 
-  calculateFinishPotential,
-  calculateProgression,
-  calculateStability,
-  calculateFlexibility,
-  calculatePosition,
+    calculateFinishPotential,
+    calculateProgression,
+    calculateProgressionScore,
 
-  calculateHandQuality,
-  calculateRemainingPossibilities,
+    calculateStability,
+    calculateStabilityScore,
 
-  calculatePersonalImpact,
-  calculateOpponentDanger,
-  calculateOpponentFuturePotential,
-  calculateOpponentSituation,
-  calculateOpponentImpact,
-  calculateGlobalOpponentImpact,
+    calculatePersonalPosition,
 
-  calculateFuturePotential,
-  calculateOpportunityCost,
-  calculateRisk,
+    calculateIndividualDanger,
+    calculateOpponentFuturePotential,
+    calculateOpponentSituation,
+    evaluateOpponents,
 
-  calculateFinalScore
+    calculateHandQuality,
+    calculateRemainingPossibilities,
+    calculatePersonalImpact,
+
+    calculateFlexibility,
+    calculateFuturePotential,
+
+    calculateOpportunityCost,
+    calculateRisk,
+
+    calculateOpponentImpact,
+    calculateFinalScore,
+
+    getFinishTurnValue,
+    getCertaintyValue
 };
