@@ -3048,6 +3048,8 @@ window.AtoumoulinBotPriorities = {
 
 window.AtoumoulinBotDecision = {
 
+    obtenirCibleEtat,
+    
     construireContexteDecision,
 
     simulerPossibilite,
