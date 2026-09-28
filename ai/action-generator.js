@@ -4,13 +4,15 @@
  *
  * Générateur unique des ACTIONS COMPLÈTES disponibles.
  *
- * IMPORTANT :
+ * Principe :
  *
- * action.js
- *   = représentation / construction d'une action
- *
- * action-generator.js
- *   = détermine quelles actions sont légales dans l'état courant
+ *   état réel
+ *      ↓
+ *   cartes légalement jouables
+ *      ↓
+ *   toutes les conséquences connues
+ *      ↓
+ *   UNE action complète
  *
  * Ce module ne choisit jamais la meilleure action.
  */
@@ -19,11 +21,6 @@ import {
     ACTION_TYPES,
 
     getBaseActions,
-
-    get1Actions,
-    get3Actions,
-    get9Actions,
-    get17Actions,
 
     getAvailableTargets,
     getPlayersWithPointCards,
@@ -41,8 +38,14 @@ import {
     get21Actions,
     getJokerActions,
 
+    getPointCardsOfPlayer,
+
+    createCardAction,
+    createDoubleAction,
+    createTargetAction,
     createTableCardAction,
     createTableCardsAction,
+    createEffectAction,
     createContinueAction,
     createTerminateAction,
 
@@ -67,7 +70,10 @@ function getAction(state) {
 }
 
 
-function getBotIndex(state, explicitIndex = null) {
+function getBotIndex(
+    state,
+    explicitIndex = null
+) {
     if (
         explicitIndex !== null &&
         explicitIndex !== undefined
@@ -82,11 +88,16 @@ function getBotIndex(state, explicitIndex = null) {
         return Number(state.botIndex);
     }
 
-    return Number(state?.currentPlayer ?? 0);
+    return Number(
+        state?.currentPlayer ?? 0
+    );
 }
 
 
-function isOwnTurn(state, botIndex) {
+function isOwnTurn(
+    state,
+    botIndex
+) {
     return (
         Number(state?.currentPlayer) ===
         Number(botIndex)
@@ -103,30 +114,438 @@ function getTarget(state) {
 }
 
 
+function getCardValue(card) {
+    if (
+        card &&
+        typeof card === "object"
+    ) {
+        return (
+            card.valeur ??
+            card.value ??
+            null
+        );
+    }
+
+    return card;
+}
+
+
+function getPlayer(
+    state,
+    playerIndex
+) {
+    return (
+        state?.players?.find(
+            player =>
+                Number(player.id) ===
+                Number(playerIndex)
+        ) ??
+        state?.players?.[playerIndex] ??
+        null
+    );
+}
+
+
+function getHand(
+    state,
+    botIndex
+) {
+    const player =
+        getPlayer(
+            state,
+            botIndex
+        );
+
+    return Array.isArray(player?.main)
+        ? player.main
+        : [];
+}
+
+
+function getBaseCardIndex(action) {
+    return (
+        action?.cardIndex ??
+        null
+    );
+}
+
+
+function getBaseDoubleIndices(action) {
+    return Array.isArray(action?.indices)
+        ? action.indices.slice(0, 2)
+        : [];
+}
+
+
+function getBaseCard(action) {
+    return getCardValue(
+        action?.card
+    );
+}
+
+
 /* ============================================================
  * DÉBUT DE TOUR
  * ========================================================== */
 
 /**
- * Les priorités sont strictes :
+ * Les priorités restent strictes :
  *
  * 1. Double 7
- * 2. 7
+ * 2. 7 simple
  * 3. Double X
  * 4. Carte simple
+ *
+ * getBaseActions() garantit déjà cette priorité.
  */
 function generateTurnActions(
     state,
     botIndex
 ) {
-    if (!isOwnTurn(state, botIndex)) {
+    if (
+        !isOwnTurn(
+            state,
+            botIndex
+        )
+    ) {
         return [];
     }
 
-    return getBaseActions(
+    const baseActions =
+        getBaseActions(
+            state,
+            botIndex
+        );
+
+    const result = [];
+
+    for (
+        const baseAction
+        of baseActions
+    ) {
+        result.push(
+            ...expandBaseAction(
+                state,
+                botIndex,
+                baseAction
+            )
+        );
+    }
+
+    return result;
+}
+
+
+/* ============================================================
+ * EXPANSION D'UNE ACTION DE BASE
+ * ========================================================== */
+
+/**
+ * Une action de base représente :
+ *
+ *   "je joue cette carte"
+ *
+ * Cette fonction la transforme en :
+ *
+ *   "je joue cette carte ET voici tout ce que
+ *    je choisis pour son effet."
+ *
+ * Pour les informations réellement inconnues (17),
+ * l'action conserve explicitement l'incertitude.
+ */
+function expandBaseAction(
+    state,
+    botIndex,
+    baseAction
+) {
+    const card =
+        getBaseCard(
+            baseAction
+        );
+
+    const isDouble =
+        baseAction.type ===
+        ACTION_TYPES.PLAY_DOUBLE;
+
+    const cardIndex =
+        getBaseCardIndex(
+            baseAction
+        );
+
+    const indices =
+        getBaseDoubleIndices(
+            baseAction
+        );
+
+    if (
+        card === null ||
+        card === undefined
+    ) {
+        return [];
+    }
+
+
+    /* --------------------------------------------------------
+     * DOUBLE
+     * ------------------------------------------------------ */
+
+    if (isDouble) {
+        return expandDoubleCard(
+            state,
+            botIndex,
+            card,
+            indices
+        );
+    }
+
+
+    /* --------------------------------------------------------
+     * CARTE SIMPLE
+     * ------------------------------------------------------ */
+
+    return expandSingleCard(
         state,
-        botIndex
+        botIndex,
+        card,
+        cardIndex
     );
+}
+
+
+/* ============================================================
+ * CARTE SIMPLE
+ * ========================================================== */
+
+function expandSingleCard(
+    state,
+    botIndex,
+    card,
+    cardIndex
+) {
+    switch (String(card)) {
+
+        case "1":
+            return generateCard1Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "3":
+            return generateCard3Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "9":
+            return generateCard9Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "13":
+            return generateCard13Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "15":
+            return generateCard15Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "17":
+            return generateCard17Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "19":
+            return generateCard19Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "21":
+            return generateCard21Actions(
+                state,
+                botIndex,
+                false,
+                cardIndex
+            );
+
+        case "11":
+            return [
+                createEffectAction({
+                    card: 11,
+                    cardIndex,
+                    effect: "score",
+                    value: 10
+                })
+            ];
+
+        case "Joker":
+        case "joker":
+            return generateJokerActions(
+                state,
+                botIndex,
+                cardIndex
+            );
+
+        default:
+            /*
+             * Carte ordinaire sans pouvoir spécial.
+             *
+             * On la conserve comme action complète.
+             */
+            return [
+                createCardAction({
+                    card,
+                    cardIndex,
+                    effect: "play_card"
+                })
+            ];
+    }
+}
+
+
+/* ============================================================
+ * DOUBLE
+ * ========================================================== */
+
+function expandDoubleCard(
+    state,
+    botIndex,
+    card,
+    indices
+) {
+    if (
+        !Array.isArray(indices) ||
+        indices.length !== 2
+    ) {
+        return [];
+    }
+
+    switch (String(card)) {
+
+        case "1":
+            return generateCard1Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "3":
+            return generateCard3Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "9":
+            return generateCard9Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "11":
+            return [
+                createDoubleAction({
+                    card: 11,
+                    indices,
+                    effect: "score",
+                    value: 20
+                })
+            ];
+
+        case "13":
+            return generateCard13Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "15":
+            return generateCard15Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "17":
+            return generateCard17Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "19":
+            return generateCard19Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "21":
+            return generateCard21Actions(
+                state,
+                botIndex,
+                true,
+                null,
+                indices
+            );
+
+        case "7":
+            /*
+             * Le Double 7 reste une action complète.
+             * La priorité est déjà imposée par getBaseActions().
+             */
+            return [
+                createDoubleAction({
+                    card: 7,
+                    indices,
+                    effect: "play_double"
+                })
+            ];
+
+        default:
+            return [
+                createDoubleAction({
+                    card,
+                    indices,
+                    effect: "play_double"
+                })
+            ];
+    }
 }
 
 
@@ -137,7 +556,9 @@ function generateTurnActions(
 function generateCard1Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
     const targets =
         getPlayersWithPointCards(
@@ -146,30 +567,36 @@ function generateCard1Actions(
         );
 
     return targets.map(
-        target => ({
-            id:
-                `${isDouble ? "double1" : "1"}:${target}`,
+        target => {
 
-            type:
-                ACTION_TYPES.TARGET,
-
-            card:
-                isDouble ? 1 : 1,
-
-            target,
-
-            effect:
-                isDouble
-                    ? "steal_latest_two_points"
-                    : "steal_latest_point",
-
-            complete: true,
-
-            metadata: {
-                double: isDouble,
-                hiddenInformation: false
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 1,
+                    indices,
+                    target,
+                    effect:
+                        "steal_latest_two_points",
+                    metadata: {
+                        double: true,
+                        hiddenInformation: false,
+                        stealCount: 2
+                    }
+                });
             }
-        })
+
+            return createCardAction({
+                card: 1,
+                cardIndex,
+                target,
+                effect:
+                    "steal_latest_point",
+                metadata: {
+                    double: false,
+                    hiddenInformation: false,
+                    stealCount: 1
+                }
+            });
+        }
     );
 }
 
@@ -181,34 +608,50 @@ function generateCard1Actions(
 function generateCard3Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    return get3Actions(
+    return getAvailableTargets(
         state,
-        botIndex,
-        isDouble ? "Double3" : 3
+        botIndex
     ).map(
-        action => ({
-            ...action,
+        targetAction => {
 
-            card:
-                isDouble
-                    ? 3
-                    : 3,
+            const target =
+                targetAction.target;
 
-            effect:
-                "score_target",
-
-            value:
+            const value =
                 isDouble
                     ? -40
-                    : -20,
+                    : -20;
 
-            metadata: {
-                ...(action.metadata ?? {}),
-                double: isDouble
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 3,
+                    indices,
+                    target,
+                    effect:
+                        "score_target",
+                    value,
+                    metadata: {
+                        double: true
+                    }
+                });
             }
-        })
+
+            return createCardAction({
+                card: 3,
+                cardIndex,
+                target,
+                effect:
+                    "score_target",
+                value,
+                metadata: {
+                    double: false
+                }
+            });
+        }
     );
 }
 
@@ -220,59 +663,69 @@ function generateCard3Actions(
 function generateCard9Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
     return getAvailableTargets(
         state,
         botIndex
     ).map(
-        action => ({
-            ...action,
+        targetAction => {
 
-            id:
-                `${isDouble ? "double9" : "9"}:${action.target}`,
+            const target =
+                targetAction.target;
 
-            type:
-                ACTION_TYPES.TARGET,
-
-            card: 9,
-
-            effect:
-                "swap_hands",
-
-            complete: true,
-
-            metadata: {
+            const metadata = {
                 double: isDouble,
 
                 /*
-                 * Pour un 9 normal, le contenu adverse reste
-                 * caché.
-                 *
-                 * Pour Double9, le moteur peut temporairement
-                 * révéler la main de la cible au joueur actif.
+                 * Le contenu de la main adverse reste caché
+                 * pour le 9 normal.
                  */
                 hiddenInformation:
                     !isDouble,
 
                 double9Reveal:
                     isDouble
+            };
+
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 9,
+                    indices,
+                    target,
+                    effect:
+                        "swap_hands",
+                    metadata
+                });
             }
-        })
+
+            return createCardAction({
+                card: 9,
+                cardIndex,
+                target,
+                effect:
+                    "swap_hands",
+                metadata
+            });
+        }
     );
 }
 
 
 /* ============================================================
- * 13
+ * 13 / DOUBLE 13
  * ========================================================== */
 
 function generateCard13Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    const actions = [];
+    const result = [];
 
     const targets =
         getAvailableTargets(
@@ -280,7 +733,10 @@ function generateCard13Actions(
             botIndex
         );
 
-    for (const targetAction of targets) {
+    for (
+        const targetAction
+        of targets
+    ) {
         const target =
             targetAction.target;
 
@@ -295,55 +751,85 @@ function generateCard13Actions(
                     target
                 );
 
-        for (const action of cardActions) {
-            actions.push({
-                ...action,
+        for (
+            const tableAction
+            of cardActions
+        ) {
+            if (isDouble) {
 
-                id:
-                    isDouble
-                        ? `double13:${target}:${
-                            (
-                                action.tableCardIndices ??
-                                []
-                            ).join(",")
-                        }`
-                        : `13:${target}:${
-                            action.tableCardIndex
-                        }`,
+                const tableIndices =
+                    Array.isArray(
+                        tableAction.tableCardIndices
+                    )
+                        ? tableAction.tableCardIndices
+                        : [];
 
-                card: 13,
+                result.push(
+                    createDoubleAction({
+                        card: 13,
+                        indices,
+                        target,
+                        tableCardIndices:
+                            tableIndices,
+                        effect:
+                            "steal_points",
+                        metadata: {
+                            double: true,
+                            stolenValues:
+                                tableIndices.map(
+                                    index =>
+                                        state.table?.[
+                                            index
+                                        ]?.valeur ??
+                                        state.table?.[
+                                            index
+                                        ]?.value ??
+                                        null
+                                )
+                        }
+                    })
+                );
 
-                target,
+            } else {
 
-                effect:
-                    isDouble
-                        ? "steal_points"
-                        : "steal_point",
-
-                metadata: {
-                    ...(action.metadata ?? {}),
-                    double: isDouble
-                },
-
-                complete: true
-            });
+                result.push(
+                    createCardAction({
+                        card: 13,
+                        cardIndex,
+                        target,
+                        tableCardIndex:
+                            tableAction.tableCardIndex,
+                        effect:
+                            "steal_point",
+                        value:
+                            tableAction.value,
+                        metadata: {
+                            double: false,
+                            stolenValue:
+                                tableAction.value
+                        }
+                    })
+                );
+            }
         }
     }
 
-    return actions;
+    return result;
 }
 
 
 /* ============================================================
- * 15
+ * 15 / DOUBLE 15
  * ========================================================== */
 
 function generateCard15Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    const actions =
+    const targets =
         isDouble
             ? getTriple15Targets(
                 state,
@@ -354,33 +840,41 @@ function generateCard15Actions(
                 botIndex
             );
 
-    return actions.map(
-        action => ({
-            ...action,
+    return targets.map(
+        targetAction => {
 
-            id:
-                `${isDouble ? "double15" : "15"}:${
-                    action.tableCardIndex
-                }`,
+            const tableCardIndex =
+                targetAction.tableCardIndex;
 
-            card: 15,
+            const value =
+                targetAction.value;
 
-            effect:
-                isDouble
-                    ? "triple_point_card"
-                    : "double_point_card",
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 15,
+                    indices,
+                    tableCardIndex,
+                    value,
+                    effect:
+                        "triple_point_card",
+                    metadata: {
+                        multiplier: 3
+                    }
+                });
+            }
 
-            metadata: {
-                ...(action.metadata ?? {}),
-
-                multiplier:
-                    isDouble
-                        ? 3
-                        : 2
-            },
-
-            complete: true
-        })
+            return createCardAction({
+                card: 15,
+                cardIndex,
+                tableCardIndex,
+                value,
+                effect:
+                    "double_point_card",
+                metadata: {
+                    multiplier: 2
+                }
+            });
+        }
     );
 }
 
@@ -389,34 +883,35 @@ function generateCard15Actions(
  * 17 / DOUBLE 17
  * ========================================================== */
 
+/**
+ * IMPORTANT :
+ *
+ * La carte volée n'est PAS révélée ici.
+ *
+ * L'action complète signifie :
+ *
+ *   17 + cible + "voler une carte inconnue"
+ *
+ * La simulation doit ensuite représenter plusieurs scénarios
+ * possibles pour cette information cachée.
+ */
 function generateCard17Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    return getPlayersWithCards(
-        state,
-        botIndex
-    ).map(
-        target => ({
-            id:
-                `${isDouble ? "double17" : "17"}:${target}`,
+    const targets =
+        getPlayersWithCards(
+            state,
+            botIndex
+        );
 
-            type:
-                ACTION_TYPES.TARGET,
+    return targets.map(
+        target => {
 
-            card: 17,
-
-            target,
-
-            effect:
-                isDouble
-                    ? "steal_hidden_cards"
-                    : "steal_hidden_card",
-
-            complete: true,
-
-            metadata: {
+            const metadata = {
                 double: isDouble,
 
                 hiddenInformation: true,
@@ -425,29 +920,48 @@ function generateCard17Actions(
 
                 revealRequired: true,
 
-                /*
-                 * Le nombre de cartes dépend du type.
-                 */
                 stealCount:
                     isDouble
                         ? 2
                         : 1
+            };
+
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 17,
+                    indices,
+                    target,
+                    effect:
+                        "steal_hidden_cards",
+                    metadata
+                });
             }
-        })
+
+            return createCardAction({
+                card: 17,
+                cardIndex,
+                target,
+                effect:
+                    "steal_hidden_card",
+                metadata
+            });
+        }
     );
 }
 
 
 /* ============================================================
- * 19
+ * 19 / DOUBLE 19
  * ========================================================== */
 
 function generateCard19Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    const actions =
+    const baseActions =
         isDouble
             ? getDouble19Targets(
                 state,
@@ -458,30 +972,78 @@ function generateCard19Actions(
                 botIndex
             );
 
-    return actions.map(
-        action => ({
-            ...action,
+    return baseActions.map(
+        baseAction => {
 
-            card: 19,
+            const target =
+                baseAction.target;
 
-            effect:
-                isDouble
-                    ? "exchange_point_cards"
-                    : "exchange_latest_point_cards",
+            if (isDouble) {
 
-            complete: true,
+                const ownIndices =
+                    baseAction.metadata
+                        ?.ownTableCardIndices ??
+                    [];
 
-            metadata: {
-                ...(action.metadata ?? {}),
-                double: isDouble,
+                const targetIndices =
+                    baseAction.metadata
+                        ?.targetTableCardIndices ??
+                    [];
 
-                /*
-                 * Le contenu des mains adverses n'est jamais
-                 * nécessaire pour le 19.
-                 */
-                hiddenInformation: false
+                return createDoubleAction({
+                    card: 19,
+                    indices,
+                    target,
+
+                    tableCardIndices:
+                        targetIndices,
+
+                    effect:
+                        "exchange_point_cards",
+
+                    metadata: {
+                        double: true,
+
+                        ownTableCardIndices:
+                            ownIndices,
+
+                        targetTableCardIndices:
+                            targetIndices,
+
+                        hiddenInformation: false
+                    }
+                });
             }
-        })
+
+            const ownTableCardIndex =
+                baseAction.metadata
+                    ?.ownTableCardIndex ??
+                null;
+
+            const targetTableCardIndex =
+                baseAction.metadata
+                    ?.targetTableCardIndex ??
+                null;
+
+            return createCardAction({
+                card: 19,
+                cardIndex,
+                target,
+
+                ownTableCardIndex,
+
+                targetTableCardIndex,
+
+                effect:
+                    "exchange_latest_point_cards",
+
+                metadata: {
+                    double: false,
+
+                    hiddenInformation: false
+                }
+            });
+        }
     );
 }
 
@@ -493,9 +1055,19 @@ function generateCard19Actions(
 function generateCard21Actions(
     state,
     botIndex,
-    isDouble = false
+    isDouble = false,
+    cardIndex = null,
+    indices = []
 ) {
-    const cardActions =
+    /*
+     * get21Actions() produit :
+     *
+     *   +20 soi
+     *   -20 cible
+     *
+     * La valeur est ensuite doublée pour Double21.
+     */
+    const baseActions =
         get21Actions(
             state,
             botIndex,
@@ -503,39 +1075,50 @@ function generateCard21Actions(
         );
 
     const multiplier =
-        isDouble ? 2 : 1;
+        isDouble
+            ? 2
+            : 1;
 
-    return cardActions.map(
-        action => ({
-            ...action,
+    return baseActions.map(
+        baseAction => {
 
-            id:
-                isDouble
-                    ? `double21:${
-                        action.effect
-                    }:${
-                        action.target ?? "self"
-                    }`
-                    : `21:${
-                        action.effect
-                    }:${
-                        action.target ?? "self"
-                    }`,
+            const value =
+                Number(baseAction.value) *
+                multiplier;
 
-            card: 21,
+            const effect =
+                baseAction.effect;
 
-            value:
-                action.value *
-                multiplier,
+            if (isDouble) {
+                return createDoubleAction({
+                    card: 21,
+                    indices,
+                    target:
+                        baseAction.target ??
+                        null,
+                    effect,
+                    value,
+                    metadata: {
+                        double: true,
+                        multiplier
+                    }
+                });
+            }
 
-            metadata: {
-                ...(action.metadata ?? {}),
-                double: isDouble,
-                multiplier
-            },
-
-            complete: true
-        })
+            return createCardAction({
+                card: 21,
+                cardIndex,
+                target:
+                    baseAction.target ??
+                    null,
+                effect,
+                value,
+                metadata: {
+                    double: false,
+                    multiplier
+                }
+            });
+        }
     );
 }
 
@@ -546,25 +1129,40 @@ function generateCard21Actions(
 
 function generateJokerActions(
     state,
-    botIndex
+    botIndex,
+    cardIndex = null
 ) {
     return getJokerActions(
         state,
         botIndex
     ).map(
-        action => ({
-            ...action,
+        baseAction => {
 
-            complete: true,
+            const hiddenInformation =
+                baseAction.effect ===
+                "exchange_scores";
 
-            metadata: {
-                ...(action.metadata ?? {}),
+            return createCardAction({
+                card: "Joker",
+                cardIndex,
 
-                hiddenInformation:
-                    action.effect ===
-                    "exchange_scores"
-            }
-        })
+                target:
+                    baseAction.target ??
+                    null,
+
+                effect:
+                    baseAction.effect,
+
+                value:
+                    baseAction.value ??
+                    null,
+
+                metadata: {
+                    ...(baseAction.metadata ?? {}),
+                    hiddenInformation
+                }
+            });
+        }
     );
 }
 
@@ -574,16 +1172,14 @@ function generateJokerActions(
  * ========================================================== */
 
 /**
- * Certains états existent parce que le moteur réel a déjà
- * commencé à résoudre une carte.
+ * Compatibilité avec le moteur réel.
  *
- * Ils sont conservés ici uniquement pour permettre à
- * l'adaptateur moteur de terminer une action.
+ * La recherche stratégique utilise normalement les actions
+ * complètes générées au début du tour.
  *
- * Le moteur stratégique, lui, doit normalement recevoir une
- * action complète dès le départ.
+ * Ces états servent lorsque script.js est déjà engagé dans
+ * une résolution interactive.
  */
-
 function generatePendingActions(
     state,
     botIndex
@@ -600,10 +1196,12 @@ function generatePendingActions(
 
 
     /* --------------------------------------------------------
-     * 13 : choix de carte
+     * 13
      * ------------------------------------------------------ */
 
-    if (action === "carte13choix") {
+    if (
+        action === "carte13choix"
+    ) {
         if (
             target === null ||
             target === undefined
@@ -622,7 +1220,9 @@ function generatePendingActions(
      * Double 13
      * ------------------------------------------------------ */
 
-    if (action === "double13choix") {
+    if (
+        action === "double13choix"
+    ) {
         if (
             target === null ||
             target === undefined
@@ -639,35 +1239,21 @@ function generatePendingActions(
 
     /* --------------------------------------------------------
      * 17 révélé
-     *
-     * La carte a maintenant été révélée par le moteur.
-     * Elle peut être traitée comme une nouvelle information.
      * ------------------------------------------------------ */
 
     if (
         action === "carte17revelee"
     ) {
         return [
-            {
-                id: "17:continue",
-
-                type:
-                    ACTION_TYPES.CONTINUE,
-
+            createContinueAction({
                 card: 17,
-
                 target,
-
                 effect:
                     "play_stolen_card",
-
-                complete: true,
-
                 metadata: {
-                    revealed:
-                        true
+                    revealed: true
                 }
-            }
+            })
         ];
     }
 
@@ -687,36 +1273,27 @@ function generatePendingActions(
                 : [];
 
         return cards.map(
-            (card, index) => ({
-                id:
-                    `double17:revealed:${index}`,
+            (card, index) =>
+                createTableCardAction({
+                    card:
+                        getCardValue(card),
 
-                type:
-                    ACTION_TYPES.TABLE_CARD,
+                    cardIndex:
+                        index,
 
-                card:
-                    card?.valeur ??
-                    card?.value ??
-                    card,
+                    target,
 
-                cardIndex:
-                    index,
+                    tableCardIndex:
+                        index,
 
-                target,
+                    effect:
+                        "choose_revealed_card",
 
-                effect:
-                    "choose_revealed_card",
-
-                complete: true,
-
-                metadata: {
-                    revealed:
-                        true,
-
-                    hiddenInformation:
-                        false
-                }
-            })
+                    metadata: {
+                        revealed: true,
+                        hiddenInformation: false
+                    }
+                })
         );
     }
 
@@ -727,9 +1304,7 @@ function generatePendingActions(
         return [
             createContinueAction({
                 card: 17,
-
                 target,
-
                 effect:
                     "play_revealed_card"
             })
@@ -738,7 +1313,7 @@ function generatePendingActions(
 
 
     /* --------------------------------------------------------
-     * Fin d'une résolution 13 / 15 / 17
+     * Terminaisons
      * ------------------------------------------------------ */
 
     if (
@@ -799,25 +1374,26 @@ export function generateActions(
             botIndex
         );
 
-    /*
-     * Un bot ne génère jamais d'action si ce n'est pas son tour.
-     */
-    if (!isOwnTurn(state, index)) {
+    if (
+        !isOwnTurn(
+            state,
+            index
+        )
+    ) {
         return [];
     }
 
-    const action =
+    const currentAction =
         getAction(state);
 
 
-    /*
-     * --------------------------------------------------------
+    /* --------------------------------------------------------
      * TOUR NORMAL
      * ------------------------------------------------------ */
 
     if (
-        action === null ||
-        action === undefined
+        currentAction === null ||
+        currentAction === undefined
     ) {
         return finalize(
             state,
@@ -830,9 +1406,8 @@ export function generateActions(
     }
 
 
-    /*
-     * --------------------------------------------------------
-     * ACTIONS PENDANTES DU MOTEUR
+    /* --------------------------------------------------------
+     * MOTEUR DÉJÀ ENGAGÉ DANS UNE ACTION
      * ------------------------------------------------------ */
 
     const pending =
@@ -851,188 +1426,198 @@ export function generateActions(
 
 
     /*
-     * --------------------------------------------------------
-     * CARTES SPÉCIALES
-     * ------------------------------------------------------ */
+     * Compatibilité avec les états intermédiaires
+     * de script.js.
+     *
+     * Si l'ancien moteur a déjà joué une carte et attend
+     * encore une décision, on régénère uniquement la partie
+     * encore inconnue.
+     */
 
     let actions = [];
 
-
-    switch (action) {
+    switch (currentAction) {
 
         case "vol1":
             actions =
                 generateCard1Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double1":
             actions =
                 generateCard1Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte3":
             actions =
                 generateCard3Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double3":
             actions =
                 generateCard3Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte9":
             actions =
                 generateCard9Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double9":
             actions =
                 generateCard9Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte13":
             actions =
                 generateCard13Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double13":
             actions =
                 generateCard13Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte15":
             actions =
                 generateCard15Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double15":
             actions =
                 generateCard15Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte17":
             actions =
                 generateCard17Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double17":
             actions =
                 generateCard17Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte19":
             actions =
                 generateCard19Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double19":
             actions =
                 generateCard19Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "carte21":
             actions =
                 generateCard21Actions(
                     state,
                     index,
-                    false
+                    false,
+                    null
                 );
             break;
-
 
         case "double21":
             actions =
                 generateCard21Actions(
                     state,
                     index,
-                    true
+                    true,
+                    null,
+                    []
                 );
             break;
-
 
         case "joker":
             actions =
                 generateJokerActions(
                     state,
-                    index
+                    index,
+                    null
                 );
             break;
-
 
         default:
             actions = [];
     }
-
 
     return finalize(
         state,
@@ -1051,26 +1636,17 @@ function finalize(
     botIndex,
     actions
 ) {
-    /*
-     * 1. uniquement des actions complètes
-     */
     const complete =
         (actions ?? [])
             .filter(
                 isCompleteAction
             );
 
-    /*
-     * 2. suppression des doublons
-     */
     const unique =
         deduplicateActions(
             complete
         );
 
-    /*
-     * 3. validation contre l'état
-     */
     const valid =
         validateActions(
             state,
@@ -1078,9 +1654,6 @@ function finalize(
             unique
         );
 
-    /*
-     * 4. ordre légal des catégories
-     */
     return sortActions(
         valid
     );
@@ -1088,7 +1661,7 @@ function finalize(
 
 
 /* ============================================================
- * API COMPATIBLE
+ * API
  * ========================================================== */
 
 export function generateLegalActions(
@@ -1158,6 +1731,7 @@ export function isLegalAction(
 export {
     ACTION_TYPES
 };
+
 
 export default {
     ACTION_TYPES,
