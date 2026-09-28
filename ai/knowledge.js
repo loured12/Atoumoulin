@@ -1,4 +1,4 @@
-```js
+
 /**
  * Atoumoulin AI
  * knowledge.js
@@ -1587,4 +1587,3 @@ export function getOpponentScenarios(
         playerIndex
     );
 }
-```
