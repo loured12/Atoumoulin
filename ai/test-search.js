@@ -4,7 +4,15 @@ import {
     searchFinish
 } from "./search.js";
 
-export function testSearch(state, playerIndex = 0) {
+import {
+    AtoumoulinBot
+} from "./bot.js";
+
+
+export function testSearch(
+    state,
+    playerIndex = 0
+) {
     console.log("=== TEST IA SEARCH ===");
 
     const results = searchActions({
@@ -49,9 +57,40 @@ export function testSearch(state, playerIndex = 0) {
         finishes
     );
 
+    console.log("=== TEST BOT ===");
+
+    const bot = new AtoumoulinBot({
+        playerIndex,
+        difficulty: "normal"
+    });
+
+    const decision =
+        bot.thinkWithFinish(state);
+
+    console.log(
+        "Difficulté :",
+        decision.difficulty
+    );
+
+    console.log(
+        "Action choisie :",
+        decision.action
+    );
+
+    console.log(
+        "Résultats de recherche :",
+        decision.results?.length ?? 0
+    );
+
+    console.log(
+        "Plan de finition :",
+        decision.finish
+    );
+
     return {
         results,
         best,
-        finishes
+        finishes,
+        bot: decision
     };
 }
