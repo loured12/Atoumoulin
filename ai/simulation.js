@@ -2,37 +2,31 @@
  * Atoumoulin AI
  * simulation.js
  *
- * Simulation virtuelle des actions de l'IA.
+ * Simulation virtuelle des ACTIONS COMPLÈTES.
  *
  * Principe :
  *
  *   état réel
- *       ↓
+ *      ↓
  *   action complète
- *       ↓
+ *      ↓
  *   copie virtuelle
- *       ↓
- *   application des règles
- *       ↓
- *   nouvel état
+ *      ↓
+ *   application des conséquences
+ *      ↓
+ *   état résultant
  *
- * La simulation :
+ * Règles importantes :
  * - ne modifie jamais l'état réel ;
- * - respecte les informations cachées ;
- * - conserve l'incertitude ;
- * - applique les conséquences des cartes ;
- * - permet au search.js de prévoir plusieurs tours.
+ * - ne révèle jamais une main adverse cachée ;
+ * - respecte cardIndex / indices ;
+ * - respecte les choix de cartes de table ;
+ * - conserve les informations inconnues ;
+ * - permet au search.js de simuler plusieurs tours.
  */
 
 import {
     cloneState,
-    getSelf,
-    getPlayer,
-    getOpponents,
-    getPlayerTableCards,
-    getPlayerPointCards,
-    getLatestPointCard,
-    getLatestPointCards,
     getVictoryTarget,
     hasExactTarget
 } from "./state.js";
@@ -59,86 +53,71 @@ export const ACTION_TYPES = {
  * UTILITAIRES
  * ========================================================= */
 
-function number(value) {
+function toNumber(value) {
     const n = Number(value);
+
     return Number.isFinite(n)
         ? n
         : null;
 }
 
+
 function cardValue(card) {
-    if (card == null) {
+    if (
+        card === null ||
+        card === undefined
+    ) {
         return null;
     }
 
-    if (typeof card === "number") {
+    if (
+        typeof card === "number"
+    ) {
         return card;
     }
 
-    if (typeof card === "string") {
-        if (card.toLowerCase() === "joker") {
+    if (
+        typeof card === "string"
+    ) {
+        if (
+            card.toLowerCase() === "joker"
+        ) {
             return "Joker";
         }
 
-        const n = Number(card);
+        const n =
+            Number(card);
 
         return Number.isFinite(n)
             ? n
             : card;
     }
 
-    return (
-        card.value ??
-        card.valeur ??
-        card.cardValue ??
-        null
-    );
-}
-
-function cardOwner(card) {
-    if (!card || typeof card !== "object") {
-        return null;
-    }
-
-    return (
-        card.owner ??
-        card.proprietaire ??
-        card.playerId ??
-        null
-    );
-}
-
-function setCardOwner(card, owner) {
-    if (!card || typeof card !== "object") {
-        return;
-    }
-
-    if ("owner" in card) {
-        card.owner = owner;
-    }
-
-    if ("proprietaire" in card) {
-        card.proprietaire = owner;
-    }
-
     if (
-        !("owner" in card) &&
-        !("proprietaire" in card)
+        typeof card === "object"
     ) {
-        card.owner = owner;
+        return (
+            card.value ??
+            card.valeur ??
+            card.cardValue ??
+            null
+        );
     }
+
+    return null;
 }
 
-function isPointCard(card) {
-    const value = number(
-        cardValue(card)
-    );
 
+function sameCardValue(
+    a,
+    b
+) {
     return (
-        value !== null &&
-        value !== 0
+        cardValue(a) ===
+        cardValue(b)
     );
 }
+
 
 function cloneCard(card) {
     if (
@@ -156,71 +135,87 @@ function cloneCard(card) {
 
     return {
         ...card,
+
         historiqueCarte:
-            Array.isArray(card.historiqueCarte)
+            Array.isArray(
+                card.historiqueCarte
+            )
                 ? [...card.historiqueCarte]
                 : card.historiqueCarte,
 
         history:
-            Array.isArray(card.history)
+            Array.isArray(
+                card.history
+            )
                 ? [...card.history]
                 : card.history
     };
 }
 
+
+function getCardOwner(card) {
+    if (
+        !card ||
+        typeof card !== "object"
+    ) {
+        return null;
+    }
+
+    return (
+        card.owner ??
+        card.proprietaire ??
+        card.playerId ??
+        null
+    );
+}
+
+
+function setCardOwner(
+    card,
+    owner
+) {
+    if (
+        !card ||
+        typeof card !== "object"
+    ) {
+        return;
+    }
+
+    if (
+        "owner" in card
+    ) {
+        card.owner = owner;
+        return;
+    }
+
+    if (
+        "proprietaire" in card
+    ) {
+        card.proprietaire = owner;
+        return;
+    }
+
+    card.owner = owner;
+}
+
+
+function isPointCard(card) {
+    const value =
+        toNumber(
+            cardValue(card)
+        );
+
+    return (
+        value !== null &&
+        value !== 0
+    );
+}
+
+
 function ensureArray(value) {
     return Array.isArray(value)
         ? value
         : [];
-}
-
-function getPlayerMutable(state, index) {
-    if (!state) {
-        return null;
-    }
-
-    if (
-        Array.isArray(state.players)
-    ) {
-        return state.players[index] || null;
-    }
-
-    if (
-        Array.isArray(state.joueurs)
-    ) {
-        return state.joueurs[index] || null;
-    }
-
-    if (
-        state.data &&
-        Array.isArray(state.data.players)
-    ) {
-        return state.data.players[index] || null;
-    }
-
-    return null;
-}
-
-function getPlayersArray(state) {
-    if (
-        Array.isArray(state?.players)
-    ) {
-        return state.players;
-    }
-
-    if (
-        Array.isArray(state?.joueurs)
-    ) {
-        return state.joueurs;
-    }
-
-    if (
-        Array.isArray(state?.data?.players)
-    ) {
-        return state.data.players;
-    }
-
-    return [];
 }
 
 
@@ -229,33 +224,36 @@ function getPlayersArray(state) {
  * ========================================================= */
 
 export class VirtualGameState {
+
     constructor(source) {
-        const data =
+
+        const raw =
             source instanceof VirtualGameState
                 ? source.toMutableObject()
-                : cloneState(
-                    typeof source?.toMutableObject === "function"
-                        ? source.toMutableObject()
-                        : source
-                );
+                : typeof source?.toMutableObject ===
+                    "function"
+                    ? source.toMutableObject()
+                    : source;
 
         this.data =
-            data || {};
+            cloneState(
+                raw || {}
+            ) || {};
 
         this.players =
-            this.data.players ||
-            this.data.joueurs ||
+            this.data.players ??
+            this.data.joueurs ??
             [];
 
         this.table =
-            this.data.table ||
-            this.data.cartesTable ||
+            this.data.table ??
+            this.data.cartesTable ??
             [];
 
         this.discard =
-            this.data.discard ||
-            this.data.defausse ||
-            this.data.defaussePouvoirs ||
+            this.data.discard ??
+            this.data.defausse ??
+            this.data.defaussePouvoirs ??
             [];
 
         this.deckCount =
@@ -283,7 +281,7 @@ export class VirtualGameState {
             null;
 
         this.roundEnded =
-            !!(
+            Boolean(
                 this.data.roundEnded ??
                 this.data.mancheTerminee
             );
@@ -299,32 +297,41 @@ export class VirtualGameState {
 
         this.scoreDelta = {};
 
-        for (let i = 0; i < this.players.length; i += 1) {
+        for (
+            let i = 0;
+            i < this.players.length;
+            i += 1
+        ) {
             this.scoreDelta[i] = 0;
         }
     }
+
 
     get playerList() {
         return this.players;
     }
 
+
     getPlayer(index) {
         return (
-            this.players[index] ||
+            this.players[index] ??
             null
         );
     }
 
-    getScore(index) {
-        const player =
-            this.getPlayer(index);
 
+    getScore(index) {
         return Number(
-            player?.score || 0
+            this.getPlayer(index)?.score ??
+            0
         );
     }
 
-    setScore(index, score) {
+
+    setScore(
+        index,
+        score
+    ) {
         const player =
             this.getPlayer(index);
 
@@ -333,24 +340,34 @@ export class VirtualGameState {
         }
 
         const oldScore =
-            Number(player.score || 0);
+            Number(
+                player.score ?? 0
+            );
 
         const next =
-            Number(score || 0);
+            Number(
+                score ?? 0
+            );
 
-        player.score = next;
+        player.score =
+            next;
 
         this.scoreDelta[index] =
             next - oldScore;
     }
 
-    addScore(index, amount) {
+
+    addScore(
+        index,
+        amount
+    ) {
         this.setScore(
             index,
             this.getScore(index) +
                 Number(amount || 0)
         );
     }
+
 
     getHand(index) {
         const player =
@@ -360,13 +377,18 @@ export class VirtualGameState {
             return [];
         }
 
-        return ensureArray(
+        return (
             player.main ??
-            player.hand
+            player.hand ??
+            []
         );
     }
 
-    setHand(index, hand) {
+
+    setHand(
+        index,
+        hand
+    ) {
         const player =
             this.getPlayer(index);
 
@@ -374,19 +396,24 @@ export class VirtualGameState {
             return;
         }
 
-        if ("main" in player) {
-            player.main = hand;
+        if (
+            "main" in player
+        ) {
+            player.main =
+                hand;
         } else {
-            player.hand = hand;
+            player.hand =
+                hand;
         }
 
         player.cardCount =
             hand.length;
     }
 
+
     removeHandCard(
         playerIndex,
-        cardIndex
+        index
     ) {
         const hand =
             this.getHand(
@@ -394,25 +421,27 @@ export class VirtualGameState {
             );
 
         if (
-            cardIndex < 0 ||
-            cardIndex >= hand.length
+            !Number.isInteger(index) ||
+            index < 0 ||
+            index >= hand.length
         ) {
             return null;
         }
 
-        const [card] =
+        const removed =
             hand.splice(
-                cardIndex,
+                index,
                 1
-            );
+            )[0];
 
         this.setHand(
             playerIndex,
             hand
         );
 
-        return card;
+        return removed;
     }
+
 
     addHandCard(
         playerIndex,
@@ -423,7 +452,9 @@ export class VirtualGameState {
                 playerIndex
             );
 
-        hand.push(card);
+        hand.push(
+            card
+        );
 
         this.setHand(
             playerIndex,
@@ -431,12 +462,17 @@ export class VirtualGameState {
         );
     }
 
+
     addTableCard(card) {
-        this.table.push(card);
+        this.table.push(
+            card
+        );
     }
+
 
     removeTableCard(index) {
         if (
+            !Number.isInteger(index) ||
             index < 0 ||
             index >= this.table.length
         ) {
@@ -449,29 +485,35 @@ export class VirtualGameState {
         )[0];
     }
 
+
     addDiscardCard(card) {
-        this.discard.push(card);
+        this.discard.push(
+            card
+        );
     }
 
+
     drawUnknownCard() {
-        /*
-         * Nous ne révélons jamais une carte inconnue.
-         *
-         * Le nombre de cartes du paquet diminue,
-         * mais aucune valeur n'est inventée.
-         */
-        if (this.deckCount <= 0) {
+        if (
+            this.deckCount <= 0
+        ) {
             return null;
         }
 
         this.deckCount -= 1;
 
+        /*
+         * La carte n'est volontairement
+         * pas ajoutée à une main :
+         *
+         * sa valeur est inconnue.
+         */
         return {
             value: null,
-            unknown: true,
-            possibleValues: null
+            unknown: true
         };
     }
+
 
     revealInformation(info) {
         this.revealedInformation.push(
@@ -479,39 +521,47 @@ export class VirtualGameState {
         );
     }
 
-    event(type, data = {}) {
+
+    event(
+        type,
+        data = {}
+    ) {
         this.events.push({
             type,
             ...data
         });
     }
 
+
+    setAction(action) {
+        this.action =
+            action;
+    }
+
+
+    setTarget(target) {
+        this.target =
+            target;
+    }
+
+
     advanceTurn() {
-        if (!this.players.length) {
+        if (
+            !this.players.length
+        ) {
             return;
         }
 
         this.currentPlayer =
             (
                 this.currentPlayer + 1
-            ) % this.players.length;
+            ) %
+            this.players.length;
 
         this.action = null;
         this.target = null;
     }
 
-    setCurrentPlayer(index) {
-        this.currentPlayer =
-            Number(index);
-    }
-
-    setAction(action) {
-        this.action = action;
-    }
-
-    setTarget(target) {
-        this.target = target;
-    }
 
     checkEndConditions() {
         const target =
@@ -524,14 +574,15 @@ export class VirtualGameState {
             i < this.players.length;
             i += 1
         ) {
-            const score =
-                this.getScore(i);
-
             if (
-                score === target
+                this.getScore(i) ===
+                target
             ) {
-                this.roundEnded = true;
-                this.winner = i;
+                this.roundEnded =
+                    true;
+
+                this.winner =
+                    i;
 
                 this.event(
                     "round-ended",
@@ -545,17 +596,9 @@ export class VirtualGameState {
             }
         }
 
-        /*
-         * Au-dessus de la cible :
-         * la manche n'est pas gagnée immédiatement.
-         *
-         * La règle de fin dépend de la partie réelle.
-         * On conserve donc l'état sans inventer
-         * de victoire automatique.
-         */
-
         return false;
     }
+
 
     signature() {
         return JSON.stringify({
@@ -564,11 +607,13 @@ export class VirtualGameState {
                     player => ({
                         score:
                             player.score,
+
                         cardCount:
                             player.cardCount ??
                             player.main?.length ??
                             player.hand?.length ??
                             0,
+
                         main:
                             Array.isArray(
                                 player.main
@@ -582,33 +627,43 @@ export class VirtualGameState {
                                 : null
                     })
                 ),
+
             table:
                 this.table.map(
                     card => ({
                         value:
                             cardValue(card),
+
                         owner:
-                            cardOwner(card)
+                            getCardOwner(card)
                     })
                 ),
+
             discard:
                 this.discard.map(
                     cardValue
                 ),
+
             deckCount:
                 this.deckCount,
+
             currentPlayer:
                 this.currentPlayer,
+
             action:
                 this.action,
+
             target:
                 this.target,
+
             roundEnded:
                 this.roundEnded,
+
             winner:
                 this.winner
         });
     }
+
 
     toMutableObject() {
         return {
@@ -646,10 +701,12 @@ export class VirtualGameState {
 
 
 /* =========================================================
- * ACTION NORMALIZATION
+ * NORMALISATION DES ACTIONS
  * ========================================================= */
 
-function normalizeAction(action) {
+function normalizeAction(
+    action
+) {
     if (!action) {
         return null;
     }
@@ -658,232 +715,161 @@ function normalizeAction(action) {
         ...action,
 
         type:
-            action.type ||
-            action.kind ||
+            action.type ??
+            action.kind ??
             ACTION_TYPES.EFFECT,
 
-        cardIndex:
-            action.cardIndex ?? null,
-
         card:
-            action.card ?? null,
+            action.card ??
+            null,
 
-        cards:
-            Array.isArray(action.cards)
-                ? action.cards
+        cardIndex:
+            action.cardIndex ??
+            null,
+
+        indices:
+            Array.isArray(
+                action.indices
+            )
+                ? [...action.indices]
                 : [],
 
         target:
-            action.target ?? null,
+            action.target ??
+            null,
 
         effect:
-            action.effect ?? null,
+            action.effect ??
+            null,
 
         value:
-            action.value ?? null,
+            action.value ??
+            null,
 
-        tableCard:
-            action.tableCard ?? null,
+        tableCardIndex:
+            action.tableCardIndex ??
+            null,
 
-        tableCards:
+        tableCardIndices:
             Array.isArray(
-                action.tableCards
+                action.tableCardIndices
             )
-                ? action.tableCards
+                ? [...action.tableCardIndices]
+                : [],
+
+        ownTableCardIndex:
+            action.ownTableCardIndex ??
+            null,
+
+        targetTableCardIndex:
+            action.targetTableCardIndex ??
+            null,
+
+        ownTableCardIndices:
+            Array.isArray(
+                action.ownTableCardIndices
+            )
+                ? [...action.ownTableCardIndices]
+                : [],
+
+        targetTableCardIndices:
+            Array.isArray(
+                action.targetTableCardIndices
+            )
+                ? [...action.targetTableCardIndices]
                 : [],
 
         metadata:
-            action.metadata || {},
-
-        parameters:
-            action.parameters || {}
+            action.metadata ??
+            {}
     };
 }
 
 
 /* =========================================================
- * CARTES EN MAIN
+ * CARTES DE TABLE
  * ========================================================= */
 
-function resolveCardIndices(
+function getOwnedPointCards(
     state,
-    action
-) {
-    const index =
-        Number(action.cardIndex);
-
-    if (
-        Number.isInteger(index) &&
-        index >= 0
-    ) {
-        return [index];
-    }
-
-    const card =
-        cardValue(
-            action.card
-        );
-
-    if (card == null) {
-        return [];
-    }
-
-    const hand =
-        state.getHand(
-            state.currentPlayer
-        );
-
-    const found = [];
-
-    for (
-        let i = 0;
-        i < hand.length;
-        i += 1
-    ) {
-        if (
-            cardValue(hand[i]) === card
-        ) {
-            found.push(i);
-        }
-    }
-
-    return found;
-}
-
-function removeCardsFromHand(
-    state,
-    playerIndex,
-    indices
-) {
-    const sorted =
-        [...indices]
-            .filter(
-                Number.isInteger
-            )
-            .sort(
-                (a, b) => b - a
-            );
-
-    const removed = [];
-
-    for (const index of sorted) {
-        const card =
-            state.removeHandCard(
-                playerIndex,
-                index
-            );
-
-        if (card != null) {
-            removed.push(card);
-        }
-    }
-
-    return removed;
-}
-
-
-/* =========================================================
- * TABLE / SCORE
- * ========================================================= */
-
-function tableOwner(card) {
-    return cardOwner(card);
-}
-
-function findTableCardIndex(
-    state,
-    playerIndex,
-    value,
-    fromLatest = true
-) {
-    const table =
-        state.table;
-
-    const indices = [];
-
-    for (
-        let i = 0;
-        i < table.length;
-        i += 1
-    ) {
-        const card =
-            table[i];
-
-        const owner =
-            tableOwner(card);
-
-        const cardValueNumber =
-            number(
-                cardValue(card)
-            );
-
-        if (
-            Number(owner) ===
-                Number(playerIndex) &&
-            cardValueNumber ===
-                Number(value)
-        ) {
-            indices.push(i);
-        }
-    }
-
-    if (!indices.length) {
-        return -1;
-    }
-
-    return fromLatest
-        ? indices[indices.length - 1]
-        : indices[0];
-}
-
-function getLatestOwnedPointCards(
-    state,
-    playerIndex,
-    count = 1
+    playerIndex
 ) {
     const result = [];
 
     for (
-        let i = state.table.length - 1;
-        i >= 0 &&
-        result.length < count;
-        i -= 1
+        let i = 0;
+        i < state.table.length;
+        i += 1
     ) {
         const card =
             state.table[i];
 
         if (
             Number(
-                tableOwner(card)
-            ) === Number(playerIndex) &&
-            isPointCard(card)
+                getCardOwner(card)
+            ) !==
+            Number(playerIndex)
         ) {
-            result.push({
-                card,
-                index: i
-            });
+            continue;
         }
+
+        if (
+            !isPointCard(card)
+        ) {
+            continue;
+        }
+
+        result.push({
+            index: i,
+            card
+        });
     }
 
     return result;
 }
+
+
+function getLatestOwnedPointCards(
+    state,
+    playerIndex,
+    count = 1
+) {
+    const all =
+        getOwnedPointCards(
+            state,
+            playerIndex
+        );
+
+    return all
+        .slice(
+            Math.max(
+                0,
+                all.length - count
+            )
+        )
+        .reverse();
+}
+
 
 function removeTableIndices(
     state,
     indices
 ) {
     const sorted =
-        [...indices]
-            .filter(
+        [...new Set(
+            indices.filter(
                 Number.isInteger
             )
+        )]
             .sort(
                 (a, b) => b - a
             );
 
     const removed = [];
 
-    for (const index of sorted) {
+    for (
+        const index of sorted
+    ) {
         const card =
             state.removeTableCard(
                 index
@@ -891,8 +877,8 @@ function removeTableIndices(
 
         if (card != null) {
             removed.push({
-                card,
-                index
+                index,
+                card
             });
         }
     }
@@ -900,7 +886,8 @@ function removeTableIndices(
     return removed;
 }
 
-function addScoreCard(
+
+function addOwnedTableCard(
     state,
     playerIndex,
     card
@@ -920,51 +907,154 @@ function addScoreCard(
 
 
 /* =========================================================
+ * ACTION CARD INDICES
+ * ========================================================= */
+
+function getSingleCardIndex(
+    state,
+    action
+) {
+    const index =
+        Number(
+            action.cardIndex
+        );
+
+    if (
+        Number.isInteger(index) &&
+        index >= 0
+    ) {
+        return index;
+    }
+
+    const card =
+        cardValue(
+            action.card
+        );
+
+    if (card == null) {
+        return -1;
+    }
+
+    const hand =
+        state.getHand(
+            state.currentPlayer
+        );
+
+    return hand.findIndex(
+        item =>
+            sameCardValue(
+                item,
+                card
+            )
+    );
+}
+
+
+function getDoubleCardIndices(
+    state,
+    action
+) {
+    if (
+        Array.isArray(
+            action.indices
+        ) &&
+        action.indices.length >= 2
+    ) {
+        return [
+            Number(
+                action.indices[0]
+            ),
+            Number(
+                action.indices[1]
+            )
+        ];
+    }
+
+    const card =
+        cardValue(
+            action.card
+        );
+
+    const hand =
+        state.getHand(
+            state.currentPlayer
+        );
+
+    const result = [];
+
+    for (
+        let i = 0;
+        i < hand.length &&
+        result.length < 2;
+        i += 1
+    ) {
+        if (
+            sameCardValue(
+                hand[i],
+                card
+            )
+        ) {
+            result.push(i);
+        }
+    }
+
+    return result;
+}
+
+
+/* =========================================================
  * 1
  * ========================================================= */
 
-function applyCard1(
+function apply1(
     state,
     action
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    const latest =
+    const candidates =
         getLatestOwnedPointCards(
             state,
             target,
             1
         );
 
-    if (!latest.length) {
+    if (!candidates.length) {
         state.event(
-            "card-1-no-target-card",
+            "card-1-no-card",
             { target }
         );
+
+        state.drawUnknownCard();
 
         return;
     }
 
-    const {
-        card,
-        index
-    } = latest[0];
+    const index =
+        candidates[0].index;
 
-    state.removeTableCard(
-        index
-    );
+    const card =
+        state.removeTableCard(
+            index
+        );
 
-    state.addDiscardCard(
-        cloneCard(card)
-    );
+    if (!card) {
+        return;
+    }
 
     state.addHandCard(
         state.currentPlayer,
+        cloneCard(card)
+    );
+
+    state.addDiscardCard(
         cloneCard(card)
     );
 
@@ -973,7 +1063,9 @@ function applyCard1(
         {
             player:
                 state.currentPlayer,
+
             target,
+
             card:
                 cardValue(card)
         }
@@ -983,10 +1075,6 @@ function applyCard1(
 }
 
 
-/* =========================================================
- * DOUBLE 1
- * ========================================================= */
-
 function applyDouble1(
     state,
     action
@@ -994,23 +1082,21 @@ function applyDouble1(
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    const latest =
+    const cards =
         getLatestOwnedPointCards(
             state,
             target,
             2
         );
 
-    if (!latest.length) {
-        return;
-    }
-
     const indices =
-        latest.map(
+        cards.map(
             item => item.index
         );
 
@@ -1020,7 +1106,9 @@ function applyDouble1(
             indices
         );
 
-    for (const item of removed) {
+    for (
+        const item of removed
+    ) {
         state.addHandCard(
             state.currentPlayer,
             cloneCard(item.card)
@@ -1036,7 +1124,9 @@ function applyDouble1(
         {
             player:
                 state.currentPlayer,
+
             target,
+
             count:
                 removed.length
         }
@@ -1050,31 +1140,33 @@ function applyDouble1(
  * 3
  * ========================================================= */
 
-function applyCard3(
+function apply3(
     state,
-    action
+    action,
+    amount = -20
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    const amount =
+    const delta =
         Number(
             action.value ??
-            action.metadata?.amount ??
-            -20
+            amount
         );
 
     state.addScore(
         target,
-        amount
+        delta
     );
 
     state.addTableCard({
-        value: amount,
+        value: delta,
         owner: target,
         linked: true,
         sourceCard: 3
@@ -1085,57 +1177,10 @@ function applyCard3(
         {
             player:
                 state.currentPlayer,
+
             target,
-            amount
-        }
-    );
 
-    state.drawUnknownCard();
-}
-
-
-/* =========================================================
- * DOUBLE 3
- * ========================================================= */
-
-function applyDouble3(
-    state,
-    action
-) {
-    const target =
-        Number(action.target);
-
-    if (!Number.isInteger(target)) {
-        return;
-    }
-
-    const amount =
-        Number(
-            action.value ??
-            action.metadata?.amount ??
-            -40
-        );
-
-    state.addScore(
-        target,
-        amount
-    );
-
-    state.addTableCard({
-        value: amount,
-        owner: target,
-        linked: true,
-        sourceCard: 3,
-        double: true
-    });
-
-    state.event(
-        "double-3",
-        {
-            player:
-                state.currentPlayer,
-            target,
-            amount
+            amount: delta
         }
     );
 
@@ -1153,12 +1198,18 @@ function swapHands(
     playerB
 ) {
     const handA =
-        state.getHand(playerA)
-            .map(cloneCard);
+        state.getHand(
+            playerA
+        ).map(
+            cloneCard
+        );
 
     const handB =
-        state.getHand(playerB)
-            .map(cloneCard);
+        state.getHand(
+            playerB
+        ).map(
+            cloneCard
+        );
 
     state.setHand(
         playerA,
@@ -1171,14 +1222,17 @@ function swapHands(
     );
 }
 
-function applyCard9(
+
+function apply9(
     state,
     action
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
@@ -1189,54 +1243,29 @@ function applyCard9(
     );
 
     state.event(
-        "card-9-swap-hands",
+        "card-9-swap",
         {
             player:
                 state.currentPlayer,
+
             target
         }
     );
 
-    state.drawUnknownCard();
-}
-
-
-/* =========================================================
- * DOUBLE 9
- * ========================================================= */
-
-function applyDouble9(
-    state,
-    action
-) {
-    const target =
-        Number(action.target);
-
-    if (!Number.isInteger(target)) {
-        return;
+    /*
+     * Double9 révèle les mains concernées
+     * au joueur qui possède le Double9.
+     */
+    if (
+        action.metadata?.double9Reveal
+    ) {
+        state.revealInformation({
+            type: "double9",
+            player:
+                state.currentPlayer,
+            target
+        });
     }
-
-    swapHands(
-        state,
-        state.currentPlayer,
-        target
-    );
-
-    state.revealInformation({
-        type: "double9",
-        player:
-            state.currentPlayer,
-        target
-    });
-
-    state.event(
-        "double-9-swap-hands",
-        {
-            player:
-                state.currentPlayer,
-            target
-        }
-    );
 
     state.drawUnknownCard();
 }
@@ -1246,16 +1275,24 @@ function applyDouble9(
  * 11
  * ========================================================= */
 
-function applyCard11(
-    state
+function apply11(
+    state,
+    action,
+    amount = 10
 ) {
+    const delta =
+        Number(
+            action.value ??
+            amount
+        );
+
     state.addScore(
         state.currentPlayer,
-        10
+        delta
     );
 
     state.addTableCard({
-        value: 10,
+        value: delta,
         owner:
             state.currentPlayer,
         linked: true,
@@ -1267,41 +1304,8 @@ function applyCard11(
         {
             player:
                 state.currentPlayer,
-            amount: 10
-        }
-    );
 
-    state.drawUnknownCard();
-}
-
-
-/* =========================================================
- * DOUBLE 11
- * ========================================================= */
-
-function applyDouble11(
-    state
-) {
-    state.addScore(
-        state.currentPlayer,
-        20
-    );
-
-    state.addTableCard({
-        value: 20,
-        owner:
-            state.currentPlayer,
-        linked: true,
-        sourceCard: 11,
-        double: true
-    });
-
-    state.event(
-        "double-11",
-        {
-            player:
-                state.currentPlayer,
-            amount: 20
+            amount: delta
         }
     );
 
@@ -1313,66 +1317,102 @@ function applyDouble11(
  * 13
  * ========================================================= */
 
-function applyCard13(
+function resolve13Index(
     state,
     action
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
-        return;
+    if (
+        !Number.isInteger(target)
+    ) {
+        return -1;
     }
 
     /*
-     * La carte 13 vole une carte de score
-     * visible chez l'adversaire.
+     * Le générateur donne directement l'index.
      */
-    const candidates =
+    if (
+        Number.isInteger(
+            Number(
+                action.tableCardIndex
+            )
+        )
+    ) {
+        const index =
+            Number(
+                action.tableCardIndex
+            );
+
+        const card =
+            state.table[index];
+
+        if (
+            card &&
+            Number(
+                getCardOwner(card)
+            ) === target &&
+            isPointCard(card)
+        ) {
+            return index;
+        }
+    }
+
+    /*
+     * Fallback uniquement pour compatibilité.
+     */
+    return (
         getLatestOwnedPointCards(
             state,
             target,
             1
+        )[0]?.index ??
+        -1
+    );
+}
+
+
+function apply13(
+    state,
+    action
+) {
+    const target =
+        Number(action.target);
+
+    if (
+        !Number.isInteger(target)
+    ) {
+        return;
+    }
+
+    const index =
+        resolve13Index(
+            state,
+            action
         );
 
-    if (!candidates.length) {
-        state.event(
-            "card-13-no-card",
-            { target }
-        );
-
+    if (
+        index < 0
+    ) {
         state.drawUnknownCard();
 
         return;
     }
 
-    const selected =
-        action.tableCard != null
-            ? findTableCardIndex(
-                state,
-                target,
-                action.tableCard
-            )
-            : candidates[0].index;
-
-    const index =
-        selected >= 0
-            ? selected
-            : candidates[0].index;
-
-    const removed =
+    const card =
         state.removeTableCard(
             index
         );
 
-    if (!removed) {
+    if (!card) {
         return;
     }
 
-    addScoreCard(
+    addOwnedTableCard(
         state,
         state.currentPlayer,
-        removed
+        card
     );
 
     state.event(
@@ -1380,9 +1420,11 @@ function applyCard13(
         {
             player:
                 state.currentPlayer,
+
             target,
+
             card:
-                cardValue(removed)
+                cardValue(card)
         }
     );
 
@@ -1390,9 +1432,64 @@ function applyCard13(
 }
 
 
-/* =========================================================
- * DOUBLE 13
- * ========================================================= */
+function resolveDouble13Indices(
+    state,
+    action
+) {
+    const target =
+        Number(action.target);
+
+    if (
+        !Number.isInteger(target)
+    ) {
+        return [];
+    }
+
+    /*
+     * Le générateur donne les indices exacts.
+     */
+    const explicit =
+        ensureArray(
+            action.tableCardIndices
+        )
+            .map(Number)
+            .filter(
+                Number.isInteger
+            );
+
+    if (
+        explicit.length
+    ) {
+        return explicit
+            .filter(
+                index => {
+                    const card =
+                        state.table[index];
+
+                    return (
+                        card &&
+                        Number(
+                            getCardOwner(card)
+                        ) === target &&
+                        isPointCard(card)
+                    );
+                }
+            )
+            .slice(0, 2);
+    }
+
+    /*
+     * Compatibilité.
+     */
+    return getLatestOwnedPointCards(
+        state,
+        target,
+        2
+    ).map(
+        item => item.index
+    );
+}
+
 
 function applyDouble13(
     state,
@@ -1401,44 +1498,17 @@ function applyDouble13(
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    let indices = [];
-
-    if (
-        Array.isArray(
-            action.tableCards
-        ) &&
-        action.tableCards.length
-    ) {
-        for (const value of action.tableCards) {
-            const index =
-                findTableCardIndex(
-                    state,
-                    target,
-                    value
-                );
-
-            if (index >= 0) {
-                indices.push(index);
-            }
-        }
-    } else {
-        indices =
-            getLatestOwnedPointCards(
-                state,
-                target,
-                2
-            ).map(
-                item => item.index
-            );
-    }
-
-    indices =
-        [...new Set(indices)]
-            .slice(0, 2);
+    const indices =
+        resolveDouble13Indices(
+            state,
+            action
+        );
 
     const removed =
         removeTableIndices(
@@ -1446,8 +1516,10 @@ function applyDouble13(
             indices
         );
 
-    for (const item of removed) {
-        addScoreCard(
+    for (
+        const item of removed
+    ) {
+        addOwnedTableCard(
             state,
             state.currentPlayer,
             item.card
@@ -1459,7 +1531,9 @@ function applyDouble13(
         {
             player:
                 state.currentPlayer,
+
             target,
+
             count:
                 removed.length
         }
@@ -1473,176 +1547,149 @@ function applyDouble13(
  * 15
  * ========================================================= */
 
-function applyCard15(
+function resolve15Index(
     state,
     action
 ) {
     const index =
         Number(
-            action.tableCardIndex ??
-            action.metadata?.tableCardIndex ??
-            action.tableCard
+            action.tableCardIndex
         );
 
-    if (!Number.isInteger(index)) {
-        return;
+    if (
+        !Number.isInteger(index)
+    ) {
+        return -1;
     }
 
     const card =
         state.table[index];
 
     if (!card) {
-        return;
+        return -1;
     }
 
     if (
         Number(
-            cardOwner(card)
+            getCardOwner(card)
         ) !==
-        Number(state.currentPlayer)
+        Number(
+            state.currentPlayer
+        )
     ) {
-        return;
+        return -1;
     }
-
-    const value =
-        number(
-            cardValue(card)
-        );
 
     if (
-        value === null ||
-        value === 0
+        !isPointCard(card)
     ) {
-        return;
+        return -1;
     }
 
-    /*
-     * Carte personnelle doublée :
-     * valeur x2.
-     */
-    const next =
-        value * 2;
-
-    const updated =
-        cloneCard(card);
-
-    if ("value" in updated) {
-        updated.value = next;
-    }
-
-    if ("valeur" in updated) {
-        updated.valeur = next;
-    }
-
-    updated.linked =
-        updated.linked ?? true;
-
-    updated.sourceCard = 15;
-
-    state.table[index] =
-        updated;
-
-    state.addScore(
-        state.currentPlayer,
-        value
-    );
-
-    state.event(
-        "card-15",
-        {
-            player:
-                state.currentPlayer,
-            oldValue: value,
-            newValue: next
-        }
-    );
-
-    state.drawUnknownCard();
+    return index;
 }
 
 
-/* =========================================================
- * DOUBLE 15
- * ========================================================= */
+function updateTableCardValue(
+    card,
+    value
+) {
+    const copy =
+        cloneCard(card);
 
-function applyDouble15(
+    if (
+        "value" in copy
+    ) {
+        copy.value =
+            value;
+    }
+
+    if (
+        "valeur" in copy
+    ) {
+        copy.valeur =
+            value;
+    }
+
+    if (
+        !("value" in copy) &&
+        !("valeur" in copy)
+    ) {
+        copy.value =
+            value;
+    }
+
+    return copy;
+}
+
+
+function apply15(
     state,
-    action
+    action,
+    multiplier = 2
 ) {
     const index =
-        Number(
-            action.tableCardIndex ??
-            action.metadata?.tableCardIndex ??
-            action.tableCard
+        resolve15Index(
+            state,
+            action
         );
 
-    if (!Number.isInteger(index)) {
+    if (
+        index < 0
+    ) {
         return;
     }
 
     const card =
         state.table[index];
 
-    if (!card) {
-        return;
-    }
-
-    if (
-        Number(
-            cardOwner(card)
-        ) !==
-        Number(state.currentPlayer)
-    ) {
-        return;
-    }
-
-    const value =
-        number(
+    const oldValue =
+        toNumber(
             cardValue(card)
         );
 
     if (
-        value === null ||
-        value === 0
+        oldValue === null ||
+        oldValue === 0
     ) {
         return;
     }
 
-    const next =
-        value * 3;
-
-    const updated =
-        cloneCard(card);
-
-    if ("value" in updated) {
-        updated.value = next;
-    }
-
-    if ("valeur" in updated) {
-        updated.valeur = next;
-    }
-
-    updated.linked =
-        updated.linked ?? true;
-
-    updated.sourceCard = 15;
-    updated.double = true;
+    const newValue =
+        oldValue *
+        multiplier;
 
     state.table[index] =
-        updated;
+        updateTableCardValue(
+            card,
+            newValue
+        );
 
+    /*
+     * Seule la différence est ajoutée :
+     *
+     * 10 → 20 = +10
+     * 10 → 30 = +20
+     */
     state.addScore(
         state.currentPlayer,
-        value * 2
+        newValue - oldValue
     );
 
     state.event(
-        "double-15",
+        multiplier === 3
+            ? "double-15"
+            : "card-15",
         {
             player:
                 state.currentPlayer,
-            oldValue: value,
-            newValue: next
+
+            tableCardIndex:
+                index,
+
+            oldValue,
+
+            newValue
         }
     );
 
@@ -1654,19 +1701,23 @@ function applyDouble15(
  * 17
  * ========================================================= */
 
-function applyCard17(
+function apply17(
     state,
     action
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
     const hand =
-        state.getHand(target);
+        state.getHand(
+            target
+        );
 
     if (!hand.length) {
         state.event(
@@ -1679,78 +1730,50 @@ function applyCard17(
         return;
     }
 
-    let selectedIndex =
-        Number(
-            action.cardIndex ??
-            action.metadata?.stolenCardIndex
+    /*
+     * L'index adverse n'est PAS exploité
+     * lorsque la carte est encore inconnue.
+     *
+     * On choisit une carte abstraite parmi les
+     * possibilités sans révéler sa valeur.
+     */
+    const stolen =
+        state.removeHandCard(
+            target,
+            0
         );
 
-    /*
-     * Avant le vol, la carte est inconnue.
-     *
-     * Si aucune sélection n'est fournie,
-     * la simulation conserve une carte inconnue
-     * plutôt que de regarder la main adverse.
-     */
-    if (
-        !Number.isInteger(
-            selectedIndex
-        )
-    ) {
-        selectedIndex = 0;
-
-        const stolen =
-            state.removeHandCard(
-                target,
-                selectedIndex
-            );
-
-        if (stolen) {
-            const hidden =
-                cloneCard(stolen);
-
-            hidden.value = null;
-            hidden.unknown = true;
-
-            state.addHandCard(
-                state.currentPlayer,
-                hidden
-            );
-
-            state.revealInformation({
-                type: "card17-hidden",
-                target,
-                player:
-                    state.currentPlayer
-            });
-        }
-    } else {
-        const stolen =
-            state.removeHandCard(
-                target,
-                selectedIndex
-            );
-
-        if (stolen) {
-            state.addHandCard(
-                state.currentPlayer,
-                cloneCard(stolen)
-            );
-
-            state.revealInformation({
-                type: "card17-revealed",
-                target,
-                card:
-                    cardValue(stolen)
-            });
-        }
+    if (!stolen) {
+        return;
     }
+
+    const hiddenCard = {
+        unknown: true,
+        possibleValues: null,
+        source: "card17",
+        hiddenOriginal:
+            cloneCard(stolen)
+    };
+
+    state.addHandCard(
+        state.currentPlayer,
+        hiddenCard
+    );
+
+    state.revealInformation({
+        type: "hidden-card-stolen",
+        source: 17,
+        player:
+            state.currentPlayer,
+        target
+    });
 
     state.event(
         "card-17-steal",
         {
             player:
                 state.currentPlayer,
+
             target
         }
     );
@@ -1770,30 +1793,25 @@ function applyDouble17(
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
     const hand =
-        state.getHand(target);
+        state.getHand(
+            target
+        );
 
     if (!hand.length) {
         return;
     }
 
-    const requested =
-        Array.isArray(
-            action.cards
-        )
-            ? action.cards
-            : [];
-
     const count =
         Math.min(
             2,
-            hand.length,
-            requested.length ||
-                1
+            hand.length
         );
 
     const stolen = [];
@@ -1803,13 +1821,6 @@ function applyDouble17(
         i < count;
         i += 1
     ) {
-        /*
-         * La carte réellement choisie est inconnue
-         * avant sa révélation.
-         *
-         * On retire une carte abstraite sans
-         * regarder sa valeur.
-         */
         const card =
             state.removeHandCard(
                 target,
@@ -1820,68 +1831,41 @@ function applyDouble17(
             continue;
         }
 
-        stolen.push(
-            cloneCard(card)
-        );
-    }
-
-    /*
-     * Si l'action contient explicitement les cartes
-     * révélées, on les conserve.
-     *
-     * Sinon, elles restent marquées inconnues.
-     */
-    for (
-        let i = 0;
-        i < stolen.length;
-        i += 1
-    ) {
-        const card =
-            stolen[i];
-
-        const requestedCard =
-            requested[i];
-
-        if (
-            requestedCard != null
-        ) {
-            const value =
-                cardValue(
-                    requestedCard
-                );
-
-            if (value != null) {
-                if ("value" in card) {
-                    card.value = value;
-                }
-
-                if ("valeur" in card) {
-                    card.valeur = value;
-                }
-
-                delete card.unknown;
-
-                state.revealInformation({
-                    type: "double17-reveal",
-                    target,
-                    index: i,
-                    card: value
-                });
-            }
-        }
+        const hidden = {
+            unknown: true,
+            possibleValues: null,
+            source: "double17",
+            hiddenOriginal:
+                cloneCard(card)
+        };
 
         state.addHandCard(
             state.currentPlayer,
-            card
+            hidden
+        );
+
+        stolen.push(
+            hidden
         );
     }
+
+    state.revealInformation({
+        type: "double17-cards-stolen",
+        player:
+            state.currentPlayer,
+        target,
+        count:
+            stolen.length
+    });
 
     state.event(
         "double-17-steal",
         {
             player:
                 state.currentPlayer,
+
             target,
+
             count:
                 stolen.length
         }
@@ -1895,113 +1879,157 @@ function applyDouble17(
  * 19
  * ========================================================= */
 
-function exchangeTableCards(
+function resolve19Pair(
     state,
-    playerA,
-    playerB,
-    count = 1
+    action
 ) {
+    const ownIndex =
+        Number(
+            action.ownTableCardIndex
+        );
+
+    const targetIndex =
+        Number(
+            action.targetTableCardIndex
+        );
+
+    if (
+        Number.isInteger(ownIndex) &&
+        Number.isInteger(targetIndex)
+    ) {
+        const ownCard =
+            state.table[ownIndex];
+
+        const targetCard =
+            state.table[targetIndex];
+
+        if (
+            ownCard &&
+            targetCard &&
+            Number(
+                getCardOwner(ownCard)
+            ) ===
+                Number(
+                    state.currentPlayer
+                ) &&
+            Number(
+                getCardOwner(targetCard)
+            ) ===
+                Number(
+                    action.target
+                )
+        ) {
+            return {
+                ownIndex,
+                targetIndex
+            };
+        }
+    }
+
     const own =
         getLatestOwnedPointCards(
             state,
-            playerA,
-            count
-        );
+            state.currentPlayer,
+            1
+        )[0];
 
     const target =
         getLatestOwnedPointCards(
             state,
-            playerB,
-            count
-        );
+            action.target,
+            1
+        )[0];
 
-    const amount =
-        Math.min(
-            own.length,
-            target.length,
-            count
-        );
-
-    for (
-        let i = 0;
-        i < amount;
-        i += 1
+    if (
+        !own ||
+        !target
     ) {
-        const ownIndex =
-            own[i].index;
-
-        const targetIndex =
-            target[i].index;
-
-        /*
-         * Les indices peuvent changer lorsqu'on
-         * modifie le tableau.
-         *
-         * On récupère donc directement les cartes
-         * avant toute suppression.
-         */
-        const ownCard =
-            cloneCard(
-                state.table[
-                    ownIndex
-                ]
-            );
-
-        const targetCard =
-            cloneCard(
-                state.table[
-                    targetIndex
-                ]
-            );
-
-        setCardOwner(
-            ownCard,
-            playerB
-        );
-
-        setCardOwner(
-            targetCard,
-            playerA
-        );
-
-        state.table[
-            ownIndex
-        ] = targetCard;
-
-        state.table[
-            targetIndex
-        ] = ownCard;
+        return null;
     }
 
-    return amount;
+    return {
+        ownIndex:
+            own.index,
+
+        targetIndex:
+            target.index
+    };
 }
 
-function applyCard19(
+
+function apply19(
     state,
     action
 ) {
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    const count =
-        exchangeTableCards(
+    const pair =
+        resolve19Pair(
             state,
-            state.currentPlayer,
-            target,
-            1
+            action
         );
+
+    if (!pair) {
+        state.drawUnknownCard();
+
+        return;
+    }
+
+    const {
+        ownIndex,
+        targetIndex
+    } = pair;
+
+    const ownCard =
+        cloneCard(
+            state.table[
+                ownIndex
+            ]
+        );
+
+    const targetCard =
+        cloneCard(
+            state.table[
+                targetIndex
+            ]
+        );
+
+    setCardOwner(
+        ownCard,
+        target
+    );
+
+    setCardOwner(
+        targetCard,
+        state.currentPlayer
+    );
+
+    state.table[
+        ownIndex
+    ] = targetCard;
+
+    state.table[
+        targetIndex
+    ] = ownCard;
 
     state.event(
         "card-19-exchange",
         {
             player:
                 state.currentPlayer,
+
             target,
-            count
+
+            ownIndex,
+
+            targetIndex
         }
     );
 
@@ -2009,9 +2037,98 @@ function applyCard19(
 }
 
 
-/* =========================================================
- * DOUBLE 19
- * ========================================================= */
+function resolveDouble19Pairs(
+    state,
+    action
+) {
+    const ownIndices =
+        ensureArray(
+            action.ownTableCardIndices
+        )
+            .map(Number)
+            .filter(
+                Number.isInteger
+            );
+
+    const targetIndices =
+        ensureArray(
+            action.targetTableCardIndices
+        )
+            .map(Number)
+            .filter(
+                Number.isInteger
+            );
+
+    if (
+        ownIndices.length &&
+        targetIndices.length
+    ) {
+        const count =
+            Math.min(
+                2,
+                ownIndices.length,
+                targetIndices.length
+            );
+
+        const pairs = [];
+
+        for (
+            let i = 0;
+            i < count;
+            i += 1
+        ) {
+            pairs.push({
+                ownIndex:
+                    ownIndices[i],
+
+                targetIndex:
+                    targetIndices[i]
+            });
+        }
+
+        return pairs;
+    }
+
+    const own =
+        getLatestOwnedPointCards(
+            state,
+            state.currentPlayer,
+            2
+        );
+
+    const target =
+        getLatestOwnedPointCards(
+            state,
+            action.target,
+            2
+        );
+
+    const count =
+        Math.min(
+            2,
+            own.length,
+            target.length
+        );
+
+    const pairs = [];
+
+    for (
+        let i = 0;
+        i < count;
+        i += 1
+    ) {
+        pairs.push({
+            ownIndex:
+                own[i].index,
+
+            targetIndex:
+                target[i].index
+        });
+    }
+
+    return pairs;
+}
+
 
 function applyDouble19(
     state,
@@ -2020,25 +2137,121 @@ function applyDouble19(
     const target =
         Number(action.target);
 
-    if (!Number.isInteger(target)) {
+    if (
+        !Number.isInteger(target)
+    ) {
         return;
     }
 
-    const count =
-        exchangeTableCards(
+    const pairs =
+        resolveDouble19Pairs(
             state,
-            state.currentPlayer,
-            target,
-            2
+            action
         );
+
+    /*
+     * Il faut lire toutes les cartes AVANT
+     * de modifier le tableau.
+     */
+    const exchanges = [];
+
+    for (
+        const pair of pairs
+    ) {
+        const ownCard =
+            state.table[
+                pair.ownIndex
+            ];
+
+        const targetCard =
+            state.table[
+                pair.targetIndex
+            ];
+
+        if (
+            !ownCard ||
+            !targetCard
+        ) {
+            continue;
+        }
+
+        if (
+            Number(
+                getCardOwner(
+                    ownCard
+                )
+            ) !==
+            Number(
+                state.currentPlayer
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            Number(
+                getCardOwner(
+                    targetCard
+                )
+            ) !==
+            target
+        ) {
+            continue;
+        }
+
+        exchanges.push({
+            ownIndex:
+                pair.ownIndex,
+
+            targetIndex:
+                pair.targetIndex,
+
+            ownCard:
+                cloneCard(
+                    ownCard
+                ),
+
+            targetCard:
+                cloneCard(
+                    targetCard
+                )
+        });
+    }
+
+    for (
+        const exchange of exchanges
+    ) {
+        setCardOwner(
+            exchange.ownCard,
+            target
+        );
+
+        setCardOwner(
+            exchange.targetCard,
+            state.currentPlayer
+        );
+
+        state.table[
+            exchange.ownIndex
+        ] =
+            exchange.targetCard;
+
+        state.table[
+            exchange.targetIndex
+        ] =
+            exchange.ownCard;
+    }
 
     state.event(
         "double-19-exchange",
         {
             player:
                 state.currentPlayer,
+
             target,
-            count
+
+            count:
+                exchanges.length
         }
     );
 
@@ -2050,10 +2263,18 @@ function applyDouble19(
  * 21
  * ========================================================= */
 
-function applyCard21(
+function apply21(
     state,
     action
 ) {
+    const amount =
+        Math.abs(
+            Number(
+                action.value ??
+                20
+            )
+        );
+
     const target =
         action.target == null
             ? null
@@ -2061,25 +2282,16 @@ function applyCard21(
                 action.target
             );
 
-    const amount =
-        Number(
-            action.value ??
-            action.metadata?.amount ??
-            20
-        );
-
     if (
-        target == null ||
-        !Number.isInteger(target)
+        target === null
     ) {
         state.addScore(
             state.currentPlayer,
-            Math.abs(amount)
+            amount
         );
 
         state.addTableCard({
-            value:
-                Math.abs(amount),
+            value: amount,
             owner:
                 state.currentPlayer,
             linked: true,
@@ -2091,15 +2303,13 @@ function applyCard21(
             {
                 player:
                     state.currentPlayer,
-                amount:
-                    Math.abs(amount)
+
+                amount
             }
         );
     } else {
         const delta =
-            amount > 0
-                ? -Math.abs(amount)
-                : amount;
+            -amount;
 
         state.addScore(
             target,
@@ -2118,85 +2328,13 @@ function applyCard21(
             {
                 player:
                     state.currentPlayer,
+
                 target,
+
                 amount: delta
             }
         );
     }
-
-    state.drawUnknownCard();
-}
-
-
-/* =========================================================
- * DOUBLE 21
- * ========================================================= */
-
-function applyDouble21(
-    state,
-    action
-) {
-    const target =
-        action.target == null
-            ? null
-            : Number(
-                action.target
-            );
-
-    const amount =
-        Number(
-            action.value ??
-            action.metadata?.amount ??
-            40
-        );
-
-    if (
-        target == null ||
-        !Number.isInteger(target)
-    ) {
-        state.addScore(
-            state.currentPlayer,
-            Math.abs(amount)
-        );
-
-        state.addTableCard({
-            value:
-                Math.abs(amount),
-            owner:
-                state.currentPlayer,
-            linked: true,
-            sourceCard: 21,
-            double: true
-        });
-    } else {
-        const delta =
-            amount > 0
-                ? -Math.abs(amount)
-                : amount;
-
-        state.addScore(
-            target,
-            delta
-        );
-
-        state.addTableCard({
-            value: delta,
-            owner: target,
-            linked: true,
-            sourceCard: 21,
-            double: true
-        });
-    }
-
-    state.event(
-        "double-21",
-        {
-            player:
-                state.currentPlayer,
-            target,
-            amount
-        }
-    );
 
     state.drawUnknownCard();
 }
@@ -2212,64 +2350,62 @@ function applyJoker(
 ) {
     const effect =
         String(
-            action.effect ??
-            action.metadata?.effect ??
-            ""
+            action.effect ?? ""
         ).toLowerCase();
 
-    const value =
-        Number(
-            action.value ??
-            action.metadata?.amount
-        );
-
     if (
-        effect.includes("exchange") ||
-        effect.includes("echange") ||
-        effect === "swap"
+        effect ===
+            "exchange_scores" ||
+        effect ===
+            "exchange-scores" ||
+        effect.includes(
+            "exchange"
+        )
     ) {
         const target =
-            Number(
-                action.target
-            );
+            Number(action.target);
 
         if (
-            Number.isInteger(target)
+            !Number.isInteger(target)
         ) {
-            const ownScore =
-                state.getScore(
-                    state.currentPlayer
-                );
-
-            const targetScore =
-                state.getScore(
-                    target
-                );
-
-            state.setScore(
-                state.currentPlayer,
-                targetScore
-            );
-
-            state.setScore(
-                target,
-                ownScore
-            );
-
-            state.event(
-                "joker-exchange",
-                {
-                    player:
-                        state.currentPlayer,
-                    target
-                }
-            );
+            return;
         }
+
+        const ownScore =
+            state.getScore(
+                state.currentPlayer
+            );
+
+        const targetScore =
+            state.getScore(
+                target
+            );
+
+        state.setScore(
+            state.currentPlayer,
+            targetScore
+        );
+
+        state.setScore(
+            target,
+            ownScore
+        );
+
+        state.event(
+            "joker-exchange",
+            {
+                player:
+                    state.currentPlayer,
+
+                target
+            }
+        );
     } else {
         const amount =
-            Number.isFinite(value)
-                ? value
-                : 10;
+            Number(
+                action.value ??
+                10
+            );
 
         state.addScore(
             state.currentPlayer,
@@ -2289,6 +2425,7 @@ function applyJoker(
             {
                 player:
                     state.currentPlayer,
+
                 amount
             }
         );
@@ -2299,65 +2436,64 @@ function applyJoker(
 
 
 /* =========================================================
- * CONTINUE / TERMINATE
+ * CARTES SIMPLES
  * ========================================================= */
 
-function applyContinue(
+function applyOrdinaryCard(
     state,
-    action
+    card
 ) {
-    state.event(
-        "continue",
-        {
-            player:
-                state.currentPlayer,
-            action
-        }
-    );
-}
+    const value =
+        toNumber(
+            cardValue(card)
+        );
 
-function applyTerminate(
-    state,
-    action
-) {
-    state.event(
-        "terminate",
-        {
-            player:
-                state.currentPlayer,
-            action
-        }
-    );
+    if (
+        value === null
+    ) {
+        state.drawUnknownCard();
+
+        return;
+    }
 
     /*
-     * Une action intermédiaire terminée peut rendre
-     * le tour à l'état normal.
+     * Les cartes ordinaires sont ajoutées
+     * comme cartes de score personnelles.
      */
-    state.action = null;
-    state.target = null;
+    addOwnedTableCard(
+        state,
+        state.currentPlayer,
+        card
+    );
+
+    state.addScore(
+        state.currentPlayer,
+        value
+    );
+
+    state.drawUnknownCard();
 }
 
 
 /* =========================================================
- * ACTION GÉNÉRIQUE DE JEU
+ * PLAY_CARD
  * ========================================================= */
 
 function applyPlayCard(
     state,
     action
 ) {
-    const indices =
-        resolveCardIndices(
+    const index =
+        getSingleCardIndex(
             state,
             action
         );
 
-    if (!indices.length) {
+    if (
+        index < 0
+    ) {
         return false;
     }
-
-    const index =
-        indices[0];
 
     const card =
         state.removeHandCard(
@@ -2377,70 +2513,78 @@ function applyPlayCard(
         {
             player:
                 state.currentPlayer,
+
             card:
-                value
+                value,
+
+            cardIndex:
+                index
         }
     );
 
     switch (value) {
+
         case 1:
-            applyCard1(
+            apply1(
                 state,
                 action
             );
             break;
 
         case 3:
-            applyCard3(
+            apply3(
                 state,
-                action
+                action,
+                -20
             );
             break;
 
         case 9:
-            applyCard9(
+            apply9(
                 state,
                 action
             );
             break;
 
         case 11:
-            applyCard11(
+            apply11(
                 state,
-                action
+                action,
+                10
             );
             break;
 
         case 13:
-            applyCard13(
+            apply13(
                 state,
                 action
             );
             break;
 
         case 15:
-            applyCard15(
+            apply15(
                 state,
-                action
+                action,
+                2
             );
             break;
 
         case 17:
-            applyCard17(
+            apply17(
                 state,
                 action
             );
             break;
 
         case 19:
-            applyCard19(
+            apply19(
                 state,
                 action
             );
             break;
 
         case 21:
-            applyCard21(
+            apply21(
                 state,
                 action
             );
@@ -2454,27 +2598,10 @@ function applyPlayCard(
             break;
 
         default:
-            /*
-             * Carte sans effet spécial :
-             * elle devient simplement une carte
-             * de score personnelle.
-             */
-            if (
-                isPointCard(card)
-            ) {
-                addScoreCard(
-                    state,
-                    state.currentPlayer,
-                    card
-                );
-
-                state.addScore(
-                    state.currentPlayer,
-                    Number(value)
-                );
-            }
-
-            state.drawUnknownCard();
+            applyOrdinaryCard(
+                state,
+                card
+            );
             break;
     }
 
@@ -2483,20 +2610,15 @@ function applyPlayCard(
 
 
 /* =========================================================
- * JEU D'UNE DOUBLE
+ * PLAY_DOUBLE
  * ========================================================= */
 
 function applyPlayDouble(
     state,
     action
 ) {
-    const card =
-        cardValue(
-            action.card
-        );
-
     const indices =
-        resolveCardIndices(
+        getDoubleCardIndices(
             state,
             action
         );
@@ -2504,47 +2626,62 @@ function applyPlayDouble(
     if (
         indices.length < 2
     ) {
-        /*
-         * Certains générateurs fournissent directement
-         * les deux indices.
-         */
-        if (
-            Array.isArray(
-                action.cardIndices
-            ) &&
-            action.cardIndices.length >= 2
-        ) {
-            indices.push(
-                ...action.cardIndices.slice(
-                    0,
-                    2
-                )
+        return false;
+    }
+
+    /*
+     * Suppression en ordre décroissant :
+     * les indices restent valides.
+     */
+    const sorted =
+        [...indices]
+            .sort(
+                (a, b) => b - a
             );
+
+    const cards = [];
+
+    for (
+        const index of sorted
+    ) {
+        const card =
+            state.removeHandCard(
+                state.currentPlayer,
+                index
+            );
+
+        if (card) {
+            cards.push(card);
         }
     }
 
     if (
-        indices.length < 2
+        cards.length !== 2
     ) {
         return false;
     }
 
-    removeCardsFromHand(
-        state,
-        state.currentPlayer,
-        indices.slice(0, 2)
-    );
+    const value =
+        cardValue(
+            cards[0]
+        );
 
     state.event(
         "play-double",
         {
             player:
                 state.currentPlayer,
-            card
+
+            card:
+                value,
+
+            indices:
+                [...indices]
         }
     );
 
-    switch (card) {
+    switch (value) {
+
         case 1:
             applyDouble1(
                 state,
@@ -2553,23 +2690,31 @@ function applyPlayDouble(
             break;
 
         case 3:
-            applyDouble3(
+            apply3(
                 state,
-                action
+                action,
+                -40
             );
             break;
 
         case 9:
-            applyDouble9(
+            apply9(
                 state,
-                action
+                {
+                    ...action,
+                    metadata: {
+                        ...(action.metadata || {}),
+                        double9Reveal: true
+                    }
+                }
             );
             break;
 
         case 11:
-            applyDouble11(
+            apply11(
                 state,
-                action
+                action,
+                20
             );
             break;
 
@@ -2581,9 +2726,10 @@ function applyPlayDouble(
             break;
 
         case 15:
-            applyDouble15(
+            apply15(
                 state,
-                action
+                action,
+                3
             );
             break;
 
@@ -2602,7 +2748,7 @@ function applyPlayDouble(
             break;
 
         case 21:
-            applyDouble21(
+            apply21(
                 state,
                 action
             );
@@ -2610,11 +2756,17 @@ function applyPlayDouble(
 
         default:
             /*
-             * Double d'une carte sans effet spécial :
-             * elle reste représentée comme une action
-             * double dans la simulation.
+             * Double d'une carte ordinaire :
+             * les deux cartes sont jouées ensemble.
              */
-            state.drawUnknownCard();
+            for (
+                const card of cards
+            ) {
+                applyOrdinaryCard(
+                    state,
+                    card
+                );
+            }
 
             break;
     }
@@ -2624,7 +2776,49 @@ function applyPlayDouble(
 
 
 /* =========================================================
- * APPLICATION PRINCIPALE
+ * ACTIONS INTERMÉDIAIRES
+ * ========================================================= */
+
+function applyContinue(
+    state,
+    action
+) {
+    state.event(
+        "continue",
+        {
+            player:
+                state.currentPlayer,
+
+            action
+        }
+    );
+}
+
+
+function applyTerminate(
+    state,
+    action
+) {
+    state.event(
+        "terminate",
+        {
+            player:
+                state.currentPlayer,
+
+            action
+        }
+    );
+
+    state.action =
+        null;
+
+    state.target =
+        null;
+}
+
+
+/* =========================================================
+ * APPLICATION D'UNE ACTION
  * ========================================================= */
 
 export function applyAction(
@@ -2636,7 +2830,9 @@ export function applyAction(
             rawAction
         );
 
-    if (!action) {
+    if (
+        !action
+    ) {
         return false;
     }
 
@@ -2667,210 +2863,9 @@ export function applyAction(
         );
     }
 
-    if (
-        type === "target" ||
-        type === "table_card" ||
-        type === "table_cards" ||
-        type === "effect" ||
-        type === "combination"
-    ) {
-        /*
-         * Les actions complètes peuvent représenter
-         * directement l'effet final d'une carte.
-         */
-        const card =
-            number(
-                cardValue(
-                    action.card
-                )
-            );
-
-        const isDouble =
-            !!(
-                action.double ||
-                action.metadata?.double ||
-                type === "combination"
-            );
-
-        if (
-            card === 1
-        ) {
-            return isDouble
-                ? (
-                    applyDouble1(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard1(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 3) {
-            return isDouble
-                ? (
-                    applyDouble3(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard3(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 9) {
-            return isDouble
-                ? (
-                    applyDouble9(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard9(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 11) {
-            return isDouble
-                ? (
-                    applyDouble11(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard11(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 13) {
-            return isDouble
-                ? (
-                    applyDouble13(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard13(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 15) {
-            return isDouble
-                ? (
-                    applyDouble15(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard15(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 17) {
-            return isDouble
-                ? (
-                    applyDouble17(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard17(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 19) {
-            return isDouble
-                ? (
-                    applyDouble19(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard19(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (card === 21) {
-            return isDouble
-                ? (
-                    applyDouble21(
-                        state,
-                        action
-                    ),
-                    true
-                )
-                : (
-                    applyCard21(
-                        state,
-                        action
-                    ),
-                    true
-                );
-        }
-
-        if (
-            cardValue(action.card) ===
-            "Joker"
-        ) {
-            applyJoker(
-                state,
-                action
-            );
-
-            return true;
-        }
-
-        return true;
-    }
-
+    /*
+     * Compatibilité avec les actions intermédiaires.
+     */
     if (
         type === "continue"
     ) {
@@ -2893,32 +2888,178 @@ export function applyAction(
         return true;
     }
 
+    /*
+     * Une action EFFECT/TARGET/TABLE_CARD complète
+     * peut encore être fournie par un ancien appel.
+     */
+    if (
+        type === "effect" ||
+        type === "target" ||
+        type === "table_card" ||
+        type === "table_cards" ||
+        type === "combination"
+    ) {
+        return applyEffectAction(
+            state,
+            action
+        );
+    }
+
     return false;
 }
 
 
 /* =========================================================
- * VALIDATION
+ * ACTION EFFECT / COMPATIBILITÉ
  * ========================================================= */
 
-function validateState(
-    state
+function applyEffectAction(
+    state,
+    action
 ) {
-    return !!(
-        state &&
-        (
-            state instanceof VirtualGameState ||
-            typeof state === "object"
-        )
+    const card =
+        cardValue(
+            action.card
+        );
+
+    const double =
+        Boolean(
+            action.metadata?.double ||
+            action.double
+        );
+
+    switch (card) {
+
+        case 1:
+            double
+                ? applyDouble1(
+                    state,
+                    action
+                )
+                : apply1(
+                    state,
+                    action
+                );
+            return true;
+
+        case 3:
+            apply3(
+                state,
+                action,
+                double
+                    ? -40
+                    : -20
+            );
+            return true;
+
+        case 9:
+            apply9(
+                state,
+                action
+            );
+            return true;
+
+        case 11:
+            apply11(
+                state,
+                action,
+                double
+                    ? 20
+                    : 10
+            );
+            return true;
+
+        case 13:
+            double
+                ? applyDouble13(
+                    state,
+                    action
+                )
+                : apply13(
+                    state,
+                    action
+                );
+            return true;
+
+        case 15:
+            apply15(
+                state,
+                action,
+                double
+                    ? 3
+                    : 2
+            );
+            return true;
+
+        case 17:
+            double
+                ? applyDouble17(
+                    state,
+                    action
+                )
+                : apply17(
+                    state,
+                    action
+                );
+            return true;
+
+        case 19:
+            double
+                ? applyDouble19(
+                    state,
+                    action
+                )
+                : apply19(
+                    state,
+                    action
+                );
+            return true;
+
+        case 21:
+            apply21(
+                state,
+                action
+            );
+            return true;
+
+        case "Joker":
+            applyJoker(
+                state,
+                action
+            );
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+
+/* =========================================================
+ * FIN D'ACTION
+ * ========================================================= */
+
+function shouldAdvanceTurn(
+    action
+) {
+    const type =
+        String(
+            action?.type ?? ""
+        ).toLowerCase();
+
+    return (
+        type !== "continue" &&
+        type !== "terminate"
     );
 }
 
 
 /* =========================================================
- * SIMULATION RESULT
+ * RÉSULTAT
  * ========================================================= */
 
 export class SimulationResult {
+
     constructor({
         state = null,
         action = null,
@@ -2930,17 +3071,34 @@ export class SimulationResult {
         scoreDelta = {},
         metadata = {}
     } = {}) {
-        this.state = state;
-        this.action = action;
-        this.legal = legal;
-        this.completed = completed;
-        this.error = error;
-        this.events = events;
+        this.state =
+            state;
+
+        this.action =
+            action;
+
+        this.legal =
+            legal;
+
+        this.completed =
+            completed;
+
+        this.error =
+            error;
+
+        this.events =
+            events;
+
         this.revealedInformation =
             revealedInformation;
-        this.scoreDelta = scoreDelta;
-        this.metadata = metadata;
+
+        this.scoreDelta =
+            scoreDelta;
+
+        this.metadata =
+            metadata;
     }
+
 
     get isUsable() {
         return (
@@ -2953,7 +3111,7 @@ export class SimulationResult {
 
 
 /* =========================================================
- * SIMULATE UNE ACTION
+ * SIMULATION D'UNE ACTION
  * ========================================================= */
 
 export function simulateAction(
@@ -2961,16 +3119,12 @@ export function simulateAction(
     action
 ) {
     if (
-        !validateState(
-            sourceState
-        )
+        !sourceState
     ) {
         return new SimulationResult({
             action,
-            legal: false,
-            completed: false,
             error:
-                "État de simulation invalide."
+                "État source absent."
         });
     }
 
@@ -2983,6 +3137,7 @@ export function simulateAction(
         virtual.toMutableObject();
 
     try {
+
         const applied =
             applyAction(
                 virtual,
@@ -2991,84 +3146,116 @@ export function simulateAction(
 
         if (!applied) {
             return new SimulationResult({
-                state: virtual,
+                state:
+                    virtual,
+
                 action,
+
                 legal: false,
+
                 completed: false,
+
                 error:
                     "Action impossible à simuler.",
+
                 events:
                     virtual.events,
+
                 revealedInformation:
                     virtual.revealedInformation,
+
                 scoreDelta:
                     virtual.scoreDelta
             });
         }
 
+        /*
+         * Vérification de victoire immédiate.
+         */
         virtual.checkEndConditions();
 
         /*
-         * Après une action complète, le tour est terminé
-         * sauf lorsqu'il s'agit explicitement d'une action
-         * intermédiaire.
+         * Une action complète terminée fait avancer
+         * la simulation au prochain joueur.
+         *
+         * Si elle vient d'atteindre exactement la cible,
+         * on ne force pas de tour supplémentaire.
          */
-        const normalized =
-            normalizeAction(
-                action
-            );
-
-        const type =
-            String(
-                normalized?.type || ""
-            ).toLowerCase();
-
         if (
-            type !== "continue" &&
-            type !== "terminate"
+            !virtual.roundEnded &&
+            shouldAdvanceTurn(
+                action
+            )
         ) {
             virtual.advanceTurn();
         }
 
         return new SimulationResult({
-            state: virtual,
+            state:
+                virtual,
+
             action,
+
             legal: true,
+
             completed: true,
+
             events:
                 virtual.events,
+
             revealedInformation:
                 virtual.revealedInformation,
+
             scoreDelta:
                 virtual.scoreDelta,
+
             metadata: {
                 before,
+
                 after:
                     virtual.toMutableObject(),
+
                 exactTarget:
                     hasExactTarget(
                         virtual,
                         virtual.currentPlayer
                     ),
-                target:
+
+                victoryTarget:
                     getVictoryTarget(
                         virtual
-                    )
+                    ),
+
+                roundEnded:
+                    virtual.roundEnded,
+
+                winner:
+                    virtual.winner
             }
         });
+
     } catch (error) {
+
         return new SimulationResult({
-            state: virtual,
+            state:
+                virtual,
+
             action,
+
             legal: false,
+
             completed: false,
+
             error:
-                error?.message ||
+                error?.message ??
                 String(error),
+
             events:
                 virtual.events,
+
             revealedInformation:
                 virtual.revealedInformation,
+
             scoreDelta:
                 virtual.scoreDelta
         });
@@ -3077,21 +3264,25 @@ export function simulateAction(
 
 
 /* =========================================================
- * SIMULER UNE LIGNE
+ * SIMULER PLUSIEURS ACTIONS
  * ========================================================= */
 
 export function simulateActions(
     sourceState,
     actions
 ) {
+    const list =
+        ensureArray(
+            actions
+        );
+
     let current =
         sourceState;
 
     const results = [];
 
     for (
-        const action of
-        ensureArray(actions)
+        const action of list
     ) {
         const result =
             simulateAction(
@@ -3111,19 +3302,31 @@ export function simulateActions(
 
         current =
             result.state;
+
+        if (
+            current.roundEnded
+        ) {
+            break;
+        }
     }
 
     return results;
 }
 
+
 export function simulateLine(
     sourceState,
     actions
 ) {
+    const list =
+        ensureArray(
+            actions
+        );
+
     const results =
         simulateActions(
             sourceState,
-            actions
+            list
         );
 
     const last =
@@ -3140,7 +3343,7 @@ export function simulateLine(
 
         completed:
             results.length ===
-            ensureArray(actions).length &&
+                list.length &&
             results.every(
                 result =>
                     result.isUsable
@@ -3149,13 +3352,14 @@ export function simulateLine(
         events:
             results.flatMap(
                 result =>
-                    result.events || []
+                    result.events ??
+                    []
             ),
 
         revealedInformation:
             results.flatMap(
                 result =>
-                    result.revealedInformation ||
+                    result.revealedInformation ??
                     []
             )
     };
@@ -3183,17 +3387,22 @@ export function statesEqual(
     a,
     b
 ) {
-    if (!a || !b) {
+    if (
+        !a ||
+        !b
+    ) {
         return false;
     }
 
     const signatureA =
-        typeof a.signature === "function"
+        typeof a.signature ===
+        "function"
             ? a.signature()
             : JSON.stringify(a);
 
     const signatureB =
-        typeof b.signature === "function"
+        typeof b.signature ===
+        "function"
             ? b.signature()
             : JSON.stringify(b);
 
@@ -3203,41 +3412,50 @@ export function statesEqual(
     );
 }
 
+
+/* =========================================================
+ * DIFFÉRENCE ENTRE DEUX ÉTATS
+ * ========================================================= */
+
+function getPlayers(
+    state
+) {
+    return (
+        state?.players ??
+        state?.joueurs ??
+        []
+    );
+}
+
+
 export function stateDifference(
     before,
     after
 ) {
-    if (!before || !after) {
+    if (
+        !before ||
+        !after
+    ) {
         return null;
     }
 
-    const beforeScores =
-        getPlayersArray(
+    const beforePlayers =
+        getPlayers(
             before
-        ).map(
-            player =>
-                Number(
-                    player?.score || 0
-                )
         );
 
-    const afterScores =
-        getPlayersArray(
+    const afterPlayers =
+        getPlayers(
             after
-        ).map(
-            player =>
-                Number(
-                    player?.score || 0
-                )
         );
-
-    const scoreDelta = {};
 
     const count =
         Math.max(
-            beforeScores.length,
-            afterScores.length
+            beforePlayers.length,
+            afterPlayers.length
         );
+
+    const scoreDelta = {};
 
     for (
         let i = 0;
@@ -3245,11 +3463,13 @@ export function stateDifference(
         i += 1
     ) {
         scoreDelta[i] =
-            (
-                afterScores[i] || 0
+            Number(
+                afterPlayers[i]?.score ??
+                0
             ) -
-            (
-                beforeScores[i] || 0
+            Number(
+                beforePlayers[i]?.score ??
+                0
             );
     }
 
@@ -3269,24 +3489,46 @@ export function stateDifference(
         currentPlayerChanged:
             Number(
                 after.currentPlayer ??
+                after.joueurActuel ??
                 0
             ) !==
             Number(
                 before.currentPlayer ??
+                before.joueurActuel ??
                 0
             ),
 
         roundEndedChanged:
-            !!after.roundEnded !==
-            !!before.roundEnded,
+            Boolean(
+                after.roundEnded ??
+                after.mancheTerminee
+            ) !==
+            Boolean(
+                before.roundEnded ??
+                before.mancheTerminee
+            ),
 
         actionChanged:
             (
                 after.action ??
+                after.actionEnCours ??
                 null
             ) !==
             (
                 before.action ??
+                before.actionEnCours ??
+                null
+            ),
+
+        targetChanged:
+            (
+                after.target ??
+                after.cibleChoisie ??
+                null
+            ) !==
+            (
+                before.target ??
+                before.cibleChoisie ??
                 null
             )
     };
@@ -3294,26 +3536,39 @@ export function stateDifference(
 
 
 /* =========================================================
- * EXPORTS
+ * EXPORTS UTILITAIRES
  * ========================================================= */
 
 export {
     normalizeAction,
     cardValue,
     isPointCard,
-    getLatestOwnedPointCards,
-    findTableCardIndex
+    getLatestOwnedPointCards
 };
+
+
+/* =========================================================
+ * EXPORT PAR DÉFAUT
+ * ========================================================= */
 
 export default {
     ACTION_TYPES,
+
     VirtualGameState,
+
     SimulationResult,
+
+    applyAction,
+
     simulateAction,
+
     simulateActions,
+
     simulateLine,
+
     cloneSimulationState,
+
     statesEqual,
-    stateDifference,
-    applyAction
+
+    stateDifference
 };
