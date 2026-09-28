@@ -3048,39 +3048,32 @@ window.AtoumoulinBotPriorities = {
 
 window.AtoumoulinBotDecision = {
 
-    // Contexte
     construireContexteDecision,
 
-    // Simulation
     simulerPossibilite,
     simulerPossibilites,
 
-    // Scénarios
     calculerValeurMoyenneScenarios,
 
-    // Évaluation
     evaluerEtat,
     evaluerPossibilite,
     evaluerToutesPossibilites,
 
-    // Analyse personnelle
     analyserFinition,
     analyserProgression,
     analyserStabilite,
     analyserPosition,
 
-    // Main / potentiel
     analyserQualiteMain,
     analyserPossibilitesRestantes,
     analyserFlexibilite,
     analyserPotentielFutur,
 
-    // Adversaires
     analyserDangerAdversaire,
+    analyserPotentielFuturAdversaire,
     analyserSituationAdverse,
     analyserAdversaires,
 
-    // Action
     analyserImpactPersonnel,
     analyserImpactAdversaire,
     analyserCoutOpportunite,
