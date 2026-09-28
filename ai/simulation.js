@@ -934,3 +934,818 @@ export class AtoumoulinSimulator {
          * Vérification minimale.
          */
         const validation =
+            this.validateAction(
+                normalized,
+                state
+            );
+
+        if (!validation.valid) {
+
+            return new SimulationResult({
+
+                state,
+
+                action:
+                    normalized,
+
+                legal:
+                    false,
+
+                completed:
+                    false,
+
+                error:
+                    validation.reason
+            });
+        }
+
+
+        /*
+         * Cherche un gestionnaire spécifique.
+         */
+        const handler =
+            this.getHandler(
+                normalized
+            );
+
+
+        try {
+
+            if (handler) {
+
+                handler(
+                    state,
+                    normalized,
+                    this
+                );
+
+            } else if (
+                this.options
+                    .allowGenericTransitions
+            ) {
+
+                this.applyGenericAction(
+                    state,
+                    normalized
+                );
+
+            } else {
+
+                return new SimulationResult({
+
+                    state,
+
+                    action:
+                        normalized,
+
+                    legal:
+                        false,
+
+                    completed:
+                        false,
+
+                    error:
+                        "Aucun simulateur disponible pour cette action."
+                });
+            }
+
+
+            /*
+             * Vérifie les conditions générales de fin.
+             */
+            this.checkEndConditions(
+                state
+            );
+
+
+            /*
+             * Calcule les différences de score.
+             */
+            const scoreDelta =
+                this.calculateScoreDelta(
+                    this.gameState,
+                    state
+                );
+
+
+            return new SimulationResult({
+
+                state,
+
+                action:
+                    normalized,
+
+                legal:
+                    true,
+
+                completed:
+                    true,
+
+                events:
+                    state.events,
+
+                revealedInformation:
+                    state.revealedInformation,
+
+                scoreDelta,
+
+                metadata: {
+
+                    source:
+                        handler
+                            ? "specific-handler"
+                            : "generic-handler"
+                }
+            });
+
+        } catch (error) {
+
+            return new SimulationResult({
+
+                state,
+
+                action:
+                    normalized,
+
+                legal:
+                    false,
+
+                completed:
+                    false,
+
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : String(error)
+            });
+        }
+    }
+
+
+    /* ========================================================
+     * HANDLER
+     * ====================================================== */
+
+    getHandler(
+        action
+    ) {
+
+        /*
+         * Priorité à un identifiant explicite.
+         */
+        if (
+            action.effect &&
+            typeof
+                this.options
+                    .actionHandlers[
+                    action.effect
+                ] === "function"
+        ) {
+
+            return this.options
+                .actionHandlers[
+                    action.effect
+                ];
+        }
+
+
+        /*
+         * Puis au type.
+         */
+        if (
+            typeof
+                this.options
+                    .actionHandlers[
+                    action.type
+                ] === "function"
+        ) {
+
+            return this.options
+                .actionHandlers[
+                    action.type
+                ];
+        }
+
+        return null;
+    }
+
+
+    /* ========================================================
+     * VALIDATION
+     * ====================================================== */
+
+    validateAction(
+        action,
+        state
+    ) {
+
+        if (!action) {
+
+            return {
+                valid:
+                    false,
+
+                reason:
+                    "Action absente."
+            };
+        }
+
+
+        if (
+            !action.type
+        ) {
+
+            return {
+                valid:
+                    false,
+
+                reason:
+                    "Type d'action absent."
+            };
+        }
+
+
+        /*
+         * Une action du bot doit être effectuée pendant son
+         * tour, sauf lorsqu'une action spéciale est explicitement
+         * prévue.
+         */
+        if (
+            state.currentPlayer !==
+            state.botIndex
+        ) {
+
+            return {
+                valid:
+                    false,
+
+                reason:
+                    "Ce n'est pas le tour du bot."
+            };
+        }
+
+
+        /*
+         * Vérification de carte.
+         */
+        if (
+            action.cardIndex !==
+            null &&
+            action.cardIndex !==
+            undefined
+        ) {
+
+            const hand =
+                state.getHand(
+                    state.botIndex
+                );
+
+            if (
+                action.cardIndex < 0 ||
+                action.cardIndex >=
+                    hand.length
+            ) {
+
+                return {
+                    valid:
+                        false,
+
+                    reason:
+                        "Index de carte invalide."
+                };
+            }
+        }
+
+
+        /*
+         * Une cible doit être un adversaire.
+         */
+        if (
+            action.target !==
+            null &&
+            action.target !==
+            undefined
+        ) {
+
+            const target =
+                state.getPlayer(
+                    action.target
+                );
+
+            if (!target) {
+
+                return {
+                    valid:
+                        false,
+
+                    reason:
+                        "Cible inexistante."
+                };
+            }
+
+
+            if (
+                Number(action.target) ===
+                Number(state.botIndex)
+            ) {
+
+                /*
+                 * Certaines cartes peuvent cibler soi-même.
+                 * On laisse les handlers spécifiques décider.
+                 */
+                if (
+                    action.parameters
+                        ?.allowSelfTarget !==
+                    true
+                ) {
+
+                    return {
+                        valid:
+                            false,
+
+                        reason:
+                            "Cette action cible le bot lui-même."
+                    };
+                }
+            }
+        }
+
+
+        return {
+            valid:
+                true
+        };
+    }
+
+
+    /* ========================================================
+     * ACTION GÉNÉRIQUE
+     * ====================================================== */
+
+    applyGenericAction(
+        state,
+        action
+    ) {
+
+        /*
+         * Cette fonction ne prétend pas connaître les règles
+         * détaillées de chaque carte.
+         *
+         * Elle représente uniquement la structure générique
+         * d'une action :
+         *
+         *     carte consommée
+         *     cible enregistrée
+         *     effet enregistré
+         *
+         * Les règles précises seront branchées ensuite.
+         */
+
+
+        if (
+            action.cardIndex !==
+            null &&
+            action.cardIndex !==
+            undefined
+        ) {
+
+            const card =
+                state.removeCard(
+                    state.botIndex,
+                    action.cardIndex
+                );
+
+            state.addEvent({
+                type:
+                    "card-played",
+
+                player:
+                    state.botIndex,
+
+                card:
+                    clone(card)
+            });
+        }
+
+
+        if (
+            action.target !==
+            null &&
+            action.target !==
+            undefined
+        ) {
+
+            state.setTarget(
+                action.target
+            );
+
+            state.addEvent({
+                type:
+                    "target-selected",
+
+                player:
+                    state.botIndex,
+
+                target:
+                    action.target
+            });
+        }
+
+
+        if (action.effect) {
+
+            state.addEvent({
+                type:
+                    "effect",
+
+                effect:
+                    action.effect,
+
+                parameters:
+                    clone(
+                        action.parameters
+                    )
+            });
+        }
+
+
+        /*
+         * Une action générique est considérée comme terminée.
+         *
+         * Les handlers spéciaux pourront au contraire laisser
+         * une action en cours.
+         */
+        state.setAction(
+            null
+        );
+
+
+        /*
+         * Dans une simulation simple, on passe au joueur
+         * suivant.
+         */
+        state.advancePlayer();
+    }
+
+
+    /* ========================================================
+     * FIN DE PARTIE
+     * ====================================================== */
+
+    checkEndConditions(
+        state
+    ) {
+
+        /*
+         * La cible exacte dépend du jeu.
+         *
+         * Le simulateur ne fixe volontairement pas une valeur
+         * en dur ici.
+         *
+         * Cette fonction pourra utiliser la règle exacte lorsque
+         * la constante de cible sera branchée au moteur.
+         */
+        for (
+            const player
+            of state.players
+        ) {
+
+            if (
+                player &&
+                player.score ===
+                state.data.targetScore
+            ) {
+
+                state.setWinner(
+                    player.id
+                );
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    /* ========================================================
+     * DIFFÉRENCE DE SCORE
+     * ====================================================== */
+
+    calculateScoreDelta(
+        before,
+        after
+    ) {
+
+        const result = {};
+
+        for (
+            const player
+            of before.players
+        ) {
+
+            const previous =
+                Number(
+                    player.score
+                ) || 0;
+
+            const nextPlayer =
+                after.getPlayer(
+                    player.id
+                );
+
+            const next =
+                nextPlayer
+                    ? Number(
+                        nextPlayer.score
+                    ) || 0
+                    : previous;
+
+            result[
+                player.id
+            ] =
+                next -
+                previous;
+        }
+
+        return result;
+    }
+}
+
+
+/* ============================================================
+ * SIMULATION D'UNE ACTION
+ * ========================================================== */
+
+export function simulateAction(
+    gameState,
+    action,
+    options = {}
+) {
+
+    const simulator =
+        new AtoumoulinSimulator(
+            gameState,
+            options
+        );
+
+    return simulator.simulate(
+        action
+    );
+}
+
+
+/* ============================================================
+ * SIMULATION DE PLUSIEURS ACTIONS
+ * ========================================================== */
+
+export function simulateActions(
+    gameState,
+    actions,
+    options = {}
+) {
+
+    const simulator =
+        new AtoumoulinSimulator(
+            gameState,
+            options
+        );
+
+    const results = [];
+
+    for (
+        const action
+        of actions
+    ) {
+
+        results.push(
+            simulator.simulate(
+                action
+            )
+        );
+    }
+
+    return results;
+}
+
+
+/* ============================================================
+ * SIMULATION D'UNE LIGNE
+ * ========================================================== */
+
+/**
+ * Permettra plus tard de faire :
+ *
+ * action 1
+ *   ↓
+ * état 1
+ *   ↓
+ * action 2
+ *   ↓
+ * état 2
+ *   ↓
+ * action 3
+ *   ↓
+ * état 3
+ *
+ * C'est la base de la recherche profondeur 2, 3, etc.
+ */
+export function simulateLine(
+    gameState,
+    actions,
+    options = {}
+) {
+
+    let current =
+        gameState;
+
+    const results = [];
+
+
+    for (
+        const action
+        of actions
+    ) {
+
+        const result =
+            simulateAction(
+                current,
+                action,
+                options
+            );
+
+        results.push(
+            result
+        );
+
+
+        if (
+            !result.isUsable()
+        ) {
+
+            return {
+                success:
+                    false,
+
+                state:
+                    current,
+
+                results,
+
+                failedAt:
+                    results.length - 1,
+
+                error:
+                    result.error
+            };
+        }
+
+
+        current =
+            result.state;
+    }
+
+
+    return {
+        success:
+            true,
+
+        state:
+            current,
+
+        results,
+
+        failedAt:
+            null,
+
+        error:
+            null
+    };
+}
+
+
+/* ============================================================
+ * COMPARAISON D'ÉTATS
+ * ========================================================== */
+
+export function statesEqual(
+    first,
+    second
+) {
+
+    if (!first || !second) {
+        return false;
+    }
+
+    const firstSignature =
+        typeof first.signature ===
+        "function"
+            ? first.signature()
+            : JSON.stringify(first);
+
+    const secondSignature =
+        typeof second.signature ===
+        "function"
+            ? second.signature()
+            : JSON.stringify(second);
+
+    return (
+        firstSignature ===
+        secondSignature
+    );
+}
+
+
+/* ============================================================
+ * DISTANCE ENTRE ÉTATS
+ * ========================================================== */
+
+export function stateDifference(
+    before,
+    after
+) {
+
+    const difference = {
+
+        score:
+            {},
+
+        handSize:
+            {},
+
+        deck:
+            0,
+
+        table:
+            0,
+
+        currentPlayer:
+            null,
+
+        actionChanged:
+            false
+    };
+
+
+    for (
+        const player
+        of before.players
+    ) {
+
+        const next =
+            after.getPlayer(
+                player.id
+            );
+
+        if (!next) {
+            continue;
+        }
+
+        difference.score[
+            player.id
+        ] =
+            (
+                Number(next.score) || 0
+            ) -
+            (
+                Number(player.score) || 0
+            );
+
+
+        difference.handSize[
+            player.id
+        ] =
+            (
+                next.main?.length ??
+                next.cardCount ??
+                0
+            ) -
+            (
+                player.main?.length ??
+                player.cardCount ??
+                0
+            );
+    }
+
+
+    difference.deck =
+        after.deckCount -
+        before.deckCount;
+
+
+    difference.table =
+        after.table.length -
+        before.table.length;
+
+
+    difference.currentPlayer =
+        after.currentPlayer;
+
+
+    difference.actionChanged =
+        before.action !==
+        after.action;
+
+
+    return difference;
+}
