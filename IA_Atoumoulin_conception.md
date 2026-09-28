@@ -60,7 +60,7 @@ Exemples :
 * 9 simple → l'IA connaît le nombre de cartes dans les mains adverses, pas leur contenu.
 * Double 9 → l'IA voit les mains et peut choisir son adversaire.
 * 19 et Double 19 → aucune vision des mains adverses.
-* 17 → la carte volée est inconnue avant le vol.
+* 17 et Double 17 → carte(s) volée(s) inconnue avant le vol.
 * 1 / Double 1 → l'IA connaît les derniers scores éligibles.
 * Les informations cachées sont estimées sans jamais être révélées artificiellement.
 
