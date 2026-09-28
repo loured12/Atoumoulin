@@ -1,1574 +1,1074 @@
 /**
- * Atoumoulin - nouvel état de jeu pour l'IA
+ * Atoumoulin AI
+ * game-state.js
  *
- * Ce fichier ne modifie PAS le moteur actuel.
+ * Représentation normalisée de l'état de jeu accessible au bot.
  *
- * Il fournit une représentation indépendante de l'état du jeu
- * destinée à :
+ * IMPORTANT :
+ * Ce fichier ne doit jamais aller chercher directement les variables
+ * internes du script.js.
  *
- *   - l'IA
- *   - la simulation
- *   - la recherche
- *   - l'évaluation
+ * Il travaille uniquement avec l'état fourni par AtoumoulinEngine.
  *
- * Il peut être construit directement à partir de l'état exposé
- * par script.js / engine.js.
+ * Cela garantit que le bot respecte les informations auxquelles
+ * il a réellement accès.
  */
 
-export class GameState {
-  constructor(data = {}) {
-    this.players = normalizePlayers(data.players);
-
-    this.deckCount = toNonNegativeInteger(
-      data.deckCount ?? 0
-    );
-
-    this.table = cloneArray(
-      data.table
-    );
-
-    this.discard = cloneArray(
-      data.discard
-    );
-
-    this.history =
-      typeof data.history === "string"
-        ? data.history
-        : "";
-
-    this.currentPlayer =
-      normalizeIndex(
-        data.currentPlayer,
-        this.players.length
-      );
-
-    this.action =
-      data.action ?? null;
-
-    this.target =
-      data.target == null
-        ? null
-        : Number(data.target);
-
-    this.selection =
-      cloneValue(data.selection);
-
-    this.toursJoker =
-      cloneValue(data.toursJoker ?? {});
-
-    this.winner =
-      data.winner ?? null;
-
-    this.roundWinner =
-      data.roundWinner ?? null;
-
-    this.roundEnded =
-      Boolean(data.roundEnded);
-
-    this.player17 =
-      data.player17 == null
-        ? null
-        : Number(data.player17);
-
-    this.card17Pending =
-      cloneValue(data.card17Pending);
-
-    this.double17Cards =
-      cloneArray(data.double17Cards);
-
-    this.double17Active =
-      Boolean(data.double17Active);
-
-    this.player19 =
-      data.player19 == null
-        ? null
-        : Number(data.player19);
-
-    this.victories =
-      cloneValue(data.victories ?? []);
-
-    this.modeJeu =
-      Number(data.modeJeu ?? 1);
-
-    /*
-     * Informations complémentaires utiles à l'IA.
-     */
-    this.botIndex =
-      data.botIndex == null
-        ? null
-        : Number(data.botIndex);
-
-    this.targetScore =
-      data.targetScore ??
-      calculateTargetScore(
-        this.players.length
-      );
-
-    this.totalCards =
-      data.totalCards ??
-      calculateTotalCards(
-        this.players.length
-      );
-
-    this.cardsPlayed =
-      data.cardsPlayed ??
-      calculateVisibleProgressCards(this);
-
-    this.progression =
-      this.totalCards > 0
-        ? clamp(
-            this.cardsPlayed /
-              this.totalCards,
-            0,
-            1
-          )
-        : 0;
-
-    this.roundFinished =
-      Boolean(
-        data.roundFinished ??
-        data.roundEnded
-      );
-  }
-
-  /**
-   * Création depuis l'état renvoyé par
-   * __atoumoulinGetState().
-   *
-   * Le format réel de script.js est accepté directement.
-   */
-  static fromRaw(raw, botIndex = null) {
-    if (!raw) {
-      throw new Error(
-        "GameState.fromRaw : état absent."
-      );
-    }
-
-    const players =
-      Array.isArray(raw.joueurs)
-        ? raw.joueurs.map(
-            (player, index) => ({
-              id: index,
-              name:
-                player.nom ??
-                `Joueur ${index + 1}`,
-
-              score:
-                Number(player.score ?? 0),
-
-              bot:
-                Boolean(player.bot),
-
-              /*
-               * Une main peut contenir des null lorsque
-               * l'information est masquée.
-               */
-              main:
-                Array.isArray(player.main)
-                  ? player.main.slice()
-                  : [],
-
-              cardCount:
-                player.cardCount != null
-                  ? Number(player.cardCount)
-                  : Array.isArray(player.main)
-                    ? player.main.length
-                    : 0
-            })
-          )
-        : [];
-
-    const state = new GameState({
-      players,
-
-      deckCount:
-        Array.isArray(raw.paquet)
-          ? raw.paquet.length
-          : Number(raw.deckCount ?? 0),
-
-      table:
-        raw.cartesTable ??
-        raw.table ??
-        [],
-
-      discard:
-        raw.defaussePouvoirs ??
-        raw.discard ??
-        [],
-
-      history:
-        String(
-          raw.historique ??
-          raw.history ??
-          ""
-        ),
-
-      currentPlayer:
-        raw.joueurActuel,
-
-      action:
-        raw.actionEnCours,
-
-      target:
-        raw.cibleChoisie,
-
-      selection:
-        raw.selection,
-
-      toursJoker:
-        raw.toursJoker,
-
-      winner:
-        normalizeWinner(
-          raw.gagnantPartie,
-          players
-        ),
-
-      roundWinner:
-        normalizeRoundWinner(
-          raw.gagnantManche,
-          players
-        ),
-
-      roundEnded:
-        Boolean(
-          raw.mancheTerminee
-        ),
-
-      player17:
-        raw.joueur17,
-
-      card17Pending:
-        raw.carte17EnAttente,
-
-      double17Cards:
-        raw.cartesDouble17,
-
-      double17Active:
-        Boolean(
-          raw.double17EnCours
-        ),
-
-      player19:
-        raw.joueur19,
-
-      victories:
-        raw.victoires,
-
-      modeJeu:
-        raw.modeJeu,
-
-      botIndex
-    });
-
-    return state;
-  }
-
-  /**
-   * Création depuis l'état déjà filtré renvoyé par
-   * AtoumoulinEngine.stateFor().
-   */
-  static fromView(view, botIndex = null) {
-    if (!view) {
-      throw new Error(
-        "GameState.fromView : vue absente."
-      );
-    }
-
-    return new GameState({
-      ...view,
-      botIndex
-    });
-  }
-
-  /**
-   * Copie indépendante complète.
-   *
-   * Cette méthode est essentielle pour la simulation.
-   *
-   * Une simulation ne doit JAMAIS modifier l'état réel.
-   */
-  clone() {
-    return new GameState({
-      players:
-        this.players.map(
-          player => ({
-            ...player,
-            main:
-              player.main.slice()
-          })
-        ),
-
-      deckCount:
-        this.deckCount,
-
-      table:
-        cloneArray(this.table),
-
-      discard:
-        cloneArray(this.discard),
-
-      history:
-        this.history,
-
-      currentPlayer:
-        this.currentPlayer,
-
-      action:
-        this.action,
-
-      target:
-        this.target,
-
-      selection:
-        cloneValue(this.selection),
-
-      toursJoker:
-        cloneValue(this.toursJoker),
-
-      winner:
-        cloneValue(this.winner),
-
-      roundWinner:
-        cloneValue(this.roundWinner),
-
-      roundEnded:
-        this.roundEnded,
-
-      player17:
-        this.player17,
-
-      card17Pending:
-        cloneValue(
-          this.card17Pending
-        ),
-
-      double17Cards:
-        cloneArray(
-          this.double17Cards
-        ),
-
-      double17Active:
-        this.double17Active,
-
-      player19:
-        this.player19,
-
-      victories:
-        cloneValue(
-          this.victories
-        ),
-
-      modeJeu:
-        this.modeJeu,
-
-      botIndex:
-        this.botIndex,
-
-      targetScore:
-        this.targetScore,
-
-      totalCards:
-        this.totalCards,
-
-      cardsPlayed:
-        this.cardsPlayed,
-
-      progression:
-        this.progression,
-
-      roundFinished:
-        this.roundFinished
-    });
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * JOUEURS
-   * ----------------------------------------------------------
-   */
-
-  getPlayer(index) {
-    const i = Number(index);
-
-    if (!Number.isInteger(i)) {
-      return null;
-    }
-
-    return this.players[i] ?? null;
-  }
-
-  getSelf() {
-    if (this.botIndex == null) {
-      return null;
-    }
-
-    return this.getPlayer(
-      this.botIndex
-    );
-  }
-
-  getOpponents() {
-    if (this.botIndex == null) {
-      return this.players.slice();
-    }
-
-    return this.players.filter(
-      player =>
-        player.id !== this.botIndex
-    );
-  }
-
-  getOpponent(index) {
+/* ============================================================
+ * UTILITAIRES
+ * ========================================================== */
+
+function deepFreeze(object) {
     if (
-      Number(index) ===
-      Number(this.botIndex)
+        object === null ||
+        typeof object !== "object" ||
+        Object.isFrozen(object)
     ) {
-      return null;
+        return object;
     }
 
-    return this.getPlayer(index);
-  }
+    Object.freeze(object);
 
-  /**
-   * ----------------------------------------------------------
-   * MAINS
-   * ----------------------------------------------------------
-   */
-
-  getOwnHand() {
-    const player =
-      this.getSelf();
-
-    if (!player) {
-      return [];
+    for (const value of Object.values(object)) {
+        deepFreeze(value);
     }
 
-    return player.main.filter(
-      card => card !== null
-    );
-  }
-
-  getHand(index) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return [];
-    }
-
-    return player.main.slice();
-  }
-
-  getCardCount(index) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return 0;
-    }
-
-    return Number(
-      player.cardCount ??
-      player.main.length
-    );
-  }
-
-  /**
-   * Nombre de cartes inconnues dans une main.
-   */
-  getUnknownCardCount(index) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return 0;
-    }
-
-    return player.main.filter(
-      card => card === null
-    ).length;
-  }
-
-  /**
-   * Vérifie si une carte précise est connue
-   * dans la main d'un joueur.
-   */
-  knowsCard(index, card) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return false;
-    }
-
-    return player.main.some(
-      knownCard =>
-        knownCard !== null &&
-        knownCard === card
-    );
-  }
-
-  /**
-   * Retourne uniquement les cartes effectivement connues.
-   */
-  getKnownCards(index) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return [];
-    }
-
-    return player.main.filter(
-      card => card !== null
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * TABLE
-   * ----------------------------------------------------------
-   */
-
-  getTableCards() {
-    return this.table.slice();
-  }
-
-  getTableCardsOfPlayer(playerIndex) {
-    const player =
-      this.getPlayer(playerIndex);
-
-    if (!player) {
-      return [];
-    }
-
-    return this.table.filter(
-      card =>
-        card &&
-        (
-          card.playerIndex ===
-          playerIndex ||
-
-          card.proprietaire ===
-          player.name
-        )
-    );
-  }
-
-  getPointCardsOfPlayer(playerIndex) {
-    return this.getTableCardsOfPlayer(
-      playerIndex
-    ).filter(
-      card =>
-        Number(card?.valeur ?? 0) !== 0
-    );
-  }
-
-  /**
-   * Dernière carte à points connue d'un joueur.
-   */
-  getLastPointCard(playerIndex) {
-    const cards =
-      this.getPointCardsOfPlayer(
-        playerIndex
-      );
-
-    return cards.length > 0
-      ? cards[cards.length - 1]
-      : null;
-  }
-
-  /**
-   * Les cartes à points sont ordonnées selon leur présence
-   * dans cartesTable, comme dans le moteur réel.
-   */
-  getLastPointCards(
-    playerIndex,
-    count = 2
-  ) {
-    const result = [];
-
-    for (
-      let i = this.table.length - 1;
-      i >= 0 &&
-      result.length < count;
-      i--
-    ) {
-      const card =
-        this.table[i];
-
-      const player =
-        this.getPlayer(playerIndex);
-
-      if (
-        card &&
-        player &&
-        card.proprietaire ===
-          player.name &&
-        Number(card.valeur ?? 0) !== 0
-      ) {
-        result.push(card);
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * CARTES CONNUES
-   * ----------------------------------------------------------
-   */
-
-  getAllKnownCards() {
-    const result = [];
-
-    /*
-     * Cartes des mains visibles.
-     */
-    for (const player of this.players) {
-      for (const card of player.main) {
-        if (card !== null) {
-          result.push({
-            card,
-            location: "hand",
-            playerIndex: player.id
-          });
-        }
-      }
-    }
-
-    /*
-     * Cartes de la table.
-     */
-    for (const card of this.table) {
-      if (!card) {
-        continue;
-      }
-
-      result.push({
-        card:
-          card.valeur ??
-          card.card ??
-          card,
-        location: "table",
-        playerIndex:
-          this.findPlayerIndexByName(
-            card.proprietaire
-          )
-      });
-    }
-
-    /*
-     * Pouvoirs défaussés.
-     */
-    for (const card of this.discard) {
-      if (!card) {
-        continue;
-      }
-
-      result.push({
-        card:
-          card.valeur ??
-          card.card ??
-          card,
-        location: "discard",
-        playerIndex:
-          this.findPlayerIndexByName(
-            card.joueur
-          )
-      });
-    }
-
-    return result;
-  }
-
-  isCardKnownOut(card) {
-    return this.getAllKnownCards()
-      .some(
-        entry =>
-          entry.card === card
-      );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * SCORES
-   * ----------------------------------------------------------
-   */
-
-  getScore(index) {
-    const player =
-      this.getPlayer(index);
-
-    return player
-      ? Number(player.score ?? 0)
-      : 0;
-  }
-
-  getOwnScore() {
-    return this.getScore(
-      this.botIndex
-    );
-  }
-
-  getDistanceToTarget(index) {
-    return (
-      this.targetScore -
-      this.getScore(index)
-    );
-  }
-
-  getAbsoluteDistanceToTarget(index) {
-    return Math.abs(
-      this.getDistanceToTarget(index)
-    );
-  }
-
-  isExactTarget(index) {
-    return (
-      this.getScore(index) ===
-      this.targetScore
-    );
-  }
-
-  isAboveTarget(index) {
-    return (
-      this.getScore(index) >
-      this.targetScore
-    );
-  }
-
-  isBelowTarget(index) {
-    return (
-      this.getScore(index) <
-      this.targetScore
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * PROGRESSION
-   * ----------------------------------------------------------
-   */
-
-  getProgression() {
-    return clamp(
-      this.progression,
-      0,
-      1
-    );
-  }
-
-  getProgressionPercent() {
-    return (
-      this.getProgression() * 100
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * TOUR
-   * ----------------------------------------------------------
-   */
-
-  isMyTurn(index = this.botIndex) {
-    return (
-      Number(this.currentPlayer) ===
-      Number(index)
-    );
-  }
-
-  isDecisionPhase() {
-    return (
-      !this.roundEnded &&
-      this.action === null
-    );
-  }
-
-  isValidForDecision(index = this.botIndex) {
-    const player =
-      this.getPlayer(index);
-
-    if (!player) {
-      return false;
-    }
-
-    if (this.roundEnded) {
-      return false;
-    }
-
-    if (
-      this.currentPlayer !==
-      Number(index)
-    ) {
-      return false;
-    }
-
-    if (
-      this.winner !== null
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * ACTIONS EN COURS
-   * ----------------------------------------------------------
-   */
-
-  hasPendingAction() {
-    return (
-      this.action !== null
-    );
-  }
-
-  isAction(action) {
-    return (
-      this.action === action
-    );
-  }
-
-  isDouble9() {
-    return (
-      this.action ===
-      "double9"
-    );
-  }
-
-  isDouble17() {
-    return (
-      this.action ===
-      "double17"
-    );
-  }
-
-  isDouble19() {
-    return (
-      this.action ===
-      "double19"
-    );
-  }
-
-  isDouble13() {
-    return (
-      this.action ===
-      "double13"
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * JOUEUR 17
-   * ----------------------------------------------------------
-   */
-
-  getPlayer17() {
-    return this.player17;
-  }
-
-  getPending17Card() {
-    return cloneValue(
-      this.card17Pending
-    );
-  }
-
-  getDouble17Cards() {
-    return this.double17Cards.slice();
-  }
-
-  isDouble17Active() {
-    return (
-      this.double17Active
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * JOUEUR 19
-   * ----------------------------------------------------------
-   */
-
-  getPlayer19() {
-    return this.player19;
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * JOKER
-   * ----------------------------------------------------------
-   */
-
-  getJokerTurns(playerIndex) {
-    return Number(
-      this.toursJoker?.[
-        playerIndex
-      ] ?? 0
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * CARTES
-   * ----------------------------------------------------------
-   */
-
-  getCardsInHand(value, playerIndex = this.botIndex) {
-    return this.getHand(playerIndex)
-      .filter(
-        card => card === value
-      );
-  }
-
-  countCard(
-    value,
-    playerIndex = this.botIndex
-  ) {
-    return this.getCardsInHand(
-      value,
-      playerIndex
-    ).length;
-  }
-
-  hasCard(
-    value,
-    playerIndex = this.botIndex
-  ) {
-    return (
-      this.countCard(
-        value,
-        playerIndex
-      ) > 0
-    );
-  }
-
-  hasDouble(
-    value,
-    playerIndex = this.botIndex
-  ) {
-    return (
-      this.countCard(
-        value,
-        playerIndex
-      ) >= 2
-    );
-  }
-
-  getDoubles(
-    playerIndex = this.botIndex
-  ) {
-    const hand =
-      this.getHand(playerIndex);
-
-    const counts =
-      new Map();
-
-    for (const card of hand) {
-      if (card === null) {
-        continue;
-      }
-
-      const count =
-        counts.get(card) ?? 0;
-
-      counts.set(
-        card,
-        count + 1
-      );
-    }
-
-    return [...counts.entries()]
-      .filter(
-        ([, count]) =>
-          count >= 2
-      )
-      .map(
-        ([card, count]) => ({
-          card,
-          count
-        })
-      );
-  }
-
-  /**
-   * Le moteur utilise une paire même lorsqu'il y a
-   * 3 exemplaires ou plus.
-   */
-  getPlayableDoubleCards(
-    playerIndex = this.botIndex
-  ) {
-    return this.getDoubles(
-      playerIndex
-    ).map(
-      ({ card }) => card
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * RECHERCHE DE JOUEUR
-   * ----------------------------------------------------------
-   */
-
-  findPlayerIndexByName(name) {
-    if (
-      name === null ||
-      name === undefined
-    ) {
-      return null;
-    }
-
-    const index =
-      this.players.findIndex(
-        player =>
-          player.name === name
-      );
-
-    return index === -1
-      ? null
-      : index;
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * FIN DE MANCHE / PARTIE
-   * ----------------------------------------------------------
-   */
-
-  hasWinner() {
-    return (
-      this.winner !== null
-    );
-  }
-
-  hasRoundWinner() {
-    return (
-      this.roundWinner !== null
-    );
-  }
-
-  isRoundOver() {
-    return (
-      this.roundEnded ||
-      this.roundFinished
-    );
-  }
-
-  /**
-   * ----------------------------------------------------------
-   * RÉSUMÉ POUR DEBUG / TESTS
-   * ----------------------------------------------------------
-   */
-
-  summary() {
-    return {
-      botIndex:
-        this.botIndex,
-
-      currentPlayer:
-        this.currentPlayer,
-
-      action:
-        this.action,
-
-      target:
-        this.target,
-
-      targetScore:
-        this.targetScore,
-
-      progression:
-        this.progression,
-
-      deckCount:
-        this.deckCount,
-
-      tableCount:
-        this.table.length,
-
-      discardCount:
-        this.discard.length,
-
-      players:
-        this.players.map(
-          player => ({
-            id: player.id,
-            name: player.name,
-            score: player.score,
-            bot: player.bot,
-            cardCount:
-              player.cardCount,
-            visibleCards:
-              player.main.filter(
-                card => card !== null
-              )
-          })
-        )
-    };
-  }
-
-  /**
-   * Sérialisation sans référence mutable.
-   */
-  toJSON() {
-    return {
-      players:
-        this.players.map(
-          player => ({
-            ...player,
-            main:
-              player.main.slice()
-          })
-        ),
-
-      deckCount:
-        this.deckCount,
-
-      table:
-        cloneArray(this.table),
-
-      discard:
-        cloneArray(this.discard),
-
-      history:
-        this.history,
-
-      currentPlayer:
-        this.currentPlayer,
-
-      action:
-        this.action,
-
-      target:
-        this.target,
-
-      selection:
-        cloneValue(this.selection),
-
-      toursJoker:
-        cloneValue(this.toursJoker),
-
-      winner:
-        cloneValue(this.winner),
-
-      roundWinner:
-        cloneValue(this.roundWinner),
-
-      roundEnded:
-        this.roundEnded,
-
-      player17:
-        this.player17,
-
-      card17Pending:
-        cloneValue(
-          this.card17Pending
-        ),
-
-      double17Cards:
-        cloneArray(
-          this.double17Cards
-        ),
-
-      double17Active:
-        this.double17Active,
-
-      player19:
-        this.player19,
-
-      victories:
-        cloneValue(
-          this.victories
-        ),
-
-      modeJeu:
-        this.modeJeu,
-
-      botIndex:
-        this.botIndex,
-
-      targetScore:
-        this.targetScore,
-
-      totalCards:
-        this.totalCards,
-
-      cardsPlayed:
-        this.cardsPlayed,
-
-      progression:
-        this.progression,
-
-      roundFinished:
-        this.roundFinished
-    };
-  }
+    return object;
 }
 
+
+function clone(value) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return value;
+    }
+
+    if (typeof structuredClone === "function") {
+        try {
+            return structuredClone(value);
+        } catch {}
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(clone);
+    }
+
+    if (typeof value === "object") {
+        const result = {};
+
+        for (const [key, item] of Object.entries(value)) {
+            result[key] = clone(item);
+        }
+
+        return result;
+    }
+
+    return value;
+}
+
+
+/* ============================================================
+ * CARTE
+ * ========================================================== */
+
 /**
- * ------------------------------------------------------------
- * UTILITAIRES
- * ------------------------------------------------------------
+ * Normalise une carte.
+ *
+ * Dans Atoumoulin :
+ *
+ *   1 ... 21
+ *   "Joker"
+ *
+ * Les cartes présentes sur la table sont des objets contenant
+ * notamment :
+ *
+ *   valeur
+ *   proprietaire
+ *   liee
+ *   historiqueCarte
  */
+export function normalizeCard(card) {
 
-function normalizePlayers(players) {
-  if (!Array.isArray(players)) {
-    return [];
-  }
+    if (
+        card === null ||
+        card === undefined
+    ) {
+        return null;
+    }
 
-  return players.map(
-    (player, index) => {
-      const main =
-        Array.isArray(player.main)
-          ? player.main.slice()
-          : [];
+    if (
+        typeof card === "number" ||
+        typeof card === "string"
+    ) {
+        return {
+            value: card,
+            owner: null,
+            linked: false,
+            history: []
+        };
+    }
 
-      return {
-        id:
-          player.id ??
-          index,
+    if (typeof card !== "object") {
+        return null;
+    }
+
+    return {
+        value:
+            card.valeur ??
+            card.value ??
+            null,
+
+        owner:
+            card.proprietaire ??
+            card.owner ??
+            null,
+
+        linked:
+            !!(
+                card.liee ??
+                card.linked
+            ),
+
+        history:
+            Array.isArray(
+                card.historiqueCarte
+            )
+                ? card.historiqueCarte.slice()
+                : Array.isArray(card.history)
+                    ? card.history.slice()
+                    : []
+    };
+}
+
+
+/* ============================================================
+ * JOUEUR
+ * ========================================================== */
+
+function normalizePlayer(
+    player,
+    index,
+    botIndex
+) {
+    if (!player) {
+        return null;
+    }
+
+    const own =
+        Number(index) ===
+        Number(botIndex);
+
+    const cardCount =
+        Number(player.cardCount) || 0;
+
+    let main;
+
+    /*
+     * La vue du moteur contient :
+     *
+     *   - la vraie main pour le joueur concerné ;
+     *   - null/null/null pour les mains adverses.
+     *
+     * On conserve exactement cette information.
+     */
+    if (own) {
+        main =
+            Array.isArray(player.main)
+                ? player.main.slice()
+                : [];
+    } else {
+        main =
+            Array.from(
+                {
+                    length: cardCount
+                },
+                () => null
+            );
+    }
+
+    return {
+        id: Number(index),
 
         name:
-          player.name ??
-          player.nom ??
-          `Joueur ${index + 1}`,
+            String(
+                player.name ??
+                `Joueur ${Number(index) + 1}`
+            ),
 
         score:
-          Number(
-            player.score ?? 0
-          ),
+            Number(player.score) || 0,
 
         bot:
-          Boolean(
-            player.bot
-          ),
+            !!player.bot,
 
-        main,
+        cardCount,
 
         /*
-         * cardCount est séparé de main.length
-         * car une vue distante peut cacher le contenu
-         * tout en révélant le nombre de cartes.
+         * true uniquement pour notre propre main.
          */
-        cardCount:
-          player.cardCount != null
-            ? Number(
-                player.cardCount
-              )
-            : main.length
-      };
-    }
-  );
+        handKnown:
+            own,
+
+        main
+    };
 }
 
-function normalizeIndex(
-  value,
-  playerCount
-) {
-  if (
-    playerCount <= 0
-  ) {
-    return 0;
-  }
 
-  const index =
-    Number(value);
+/* ============================================================
+ * ÉTAT DE JEU
+ * ========================================================== */
 
-  if (
-    !Number.isInteger(index) ||
-    index < 0 ||
-    index >= playerCount
-  ) {
-    return 0;
-  }
+export class AtoumoulinGameState {
 
-  return index;
-}
+    constructor(raw, botIndex) {
 
-function normalizeWinner(
-  winner,
-  players
-) {
-  if (
-    winner === null ||
-    winner === undefined
-  ) {
-    return null;
-  }
+        if (!raw) {
+            throw new Error(
+                "Impossible de créer l'état IA : état absent."
+            );
+        }
 
-  if (
-    typeof winner === "number"
-  ) {
-    return (
-      players[winner]?.id ??
-      winner
-    );
-  }
+        this.botIndex =
+            Number(botIndex);
 
-  if (
-    typeof winner === "object"
-  ) {
-    if (
-      winner.id !== undefined
-    ) {
-      return winner.id;
+        if (
+            !Number.isInteger(
+                this.botIndex
+            )
+        ) {
+            throw new Error(
+                "Index du bot invalide."
+            );
+        }
+
+
+        /* ----------------------------------------------------
+         * Joueurs
+         * -------------------------------------------------- */
+
+        this.players =
+            (raw.players ?? [])
+                .map(
+                    (player, index) =>
+                        normalizePlayer(
+                            player,
+                            index,
+                            this.botIndex
+                        )
+                )
+                .filter(Boolean);
+
+
+        /* ----------------------------------------------------
+         * Pioche
+         * -------------------------------------------------- */
+
+        this.deckCount =
+            Math.max(
+                0,
+                Number(raw.deckCount) || 0
+            );
+
+
+        /* ----------------------------------------------------
+         * Table
+         * -------------------------------------------------- */
+
+        this.table =
+            (raw.table ?? [])
+                .map(normalizeCard)
+                .filter(Boolean);
+
+
+        /* ----------------------------------------------------
+         * Défausse
+         * -------------------------------------------------- */
+
+        this.discard =
+            clone(
+                raw.discard ?? []
+            );
+
+
+        /* ----------------------------------------------------
+         * Historique
+         * -------------------------------------------------- */
+
+        this.history =
+            String(
+                raw.history ?? ""
+            );
+
+
+        /* ----------------------------------------------------
+         * Tour
+         * -------------------------------------------------- */
+
+        this.currentPlayer =
+            Number(
+                raw.currentPlayer
+            );
+
+
+        /* ----------------------------------------------------
+         * Action en cours
+         * -------------------------------------------------- */
+
+        this.action =
+            raw.action ??
+            null;
+
+
+        /* ----------------------------------------------------
+         * Cible
+         * -------------------------------------------------- */
+
+        this.target =
+            raw.target ??
+            null;
+
+
+        /* ----------------------------------------------------
+         * Sélection actuelle
+         * -------------------------------------------------- */
+
+        this.selection =
+            clone(
+                raw.selection ??
+                null
+            );
+
+
+        /* ----------------------------------------------------
+         * Joker
+         * -------------------------------------------------- */
+
+        this.toursJoker =
+            clone(
+                raw.toursJoker ?? {}
+            );
+
+
+        /* ----------------------------------------------------
+         * 17
+         * -------------------------------------------------- */
+
+        this.player17 =
+            raw.player17 ??
+            null;
+
+        this.card17Pending =
+            clone(
+                raw.card17Pending ??
+                null
+            );
+
+
+        /* ----------------------------------------------------
+         * Double 17
+         * -------------------------------------------------- */
+
+        this.double17Cards =
+            clone(
+                raw.double17Cards ??
+                []
+            );
+
+        this.double17Active =
+            !!raw.double17Active;
+
+
+        /* ----------------------------------------------------
+         * 19
+         * -------------------------------------------------- */
+
+        this.player19 =
+            raw.player19 ??
+            null;
+
+
+        /* ----------------------------------------------------
+         * Fin
+         * -------------------------------------------------- */
+
+        this.winner =
+            raw.winner ??
+            null;
+
+        this.roundWinner =
+            raw.roundWinner ??
+            null;
+
+        this.roundEnded =
+            !!raw.roundEnded;
+
+
+        /* ----------------------------------------------------
+         * Partie
+         * -------------------------------------------------- */
+
+        this.victories =
+            Array.isArray(raw.victories)
+                ? raw.victories.slice()
+                : [];
+
+        this.modeJeu =
+            Number(raw.modeJeu) || 1;
+
+
+        /*
+         * Empêche accidentellement le moteur stratégique de
+         * modifier l'état observé.
+         */
+        deepFreeze(this);
     }
 
-    if (
-      winner.nom !== undefined
+
+    /* ========================================================
+     * ACCÈS JOUEUR
+     * ====================================================== */
+
+    getPlayer(index = this.botIndex) {
+
+        return (
+            this.players[
+                Number(index)
+            ] ?? null
+        );
+    }
+
+
+    getBot() {
+        return this.getPlayer(
+            this.botIndex
+        );
+    }
+
+
+    getOpponents() {
+
+        return this.players.filter(
+            player =>
+                player.id !==
+                this.botIndex
+        );
+    }
+
+
+    getOpponent(index) {
+
+        const id =
+            Number(index);
+
+        if (
+            id ===
+            this.botIndex
+        ) {
+            return null;
+        }
+
+        return (
+            this.players[id] ??
+            null
+        );
+    }
+
+
+    /* ========================================================
+     * MAIN
+     * ====================================================== */
+
+    getOwnHand() {
+
+        const player =
+            this.getBot();
+
+        if (!player) {
+            return [];
+        }
+
+        return player.handKnown
+            ? player.main.slice()
+            : [];
+    }
+
+
+    getOwnCardCount() {
+
+        const player =
+            this.getBot();
+
+        return player
+            ? player.cardCount
+            : 0;
+    }
+
+
+    /**
+     * Retourne true si le contenu de la main est réellement
+     * connu par le bot.
+     */
+    knowsOwnHand() {
+        const player =
+            this.getBot();
+
+        return !!(
+            player &&
+            player.handKnown
+        );
+    }
+
+
+    /**
+     * Retourne true si la carte d'un adversaire est connue.
+     *
+     * En règle générale, false.
+     */
+    knowsOpponentCard(
+        playerIndex,
+        cardIndex
     ) {
-      const index =
-        players.findIndex(
-          player =>
-            player.name ===
-            winner.nom
+
+        const player =
+            this.getOpponent(
+                playerIndex
+            );
+
+        if (!player) {
+            return false;
+        }
+
+        return (
+            player.handKnown &&
+            player.main[cardIndex] !== null
+        );
+    }
+
+
+    /* ========================================================
+     * TABLE
+     * ====================================================== */
+
+    getTableCards() {
+        return this.table.slice();
+    }
+
+
+    getCardsOwnedBy(playerIndex) {
+
+        const player =
+            this.getPlayer(
+                playerIndex
+            );
+
+        if (!player) {
+            return [];
+        }
+
+        return this.table.filter(
+            card =>
+                card.owner ===
+                player.name
+        );
+    }
+
+
+    getPointCardsOwnedBy(playerIndex) {
+
+        return this
+            .getCardsOwnedBy(
+                playerIndex
+            )
+            .filter(
+                card =>
+                    typeof card.value === "number" &&
+                    card.value !== 0
+            );
+    }
+
+
+    getTableCard(index) {
+
+        return (
+            this.table[
+                Number(index)
+            ] ?? null
+        );
+    }
+
+
+    /* ========================================================
+     * ACTIONS / ÉTAT
+     * ====================================================== */
+
+    isOurTurn() {
+
+        return (
+            Number(
+                this.currentPlayer
+            ) ===
+            this.botIndex
+        );
+    }
+
+
+    hasPendingAction() {
+
+        return (
+            this.action !== null &&
+            this.action !== undefined
+        );
+    }
+
+
+    isNormalTurn() {
+
+        return (
+            this.action === null
+        );
+    }
+
+
+    /* ========================================================
+     * SCORE
+     * ====================================================== */
+
+    getScore(
+        playerIndex = this.botIndex
+    ) {
+
+        const player =
+            this.getPlayer(
+                playerIndex
+            );
+
+        return player
+            ? player.score
+            : null;
+    }
+
+
+    getScores() {
+
+        return this.players.map(
+            player => ({
+                player:
+                    player.id,
+
+                score:
+                    player.score
+            })
+        );
+    }
+
+
+    /* ========================================================
+     * CIBLES
+     * ====================================================== */
+
+    getTargetPlayer() {
+
+        if (
+            this.target === null ||
+            this.target === undefined
+        ) {
+            return null;
+        }
+
+        return this.getOpponent(
+            this.target
+        );
+    }
+
+
+    getLegalOpponentIds() {
+
+        return this.players
+            .filter(
+                player =>
+                    player.id !==
+                    this.botIndex
+            )
+            .map(
+                player =>
+                    player.id
+            );
+    }
+
+
+    /* ========================================================
+     * CARTES DES ADVERSAIRES
+     * ====================================================== */
+
+    /**
+     * Important :
+     *
+     * Cette méthode ne prétend jamais connaître le contenu
+     * d'une main cachée.
+     *
+     * Elle donne uniquement le nombre de cartes connu.
+     */
+    getOpponentCardCount(
+        playerIndex
+    ) {
+
+        const player =
+            this.getOpponent(
+                playerIndex
+            );
+
+        return player
+            ? player.cardCount
+            : 0;
+    }
+
+
+    getUnknownCardCount() {
+
+        return this.getOpponents()
+            .reduce(
+                (
+                    total,
+                    player
+                ) =>
+                    total +
+                    player.cardCount,
+                0
+            );
+    }
+
+
+    /* ========================================================
+     * INFORMATIONS SPÉCIALES
+     * ====================================================== */
+
+    isDouble9() {
+
+        return (
+            this.action ===
+            "double9"
+        );
+    }
+
+
+    isDouble17() {
+
+        return (
+            this.double17Active ||
+            this.action ===
+                "double17"
+        );
+    }
+
+
+    isCard17() {
+
+        return (
+            this.action ===
+            "carte17"
+        );
+    }
+
+
+    isCard19() {
+
+        return (
+            this.action ===
+            "carte19"
+        );
+    }
+
+
+    isDouble19() {
+
+        return (
+            this.action ===
+            "double19"
+        );
+    }
+
+
+    /* ========================================================
+     * PHASE DE PARTIE
+     * ====================================================== */
+
+    /**
+     * Nombre total de cartes théoriquement utilisées.
+     *
+     * Les règles actuelles du jeu utilisent :
+     *
+     * 2-3 joueurs : 44
+     * 4 joueurs   : 66
+     * 5 joueurs   : 88
+     * 6 joueurs   : 110
+     * 7 joueurs   : 132
+     * 8 joueurs   : 154
+     */
+    getTotalCardCount() {
+
+        const count =
+            this.players.length;
+
+        if (count <= 3) {
+            return 44;
+        }
+
+        return (
+            (count - 1) *
+            22
+        );
+    }
+
+
+    /**
+     * Nombre de cartes déjà sorties.
+     *
+     * Cette estimation utilise :
+     *
+     * cartes en main connues
+     * + cartes sur table
+     * + défausse
+     * + pioche restante
+     *
+     * La pioche est connue seulement en quantité,
+     * pas en contenu.
+     */
+    getCardsProgress() {
+
+        const total =
+            this.getTotalCardCount();
+
+        if (total <= 0) {
+            return 0;
+        }
+
+        const remaining =
+            this.deckCount;
+
+        return Math.max(
+            0,
+            Math.min(
+                1,
+                1 -
+                (
+                    remaining /
+                    total
+                )
+            )
+        );
+    }
+
+
+    /* ========================================================
+     * COPIE POUR SIMULATION
+     * ====================================================== */
+
+    /**
+     * Produit une représentation mutable.
+     *
+     * Le moteur de simulation pourra travailler dessus sans
+     * modifier l'état réel observé.
+     */
+    toMutableObject() {
+
+        return clone({
+            botIndex:
+                this.botIndex,
+
+            players:
+                this.players,
+
+            deckCount:
+                this.deckCount,
+
+            table:
+                this.table,
+
+            discard:
+                this.discard,
+
+            history:
+                this.history,
+
+            currentPlayer:
+                this.currentPlayer,
+
+            action:
+                this.action,
+
+            target:
+                this.target,
+
+            selection:
+                this.selection,
+
+            toursJoker:
+                this.toursJoker,
+
+            player17:
+                this.player17,
+
+            card17Pending:
+                this.card17Pending,
+
+            double17Cards:
+                this.double17Cards,
+
+            double17Active:
+                this.double17Active,
+
+            player19:
+                this.player19,
+
+            winner:
+                this.winner,
+
+            roundWinner:
+                this.roundWinner,
+
+            roundEnded:
+                this.roundEnded,
+
+            victories:
+                this.victories,
+
+            modeJeu:
+                this.modeJeu
+        });
+    }
+
+
+    /* ========================================================
+     * SIGNATURE
+     * ====================================================== */
+
+    /**
+     * Signature légère utilisée pour détecter si deux états
+     * sont identiques.
+     */
+    signature() {
+
+        return JSON.stringify({
+            players:
+                this.players.map(
+                    player => ({
+                        id:
+                            player.id,
+
+                        score:
+                            player.score,
+
+                        cardCount:
+                            player.cardCount,
+
+                        main:
+                            player.handKnown
+                                ? player.main
+                                : undefined
+                    })
+                ),
+
+            deckCount:
+                this.deckCount,
+
+            table:
+                this.table,
+
+            discard:
+                this.discard,
+
+            currentPlayer:
+                this.currentPlayer,
+
+            action:
+                this.action,
+
+            target:
+                this.target,
+
+            player17:
+                this.player17,
+
+            card17Pending:
+                this.card17Pending,
+
+            double17Cards:
+                this.double17Cards,
+
+            double17Active:
+                this.double17Active,
+
+            player19:
+                this.player19,
+
+            roundEnded:
+                this.roundEnded
+        });
+    }
+}
+
+
+/* ============================================================
+ * CONSTRUCTEUR DEPUIS LE MOTEUR
+ * ========================================================== */
+
+/**
+ * Utilisation :
+ *
+ * const state =
+ *     GameState.fromEngine(
+ *         engine,
+ *         botIndex
+ *     );
+ */
+export function createGameState(
+    engine,
+    botIndex
+) {
+
+    if (
+        !engine ||
+        typeof engine.stateFor !==
+            "function"
+    ) {
+        throw new Error(
+            "Moteur Atoumoulin invalide."
+        );
+    }
+
+    const raw =
+        engine.stateFor(
+            Number(botIndex)
         );
 
-      return index === -1
-        ? null
-        : index;
-    }
-  }
-
-  return winner;
+    return new AtoumoulinGameState(
+        raw,
+        Number(botIndex)
+    );
 }
 
-function normalizeRoundWinner(
-  winner,
-  players
+
+/* ============================================================
+ * COPIE
+ * ========================================================== */
+
+export function cloneGameState(
+    state
 ) {
-  if (
-    winner === null ||
-    winner === undefined
-  ) {
-    return null;
-  }
-
-  if (
-    typeof winner === "number"
-  ) {
-    return (
-      players[winner]?.id ??
-      winner
-    );
-  }
-
-  if (
-    typeof winner === "object"
-  ) {
-    if (
-      winner.id !== undefined
-    ) {
-      return winner.id;
-    }
 
     if (
-      winner.nom !== undefined
+        !(state instanceof
+          AtoumoulinGameState)
     ) {
-      const index =
-        players.findIndex(
-          player =>
-            player.name ===
-            winner.nom
+        throw new Error(
+            "cloneGameState attend un AtoumoulinGameState."
         );
-
-      return index === -1
-        ? null
-        : index;
     }
-  }
 
-  return winner;
-}
-
-/**
- * Cible réelle du jeu.
- *
- * Ces valeurs correspondent à obtenirScoreVictoire()
- * dans script.js.
- */
-export function calculateTargetScore(
-  playerCount
-) {
-  const count =
-    Number(playerCount);
-
-  if (
-    count === 2 ||
-    count === 3
-  ) {
-    return 120;
-  }
-
-  if (count === 4) {
-    return 160;
-  }
-
-  if (count === 5) {
-    return 200;
-  }
-
-  if (count === 6) {
-    return 220;
-  }
-
-  if (count === 7) {
-    return 240;
-  }
-
-  if (count === 8) {
-    return 260;
-  }
-
-  /*
-   * Le jeu actuel est prévu pour 2 à 8 joueurs.
-   */
-  return null;
-}
-
-/**
- * Nombre total de cartes correspondant au document
- * de conception du nouveau bot.
- *
- * Attention :
- * le paquet réel de script.js est constitué de :
- *
- *   2 paquets pour 2-3 joueurs
- *   joueurs - 1 paquets pour 4-8 joueurs
- *
- * Chaque paquet contient 22 cartes.
- */
-export function calculateTotalCards(
-  playerCount
-) {
-  const count =
-    Number(playerCount);
-
-  if (
-    count < 2
-  ) {
-    return 0;
-  }
-
-  const packs =
-    count <= 3
-      ? 2
-      : count - 1;
-
-  return packs * 22;
-}
-
-/**
- * Les cartes "sorties" pour la progression stratégique
- * seront raffinées dans l'évaluation.
- *
- * Ici nous comptons uniquement les cartes dont la présence
- * est explicitement connue dans l'état.
- */
-function calculateVisibleProgressCards(
-  state
-) {
-  let count = 0;
-
-  for (const player of state.players) {
-    count += player.main.filter(
-      card => card !== null
-    ).length;
-  }
-
-  count += state.table.length;
-  count += state.discard.length;
-
-  /*
-   * Une même carte ne doit normalement pas être présente
-   * dans deux endroits simultanément.
-   */
-  return count;
-}
-
-function toNonNegativeInteger(value) {
-  const number =
-    Number(value);
-
-  if (
-    !Number.isFinite(number) ||
-    number < 0
-  ) {
-    return 0;
-  }
-
-  return Math.floor(number);
-}
-
-function clamp(
-  value,
-  min,
-  max
-) {
-  return Math.max(
-    min,
-    Math.min(max, value)
-  );
-}
-
-function cloneArray(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.map(
-    item => cloneValue(item)
-  );
-}
-
-function cloneValue(value) {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return value;
-  }
-
-  if (
-    typeof structuredClone ===
-    "function"
-  ) {
-    try {
-      return structuredClone(
-        value
-      );
-    } catch {
-      /*
-       * Fallback ci-dessous.
-       */
-    }
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(
-      item => cloneValue(item)
+    return new AtoumoulinGameState(
+        state.toMutableObject(),
+        state.botIndex
     );
-  }
-
-  if (
-    typeof value === "object"
-  ) {
-    const result = {};
-
-    for (
-      const [key, item]
-      of Object.entries(value)
-    ) {
-      result[key] =
-        cloneValue(item);
-    }
-
-    return result;
-  }
-
-  return value;
 }
