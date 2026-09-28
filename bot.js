@@ -17,26 +17,22 @@ function creerPossibilite({
     joueur = null,
     cible = null,
     carteCible = null,
+    cartesCibles = [],
     choix = null,
     description = ""
-} = {}) {
-
+}) {
     return {
         type,
         valeur,
         cartes: [...cartes],
-
         joueur,
         cible,
-
         carteCible,
-
+        cartesCibles: [...cartesCibles],
         choix,
-
         description
     };
 }
-
 
 // -----------------------------------------------------
 // Références joueurs
@@ -50,7 +46,6 @@ function referenceJoueur(joueur) {
 
     return Simulator.obtenirReferenceJoueur(joueur);
 }
-
 
 // -----------------------------------------------------
 // Tous les adversaires accessibles
@@ -74,7 +69,6 @@ function obtenirAdversaires(etat, joueurActuel) {
     );
 }
 
-
 // -----------------------------------------------------
 // Cartes identiques disponibles
 // -----------------------------------------------------
@@ -86,7 +80,6 @@ function compterCarte(main, valeur) {
             Simulator.obtenirValeurCarte(carte) === valeur
     ).length;
 }
-
 
 // -----------------------------------------------------
 // Possibilités d'une carte simple
@@ -129,7 +122,6 @@ function genererPossibilitesCarteSimple(
 
         return possibilites;
     }
-
 
     // -------------------------------------------------
     // 3
@@ -260,9 +252,10 @@ function genererPossibilitesCarteSimple(
                         cartes: [carte],
                         joueur: referenceJoueur(joueur),
                         cible: referenceJoueur(cible),
-                        carteCible: index,
+                        carteCible: cartesPoints[index],
+                        choix: null,
                         description:
-                            "Voler une carte de points précise"
+                            "Voler une carte de points"
                     })
                 );
             }
@@ -296,7 +289,8 @@ function genererPossibilitesCarteSimple(
                     valeur: 15,
                     cartes: [carte],
                     joueur: referenceJoueur(joueur),
-                    carteCible: index,
+                    carteCible: cartesPoints[index],
+                    choix: null,
                     description:
                         "Doubler une carte de points personnelle"
                 })
@@ -524,11 +518,6 @@ function genererPossibilitesCartesSimples(
 // POSSIBILITÉS — DOUBLES
 // =====================================================
 
-
-// -----------------------------------------------------
-// Construire un double à partir de deux cartes
-// -----------------------------------------------------
-
 function creerPossibiliteDouble(
     etat,
     joueur,
@@ -536,22 +525,35 @@ function creerPossibiliteDouble(
     choix = null,
     cible = null,
     carteCible = null,
-    description = ""
+    description = "",
+    cartesCibles = []
 ) {
+
+    const valeur =
+        cartes.length > 0
+            ? Simulator.obtenirValeurCarte(
+                cartes[0]
+            )
+            : null;
 
     return creerPossibilite({
         type: "double",
-        valeur: Simulator.obtenirValeurCarte(cartes[0]),
+        valeur,
         cartes,
-        joueur: referenceJoueur(joueur),
-        cible: cible
-            ? referenceJoueur(cible)
-            : null,
+        joueur:
+            referenceJoueur(joueur),
+        cible:
+            referenceJoueur(cible),
         carteCible,
+        cartesCibles,
         choix,
         description
     });
 }
+
+// -----------------------------------------------------
+// Construire un double à partir de deux cartes
+// -----------------------------------------------------
 
 
 // -----------------------------------------------------
@@ -840,15 +842,15 @@ function genererPossibilitesDouble(
             ) {
 
                 possibilites.push(
-                    creerPossibiliteDouble(
-                        etat,
-                        joueur,
-                        cartes,
-                        null,
-                        cible,
-                        [i],
-                        "Voler une carte de points précise"
-                    )
+                   creerPossibiliteDouble(
+                   etat,
+                   joueur,
+                   cartes,
+                   null,
+                   cible,
+                   i,
+                   "Voler 1 carte de points"
+                  )
                 );
 
                 for (
@@ -858,15 +860,17 @@ function genererPossibilitesDouble(
                 ) {
 
                     possibilites.push(
-                        creerPossibiliteDouble(
-                            etat,
-                            joueur,
-                            cartes,
-                            null,
-                            cible,
-                            [i, j],
-                            "Voler deux cartes de points précises"
-                        )
+                       creerPossibiliteDouble(
+                       etat,
+                       joueur,
+                       cartes,
+                       null,
+                       cible,
+                       null,
+                       "Voler 2 cartes de points",
+                       [i, j]
+                       
+                       )
                     );
                 }
             }
@@ -1311,14 +1315,24 @@ function decrirePossibilite(
     }
 
     if (
-        possibilite.carteCible !== null &&
-        possibilite.carteCible !== undefined
-    ) {
-        texte +=
-            ` → carte ${JSON.stringify(
-                possibilite.carteCible
-            )}`;
-    }
+    possibilite.carteCible !== null &&
+    possibilite.carteCible !== undefined
+) {
+    texte +=
+        ` → carte ${JSON.stringify(
+            possibilite.carteCible
+        )}`;
+}
+
+    if (
+    Array.isArray(possibilite.cartesCibles) &&
+    possibilite.cartesCibles.length > 0
+) {
+    texte +=
+        ` → cartes ${JSON.stringify(
+            possibilite.cartesCibles
+        )}`;
+}
 
     return texte;
 }
