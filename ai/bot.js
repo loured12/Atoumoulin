@@ -1,41 +1,20 @@
-/**
- * Atoumoulin AI
- * bot.js
- *
- * Chef d'orchestre de la nouvelle IA.
- *
- * Rôle :
- * - recevoir l'état courant ;
- * - lancer la recherche ;
- * - appliquer la difficulté ;
- * - choisir une action légale ;
- * - ne jamais produire une action illégale.
- *
- * La stratégie détaillée reste dans :
- * - action-generator.js
- * - evaluation.js
- * - search.js
- * - knowledge.js
- * - simulation.js
- */
-
 import {
     searchActions,
     searchBestAction,
-    searchFinish,
     getSearchDepth
 } from "./search.js";
 
 import {
-    generateLegalActions
+    generateLegalActions,
+    sortByActionPriority
 } from "./action-generator.js";
 
 
-/* ============================================================
+/* =========================================================
  * DIFFICULTÉ
- * ========================================================== */
+ * ========================================================= */
 
-const DIFFICULTY = {
+export const DIFFICULTY = {
     facile: {
         strategic: 0.40,
         random: 0.60
@@ -58,51 +37,39 @@ const DIFFICULTY = {
 };
 
 
-/* ============================================================
- * OUTILS
- * ========================================================== */
-
-function normalizeDifficulty(
+export function normalizeDifficulty(
     difficulty
 ) {
     const value =
         String(
             difficulty ?? "normal"
-        ).toLowerCase();
+        )
+        .trim()
+        .toLowerCase();
 
-    if (
-        value === "easy"
-    ) {
-        return "facile";
-    }
+    const aliases = {
+        easy: "facile",
+        facile: "facile",
 
-    if (
-        value === "medium"
-    ) {
-        return "normal";
-    }
+        medium: "normal",
+        normal: "normal",
 
-    if (
-        value === "hard"
-    ) {
-        return "difficile";
-    }
+        hard: "difficile",
+        difficile: "difficile",
 
-    if (
-        value === "expert"
-    ) {
-        return "expert";
-    }
+        expert: "expert"
+    };
 
-    if (
-        DIFFICULTY[value]
-    ) {
-        return value;
-    }
-
-    return "normal";
+    return (
+        aliases[value] ??
+        "normal"
+    );
 }
 
+
+/* =========================================================
+ * OUTILS
+ * ========================================================= */
 
 function randomItem(
     array
@@ -126,10 +93,13 @@ function randomItem(
 function actionSignature(
     action
 ) {
+    if (!action) {
+        return "";
+    }
+
     if (
-        action &&
         typeof action.signature ===
-            "function"
+        "function"
     ) {
         return action.signature();
     }
@@ -140,15 +110,14 @@ function actionSignature(
         );
     } catch {
         return String(
-            action
+            action.id ??
+            action.kind ??
+            action.card ??
+            ""
         );
     }
 }
 
-
-/* ============================================================
- * ACTIONS LÉGALES
- * ========================================================== */
 
 function getLegalActions(
     state
@@ -164,21 +133,20 @@ function getLegalActions(
         return [];
     }
 
-    return actions.filter(
-        Boolean
+    return sortByActionPriority(
+        actions.filter(Boolean)
     );
 }
 
-
-/* ============================================================
- * VÉRIFICATION
- * ========================================================== */
 
 function findEquivalentAction(
     action,
     legalActions
 ) {
-    if (!action) {
+    if (
+        !action ||
+        !Array.isArray(legalActions)
+    ) {
         return null;
     }
 
@@ -186,6 +154,10 @@ function findEquivalentAction(
         actionSignature(
             action
         );
+
+    if (!signature) {
+        return null;
+    }
 
     return (
         legalActions.find(
@@ -199,10 +171,6 @@ function findEquivalentAction(
 }
 
 
-/**
- * Sécurité absolue :
- * le bot ne retourne jamais une action qui n'est plus légale.
- */
 function ensureLegalAction(
     action,
     legalActions
@@ -226,24 +194,208 @@ function ensureLegalAction(
         return equivalent;
     }
 
+    /*
+     * Sécurité absolue :
+     *
+     * si la recherche renvoie quelque chose
+     * d'obsolète ou de mal formé, le bot ne
+     * joue jamais cette action.
+     */
     return legalActions[0];
 }
 
 
-/* ============================================================
- * OPTIONS PROCHES
- * ========================================================== */
+/* =========================================================
+ * COMPLEXITÉ
+ * ========================================================= */
 
-/**
- * Les actions proches de la meilleure sont candidates
- * pour la part aléatoire de la difficulté.
+function getActionComplexity(
+    action,
+    state,
+    legalActions
+) {
+    let complexity = 0;
+
+    const alternatives =
+        Array.isArray(
+            legalActions
+        )
+            ? legalActions.length
+            : 0;
+
+    /*
+     * Nombre d'alternatives disponibles.
+     */
+    if (alternatives >= 12) {
+        complexity += 30;
+    } else if (
+        alternatives >= 7
+    ) {
+        complexity += 20;
+    } else if (
+        alternatives >= 3
+    ) {
+        complexity += 10;
+    }
+
+    /*
+     * Action à choix multiple.
+     */
+    const kind =
+        String(
+            action?.kind ??
+            action?.type ??
+            ""
+        ).toLowerCase();
+
+    if (
+        kind.includes("target") ||
+        kind.includes("table")
+    ) {
+        complexity += 15;
+    }
+
+    if (
+        kind.includes("effect") ||
+        kind.includes("continue")
+    ) {
+        complexity += 10;
+    }
+
+    /*
+     * Information cachée.
+     */
+    if (
+        action?.hiddenInformation
+    ) {
+        complexity += 20;
+    }
+
+    if (
+        action?.uncertainty
+    ) {
+        complexity += 10;
+    }
+
+    /*
+     * Conséquences fortes.
+     */
+    const card =
+        Number(
+            action?.card ??
+            action?.value
+        );
+
+    if (
+        [
+            1,
+            3,
+            9,
+            13,
+            17,
+            19,
+            21
+        ].includes(card)
+    ) {
+        complexity += 10;
+    }
+
+    /*
+     * Profondeur de recherche.
+     */
+    const progress =
+        typeof state?.getGamePhase ===
+        "function"
+            ? state.getGamePhase()
+            : typeof state?.getCardsProgress ===
+                "function"
+                ? state.getCardsProgress()
+                : 0;
+
+    if (
+        progress >= 0.75
+    ) {
+        complexity += 10;
+    }
+
+    return Math.max(
+        0,
+        Math.min(
+            100,
+            complexity
+        )
+    );
+}
+
+
+/*
+ * Tolérance utilisée pour le choix aléatoire
+ * d'une action proche de la meilleure.
  *
- * On ne choisit jamais une action manifestement mauvaise
- * juste pour faire du hasard.
+ * Plus la décision est complexe,
+ * plus le bot peut considérer plusieurs
+ * actions proches comme raisonnables.
  */
-function getCloseActions(
+export function getAdaptiveTolerance(
+    {
+        action,
+        state,
+        legalActions,
+        results
+    } = {}
+) {
+    const complexity =
+        getActionComplexity(
+            action,
+            state,
+            legalActions
+        );
+
+    const resultCount =
+        Array.isArray(results)
+            ? results.length
+            : 0;
+
+    let tolerance = 3;
+
+    if (
+        complexity >= 60
+    ) {
+        tolerance = 8;
+    } else if (
+        complexity >= 35
+    ) {
+        tolerance = 6;
+    } else if (
+        complexity >= 15
+    ) {
+        tolerance = 5;
+    }
+
+    /*
+     * Beaucoup de possibilités :
+     * la décision est naturellement moins
+     * discriminante.
+     */
+    if (
+        resultCount >= 15
+    ) {
+        tolerance += 1;
+    }
+
+    return tolerance;
+}
+
+
+/* =========================================================
+ * ACTIONS PROCHES
+ * ========================================================= */
+
+export function getCloseActions(
     results,
-    tolerance = 5
+    {
+        tolerance = 5
+    } = {}
 ) {
     if (
         !Array.isArray(results) ||
@@ -254,7 +406,8 @@ function getCloseActions(
 
     const bestScore =
         Number(
-            results[0]?.score
+            results[0]?.score ??
+            results[0]?.finalScore
         );
 
     if (
@@ -272,46 +425,40 @@ function getCloseActions(
         result => {
             const score =
                 Number(
-                    result?.score
+                    result?.score ??
+                    result?.finalScore
                 );
 
-            if (
-                !Number.isFinite(
-                    score
-                )
-            ) {
-                return false;
-            }
-
             return (
+                Number.isFinite(
+                    score
+                ) &&
                 bestScore -
-                score <=
-                tolerance
+                    score <=
+                    tolerance
             );
         }
     );
 }
 
 
-/* ============================================================
- * CHOIX SELON DIFFICULTÉ
- * ========================================================== */
+/* =========================================================
+ * CHOIX SELON LA DIFFICULTÉ
+ * ========================================================= */
 
-function chooseByDifficulty({
+export function chooseByDifficulty({
     results,
     legalActions,
-    difficulty
-}) {
+    difficulty,
+    state
+} = {}) {
     if (
         !Array.isArray(
-            results
-        ) ||
-        results.length === 0
-    ) {
-        return ensureLegalAction(
-            null,
             legalActions
-        );
+        ) ||
+        legalActions.length === 0
+    ) {
+        return null;
     }
 
     const level =
@@ -322,41 +469,65 @@ function chooseByDifficulty({
     const settings =
         DIFFICULTY[level];
 
+    if (
+        !Array.isArray(
+            results
+        ) ||
+        results.length === 0
+    ) {
+        return legalActions[0];
+    }
+
+    const best =
+        ensureLegalAction(
+            results[0]?.action,
+            legalActions
+        );
+
     /*
      * Expert :
-     * aucune part aléatoire.
+     * toujours la meilleure action
+     * issue de la recherche.
      */
     if (
         settings.random === 0
     ) {
-        return ensureLegalAction(
-            results[0]?.action,
-            legalActions
-        );
+        return best;
     }
 
     /*
-     * Choix stratégique.
+     * Partie stratégique.
      */
     if (
         Math.random() <
         settings.strategic
     ) {
-        return ensureLegalAction(
-            results[0]?.action,
-            legalActions
-        );
+        return best;
     }
 
     /*
-     * Choix aléatoire mais raisonnable :
-     * uniquement parmi les actions proches
-     * du meilleur score.
+     * Partie aléatoire :
+     * on ne choisit jamais n'importe quoi.
+     *
+     * On choisit uniquement parmi les
+     * actions suffisamment proches de la
+     * meilleure.
      */
+    const tolerance =
+        getAdaptiveTolerance({
+            action:
+                results[0]?.action,
+            state,
+            legalActions,
+            results
+        });
+
     const close =
         getCloseActions(
             results,
-            5
+            {
+                tolerance
+            }
         );
 
     const selected =
@@ -371,9 +542,9 @@ function chooseByDifficulty({
 }
 
 
-/* ============================================================
+/* =========================================================
  * BOT
- * ========================================================== */
+ * ========================================================= */
 
 export class AtoumoulinBot {
     constructor({
@@ -381,9 +552,7 @@ export class AtoumoulinBot {
         difficulty = "normal"
     } = {}) {
         this.playerIndex =
-            Number(
-                playerIndex
-            );
+            Number(playerIndex);
 
         this.difficulty =
             normalizeDifficulty(
@@ -424,29 +593,24 @@ export class AtoumoulinBot {
         actionCount = 0
     ) {
         return getSearchDepth(
-            this.difficulty,
+            state,
             {
+                difficulty:
+                    this.difficulty,
                 actionCount,
-
-                gamePhase:
-                    typeof state?.getCardsProgress ===
-                    "function"
-                        ? state.getCardsProgress()
-                        : 0
+                playerIndex:
+                    this.playerIndex
             }
         );
     }
 
 
-    /**
-     * Recherche complète d'un tour.
-     */
     think(
         state
     ) {
         if (!state) {
             throw new Error(
-                "AtoumoulinBot.think : state manquant."
+                "État de jeu absent."
             );
         }
 
@@ -477,44 +641,33 @@ export class AtoumoulinBot {
         const results =
             searchActions({
                 state,
-
                 playerIndex:
                     this.playerIndex,
-
                 difficulty:
                     this.difficulty,
-
                 depth
             });
 
         const action =
             chooseByDifficulty({
                 results,
-
                 legalActions,
-
                 difficulty:
-                    this.difficulty
+                    this.difficulty,
+                state
             });
 
         return {
             action,
-
             results,
-
             legalActions,
-
             depth,
-
             difficulty:
                 this.difficulty
         };
     }
 
 
-    /**
-     * Renvoie uniquement l'action à jouer.
-     */
     chooseAction(
         state
     ) {
@@ -524,102 +677,98 @@ export class AtoumoulinBot {
     }
 
 
-    /**
-     * Recherche prioritaire d'une possibilité
-     * de terminer la manche.
+    /*
+     * Méthode de diagnostic uniquement.
      *
-     * Cette recherche passe avant le choix
-     * aléatoire de difficulté.
+     * Elle ne remplace PAS think().
+     * Elle permet de demander au moteur
+     * quelles lignes de finition ont été
+     * identifiées par la recherche.
      */
-    findFinish(
-        state,
-        maxDepth = 8
+    getFinishAnalysis(
+        state
     ) {
-        const finishes =
-            searchFinish({
-                state,
+        const result =
+            this.think(
+                state
+            );
 
-                playerIndex:
-                    this.playerIndex,
+        const selected =
+            result.results?.find(
+                item =>
+                    item.action &&
+                    item.finish
+            ) ?? null;
 
-                maxDepth
-            });
+        return {
+            selectedAction:
+                result.action,
 
-        if (
-            !Array.isArray(
-                finishes
-            ) ||
-            finishes.length === 0
-        ) {
-            return null;
-        }
+            selectedResult:
+                selected,
 
-        return finishes[0];
+            results:
+                result.results,
+
+            depth:
+                result.depth
+        };
     }
 
 
-    /**
-     * Recherche une action avec priorité
-     * aux lignes de finition.
+    /*
+     * Diagnostic détaillé.
      */
-    thinkWithFinish(
+    analyze(
         state
     ) {
-        const legalActions =
-            getLegalActions(
+        const decision =
+            this.think(
                 state
             );
-
-        if (
-            legalActions.length === 0
-        ) {
-            return {
-                action: null,
-                finish: null,
-                results: [],
-                legalActions: []
-            };
-        }
-
-        const finish =
-            this.findFinish(
-                state
-            );
-
-        if (finish) {
-            return {
-                action:
-                    ensureLegalAction(
-                        finish.action,
-                        legalActions
-                    ),
-
-                finish,
-
-                results: [],
-
-                legalActions
-            };
-        }
 
         return {
-            ...this.think(
-                state
-            ),
+            playerIndex:
+                this.playerIndex,
 
-            finish: null
+            difficulty:
+                this.difficulty,
+
+            depth:
+                decision.depth,
+
+            legalActions:
+                decision.legalActions,
+
+            selectedAction:
+                decision.action,
+
+            results:
+                decision.results,
+
+            tolerance:
+                getAdaptiveTolerance({
+                    action:
+                        decision.results?.[0]
+                            ?.action,
+
+                    state,
+
+                    legalActions:
+                        decision.legalActions,
+
+                    results:
+                        decision.results
+                })
         };
     }
 }
 
 
-/* ============================================================
- * API SIMPLE
- * ========================================================== */
+/* =========================================================
+ * FACTORIES
+ * ========================================================= */
 
-/**
- * Crée un bot.
- */
 export function createBot(
     options = {}
 ) {
@@ -629,9 +778,6 @@ export function createBot(
 }
 
 
-/**
- * Choisit directement une action.
- */
 export function chooseBotAction({
     state,
     playerIndex = 0,
@@ -649,9 +795,6 @@ export function chooseBotAction({
 }
 
 
-/**
- * Analyse complète sans jouer.
- */
 export function thinkBot({
     state,
     playerIndex = 0,
@@ -663,19 +806,24 @@ export function thinkBot({
             difficulty
         });
 
-    return bot.thinkWithFinish(
+    return bot.think(
         state
     );
 }
 
 
-/* ============================================================
+/* =========================================================
  * EXPORT PAR DÉFAUT
- * ========================================================== */
+ * ========================================================= */
 
 export default {
+    DIFFICULTY,
     AtoumoulinBot,
     createBot,
     chooseBotAction,
-    thinkBot
+    thinkBot,
+    normalizeDifficulty,
+    chooseByDifficulty,
+    getCloseActions,
+    getAdaptiveTolerance
 };
