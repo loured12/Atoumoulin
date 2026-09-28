@@ -1,2811 +1,3109 @@
-/* =========================================================
-   ATOUMOULIN — NOUVEAU MOTEUR IA
-   =========================================================
-   
-   Architecture :
-   état → informations accessibles → actions légales
-   → actions complètes → simulation → évaluation
-   → difficulté → décision
-
-   Ce fichier ne doit pas exécuter directement les règles
-   du jeu. Il prépare les décisions du bot.
-   ========================================================= */
-
-(function () {
-
-    "use strict";
-
-    /* =====================================================
-       CONFIGURATION DES DIFFICULTÉS
-       ===================================================== */
-
-    const BOT_DIFFICULTES = {
-
-        facile: {
-            strategique: 0.40,
-            hasard: 0.60,
-            profondeur: 1
-        },
-
-        normal: {
-            strategique: 0.75,
-            hasard: 0.25,
-            profondeur: 2
-        },
-
-        difficile: {
-            strategique: 0.90,
-            hasard: 0.10,
-            profondeur: 3
-        },
-
-        expert: {
-            strategique: 1.00,
-            hasard: 0.00,
-            profondeur: 4
-        }
-
-    };
-
-
-    /* =====================================================
-       COEFFICIENTS DU MOTEUR
-       ===================================================== */
-
-    const BOT_COEFFICIENTS = {
-
-        impactPersonnel: 0.40,
-        impactAdversaire: 0.30,
-        potentielFutur: 0.15,
-        coutOpportunite: 0.10,
-        risque: 0.05
-
-    };
-
-
-    /* =====================================================
-       VALEURS DE FINITION
-       ===================================================== */
-
-    const VALEUR_TOURS_FINITION = {
-
-        1: 100,
-        2: 70,
-        3: 45,
-        4: 25,
-        5: 10
-
-    };
-
-
-    const CERTITUDE_FINITION = {
-
-        certaine: 100,
-        tresProbable: 80,
-        possible: 55,
-        faible: 30,
-        impossible: 0
-
-    };
-
-
-    /* =====================================================
-       OUTILS GÉNÉRAUX
-       ===================================================== */
-
-    function limiter(valeur, minimum = 0, maximum = 100) {
-
-        return Math.max(
-            minimum,
-            Math.min(maximum, Number(valeur) || 0)
-        );
-
-    }
-
-
-    function moyenne(valeurs) {
-
-        if (!Array.isArray(valeurs) || valeurs.length === 0) {
-            return 0;
-        }
-
-        return valeurs.reduce(
-            (total, valeur) => total + Number(valeur || 0),
-            0
-        ) / valeurs.length;
-
-    }
-
-
-    function valeurFinition(tours) {
-
-        if (!Number.isFinite(tours)) {
-            return 0;
-        }
-
-        if (tours >= 5) {
-            return 10;
-        }
-
-        return VALEUR_TOURS_FINITION[tours] || 0;
-
-    }
-
-
-    /* =====================================================
-       DIFFICULTÉ
-       ===================================================== */
-
-    function obtenirDifficulteBot(joueur) {
-
-        if (
-            joueur &&
-            typeof joueur.niveauBot === "string" &&
-            BOT_DIFFICULTES[joueur.niveauBot]
-        ) {
-            return joueur.niveauBot;
-        }
-
-        if (
-            typeof niveauBots !== "undefined" &&
-            BOT_DIFFICULTES[niveauBots]
-        ) {
-            return niveauBots;
-        }
-
-        return "normal";
-
-    }
-
-
-    function obtenirConfigurationDifficulte(joueur) {
-
-        const difficulte =
-            obtenirDifficulteBot(joueur);
-
-        return BOT_DIFFICULTES[difficulte];
-
-    }
-
-
-    /* =====================================================
-       ÉTAT DU BOT
-       ===================================================== */
-
-    function obtenirEtatBot(joueur) {
-
-        if (
-            typeof globalThis.__atoumoulinGetBotState === "function"
-        ) {
-            return globalThis.__atoumoulinGetBotState(joueur);
-        }
-
-        return {
-
-            joueur,
-            joueurs:
-                typeof joueurs !== "undefined"
-                    ? joueurs
-                    : [],
-
-            joueurActuel:
-                typeof joueurActuel !== "undefined"
-                    ? joueurActuel
-                    : null,
-
-            cartesTable:
-                typeof cartesTable !== "undefined"
-                    ? cartesTable
-                    : [],
-
-            paquet:
-                typeof paquet !== "undefined"
-                    ? paquet
-                    : [],
-
-            defaussePouvoirs:
-                typeof defaussePouvoirs !== "undefined"
-                    ? defaussePouvoirs
-                    : [],
-
-            actionEnCours:
-                typeof actionEnCours !== "undefined"
-                    ? actionEnCours
-                    : null,
-
-            modeJeu:
-                typeof modeJeu !== "undefined"
-                    ? modeJeu
-                    : 1
-
-        };
-
-    }
-
-
-    /* =====================================================
-       INFORMATIONS ACCESSIBLES
-       ===================================================== */
-
-    function construireConnaissanceBot(etat, joueur) {
-
-        const connaissance = {
-
-            joueur: joueur,
-
-            scorePersonnel:
-                joueur ? joueur.score : 0,
-
-            mainPersonnelle:
-                joueur && Array.isArray(joueur.main)
-                    ? [...joueur.main]
-                    : [],
-
-            adversaires: [],
-
-            cartesTable:
-                Array.isArray(etat.cartesTable)
-                    ? etat.cartesTable
-                    : [],
-
-            nombreCartesPioche:
-                Array.isArray(etat.paquet)
-                    ? etat.paquet.length
-                    : 0
-
-        };
-
-
-        if (Array.isArray(etat.joueurs)) {
-
-            connaissance.adversaires =
-                etat.joueurs
-                    .filter(adversaire =>
-                        adversaire !== joueur
-                    )
-                    .map(adversaire => ({
-
-                        joueur: adversaire,
-
-                        /*
-                         * Le bot connaît le nombre de cartes.
-                         * Il ne reçoit PAS leur contenu ici.
-                         */
-                        nombreCartes:
-                            Array.isArray(adversaire.main)
-                                ? adversaire.main.length
-                                : Number(adversaire.cardCount) || 0,
-
-                        score:
-                            Number(adversaire.score) || 0
-
-                    }));
-
-        }
-
-
-        return connaissance;
-
-    }
-
-      /* =====================================================
-       ACTIONS LÉGALES
-       ===================================================== */
-
-    function obtenirValeurCarte(carte) {
-
-        if (typeof carte === "number") {
-            return carte;
-        }
-
-        if (carte && typeof carte.valeur !== "undefined") {
-            return Number(carte.valeur);
-        }
-
-        return Number(carte);
-    }
-
-
-    function compterValeurs(main) {
-
-        const compte = {};
-
-        main.forEach(carte => {
-
-            const valeur = obtenirValeurCarte(carte);
-
-            if (!Number.isFinite(valeur)) {
-                return;
-            }
-
-            compte[valeur] =
-                (compte[valeur] || 0) + 1;
-
-        });
-
-        return compte;
-
-    }
-
-
-    function trouverDouble(main, valeur) {
-
-        const cartes = main.filter(carte =>
-            obtenirValeurCarte(carte) === valeur
-        );
-
-        /*
-         * Un seul double est formé.
-         * Les éventuelles cartes supplémentaires
-         * restent dans la main.
-         */
-
-        if (cartes.length < 2) {
-            return null;
-        }
-
-        return [
-            cartes[0],
-            cartes[1]
-        ];
-
-    }
-
-
-    function creerActionCarte(carte, index) {
-
-        return {
-
-            type: "carte",
-
-            valeur:
-                obtenirValeurCarte(carte),
-
-            carte,
-
-            indexCarte: index,
-
-            cartes: [carte],
-
-            /*
-             * Une action complète sera construite
-             * plus tard.
-             *
-             * Pour l'instant :
-             * carte → action de base
-             */
-
-            cible: null,
-
-            choix: null,
-
-            priorite: 3
-
-        };
-
-    }
-
-
-    function creerActionDouble(
+// =====================================================
+// POSSIBILITÉS COMPLÈTES
+// =====================================================
+
+const Simulator = window.AtoumoulinBotSimulator;
+const GameState = window.AtoumoulinGameState;
+
+
+// -----------------------------------------------------
+// Création d'une possibilité
+// -----------------------------------------------------
+
+function creerPossibilite({
+    type = "carte",
+    valeur = null,
+    cartes = [],
+    joueur = null,
+    cible = null,
+    carteCible = null,
+    choix = null,
+    description = ""
+} = {}) {
+
+    return {
+        type,
         valeur,
-        cartes,
-        indices
-    ) {
+        cartes: [...cartes],
 
-        return {
-
-            type: "double",
-
-            valeur,
-
-            cartes: [...cartes],
-
-            indicesCartes: [...indices],
-
-            cible: null,
-
-            choix: null,
-
-            priorite:
-                valeur === 7
-                    ? 1
-                    : 2
-
-        };
-
-    }
-
-
-    function obtenirActionsLegales(
-        joueur
-    ) {
-
-        if (
-            !joueur ||
-            !Array.isArray(joueur.main) ||
-            joueur.main.length === 0
-        ) {
-            return [];
-        }
-
-
-        const main = joueur.main;
-
-        const compte = compterValeurs(main);
-
-
-        /* =================================================
-           PRIORITÉ ABSOLUE : DOUBLE 7
-           ================================================= */
-
-        if ((compte[7] || 0) >= 2) {
-
-            const cartes =
-                trouverDouble(main, 7);
-
-            const indices =
-                cartes.map(carte =>
-                    main.indexOf(carte)
-                );
-
-            return [
-                creerActionDouble(
-                    7,
-                    cartes,
-                    indices
-                )
-            ];
-
-        }
-
-
-        /* =================================================
-           PRIORITÉ : 7 SIMPLE
-           ================================================= */
-
-        if ((compte[7] || 0) === 1) {
-
-            const index =
-                main.findIndex(carte =>
-                    obtenirValeurCarte(carte) === 7
-                );
-
-            return [
-                creerActionCarte(
-                    main[index],
-                    index
-                )
-            ];
-
-        }
-
-
-        /* =================================================
-           RECHERCHE DES DOUBLES
-           ================================================= */
-
-        const doubles = [];
-
-        Object.keys(compte)
-            .map(Number)
-            .forEach(valeur => {
-
-                if (valeur === 7) {
-                    return;
-                }
-
-                if (compte[valeur] >= 2) {
-
-                    const cartes =
-                        trouverDouble(
-                            main,
-                            valeur
-                        );
-
-                    if (!cartes) {
-                        return;
-                    }
-
-                    const indices =
-                        cartes.map(carte =>
-                            main.indexOf(carte)
-                        );
-
-                    doubles.push(
-                        creerActionDouble(
-                            valeur,
-                            cartes,
-                            indices
-                        )
-                    );
-
-                }
-
-            });
-
-
-        if (doubles.length > 0) {
-
-            return doubles;
-
-        }
-
-
-        /* =================================================
-           AUCUN DOUBLE :
-           CARTES SIMPLES DISPONIBLES
-           ================================================= */
-
-        return main.map(
-            (carte, index) =>
-                creerActionCarte(
-                    carte,
-                    index
-                )
-        );
-
-    }
-
-
-    /* =====================================================
-       VALIDATION D'UNE ACTION
-       ===================================================== */
-
-    function actionEstLegale(
-        action,
-        joueur
-    ) {
-
-        if (!action || !joueur) {
-            return false;
-        }
-
-        const actions =
-            obtenirActionsLegales(joueur);
-
-        return actions.some(candidate => {
-
-            if (
-                candidate.type !== action.type
-            ) {
-                return false;
-            }
-
-            if (
-                candidate.valeur !== action.valeur
-            ) {
-                return false;
-            }
-
-            if (
-                candidate.type === "double"
-            ) {
-                return true;
-            }
-
-            return (
-                candidate.indexCarte ===
-                action.indexCarte
-            );
-
-        });
-
-    }
-
-  
-         /* =====================================================
-       GÉNÉRATION DES ACTIONS COMPLÈTES
-       ===================================================== */
-
-    function obtenirAdversaires(etat, joueur) {
-
-        if (!etat || !Array.isArray(etat.joueurs)) {
-            return [];
-        }
-
-        return etat.joueurs.filter(
-            autre => autre !== joueur
-        );
-
-    }
-
-
-    function creerPossibilite(
-        action,
-        details = {}
-    ) {
-
-        return {
-
-            action,
-
-            type: action.type,
-
-            valeur: action.valeur,
-
-            cartes:
-                Array.isArray(action.cartes)
-                    ? [...action.cartes]
-                    : [],
-
-            cible:
-                details.cible ?? null,
-
-            carteCible:
-                details.carteCible ?? null,
-
-            choix:
-                details.choix ?? null,
-
-            effet:
-                details.effet ?? null,
-
-            metadata:
-                details.metadata || {},
-
-            evaluation: null
-
-        };
-
-    }
-
-
-    function genererPossibilitesCarte(
-        action,
         joueur,
-        etat,
-        connaissance
-    ) {
+        cible,
 
-        const possibilites = [];
+        carteCible,
 
-        const valeur = action.valeur;
+        choix,
 
-        const adversaires =
-            obtenirAdversaires(
-                etat,
-                joueur
-            );
+        description
+    };
+}
 
 
-        /* ================================================
-           CARTES SANS CHOIX
-           ================================================ */
+// -----------------------------------------------------
+// Références joueurs
+// -----------------------------------------------------
 
-        const cartesSansChoix = [
-            2, 4, 5, 7, 8, 10,
-            12, 14, 16, 18, 20
-        ];
+function referenceJoueur(joueur) {
 
-        if (
-            cartesSansChoix.includes(valeur)
-        ) {
+    if (joueur === null || joueur === undefined) {
+        return null;
+    }
 
-            possibilites.push(
-                creerPossibilite(action)
-            );
-
-            return possibilites;
-
-        }
+    return Simulator.obtenirReferenceJoueur(joueur);
+}
 
 
-        /* ================================================
-           1
-           Vole la dernière carte à points
-           ================================================ */
+// -----------------------------------------------------
+// Tous les adversaires accessibles
+// -----------------------------------------------------
 
-        if (valeur === 1) {
+function obtenirAdversaires(etat, joueurActuel) {
 
-            adversaires.forEach(cible => {
+    const joueur =
+        Simulator.trouverJoueur(
+            etat,
+            joueurActuel
+        );
 
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
+    if (!joueur) {
+        return [];
+    }
 
-            });
-
-            return possibilites;
-
-        }
+    return etat.joueurs.filter(
+        autre =>
+            autre.index !== joueur.index
+    );
+}
 
 
-        /* ================================================
-           3
-           -20 à un adversaire
-           ================================================ */
+// -----------------------------------------------------
+// Cartes identiques disponibles
+// -----------------------------------------------------
 
-        if (valeur === 3) {
+function compterCarte(main, valeur) {
 
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
+    return main.filter(
+        carte =>
+            Simulator.obtenirValeurCarte(carte) === valeur
+    ).length;
+}
 
 
-        /* ================================================
-           5
-           Pioche 2
-           ================================================ */
+// -----------------------------------------------------
+// Possibilités d'une carte simple
+// -----------------------------------------------------
 
-        if (valeur === 5) {
+function genererPossibilitesCarteSimple(
+    etat,
+    joueur,
+    carte
+) {
+
+    const valeur =
+        Simulator.obtenirValeurCarte(carte);
+
+    const possibilites = [];
+
+    // -------------------------------------------------
+    // 1
+    // -------------------------------------------------
+
+    if (valeur === 1) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
 
             possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "piocher2"
-                    }
-                )
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 1,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    description:
+                        "Voler la dernière carte de points"
+                })
             );
-
-            return possibilites;
-
         }
 
-
-        /* ================================================
-           9
-           Échange de main
-           ================================================ */
-
-        if (valeur === 9) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
+        return possibilites;
+    }
 
 
-        /* ================================================
-           11
-           +10 ou -10 pour soi
-           ================================================ */
+    // -------------------------------------------------
+    // 3
+    // -------------------------------------------------
 
-        if (valeur === 11) {
+    if (valeur === 3) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
 
             possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "+10"
-                    }
-                )
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 3,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    description:
+                        "-20 points à un adversaire"
+                })
             );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // 9
+    // -------------------------------------------------
+
+    if (valeur === 9) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
 
             possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "-10"
-                    }
-                )
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 9,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    description:
+                        "Échanger sa main avec un adversaire"
+                })
             );
-
-            return possibilites;
-
         }
 
+        return possibilites;
+    }
 
-        /* ================================================
-           13
-           Vole une carte à points
-           ================================================ */
 
-        if (valeur === 13) {
+    // -------------------------------------------------
+    // 11
+    // -------------------------------------------------
 
-            adversaires.forEach(cible => {
+    if (valeur === 11) {
 
-                const cartesDisponibles =
-                    Array.isArray(
-                        cible.main
-                    )
-                        ? cible.main
-                        : [];
-
-
-                /*
-                 * Ici on ne doit pas révéler artificiellement
-                 * les cartes cachées.
-                 *
-                 * Si la main de l'adversaire n'est pas
-                 * réellement accessible au bot, on crée
-                 * une possibilité abstraite.
-                 */
-
-                if (
-                    connaissance &&
-                    connaissance.mainsAdversesVisibles
-                ) {
-
-                    cartesDisponibles.forEach(
-                        carteCible => {
-
-                            possibilites.push(
-                                creerPossibilite(
-                                    action,
-                                    {
-                                        cible,
-                                        carteCible
-                                    }
-                                )
-                            );
-
-                        }
-                    );
-
-                }
-                else {
-
-                    possibilites.push(
-                        creerPossibilite(
-                            action,
-                            {
-                                cible,
-                                metadata: {
-                                    carteCibleInconnue: true
-                                }
-                            }
-                        )
-                    );
-
-                }
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           15
-           Choisit une carte personnelle
-           ================================================ */
-
-        if (valeur === 15) {
-
-            const cartesPersonnellementEligibles =
-                Array.isArray(
-                    connaissance.mainPersonnelle
-                )
-                    ? connaissance.mainPersonnelle
-                    : [];
-
-
-            cartesPersonnellementEligibles
-                .forEach(
-                    (carteCible, index) => {
-
-                        const valeurCible =
-                            obtenirValeurCarte(
-                                carteCible
-                            );
-
-                        /*
-                         * Les cartes de pouvoir ne sont
-                         * pas des cartes à points.
-                         *
-                         * On limite ici aux valeurs
-                         * strictement positives.
-                         */
-
-                        if (
-                            valeurCible > 0 &&
-                            valeurCible !== 15
-                        ) {
-
-                            possibilites.push(
-                                creerPossibilite(
-                                    action,
-                                    {
-                                        carteCible,
-                                        metadata: {
-                                            indexCarteCible:
-                                                index
-                                        }
-                                    }
-                                )
-                            );
-
-                        }
-
-                    }
-                );
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           17
-           Vole une carte au hasard
-           ================================================ */
-
-        if (valeur === 17) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-
-                            metadata: {
-                                carteCibleAleatoire:
-                                    true
-                            }
-
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           19
-           Échange avec un adversaire
-           ================================================ */
-
-        if (valeur === 19) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           21
-           +20 soi OU -20 adversaire
-           ================================================ */
-
-        if (valeur === 21) {
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "+20"
-                    }
-                )
-            );
-
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-                            choix: "-20"
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           JOKER
-           ================================================ */
-
-        if (
-            typeof valeur === "string" &&
-            valeur.toLowerCase() === "joker"
-        ) {
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "10"
-                    }
-                )
-            );
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "22"
-                    }
-                )
-            );
-
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-                            choix: "echangeScores"
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           PAR DÉFAUT
-           ================================================ */
-
+        // +10 pour soi
         possibilites.push(
-            creerPossibilite(action)
+            creerPossibilite({
+                type: "carte",
+                valeur: 11,
+                cartes: [carte],
+                joueur: referenceJoueur(joueur),
+                choix: "plus10",
+                description:
+                    "+10 points pour soi"
+            })
         );
+
+        // -10 pour chaque adversaire
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 11,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    choix: "moins10",
+                    description:
+                        "-10 points à un adversaire"
+                })
+            );
+        }
 
         return possibilites;
-
     }
 
 
-    function genererPossibilitesDouble(
-        action,
-        joueur,
-        etat,
-        connaissance
-    ) {
-
-        const possibilites = [];
-
-        const valeur = action.valeur;
-
-        const adversaires =
-            obtenirAdversaires(
-                etat,
-                joueur
-            );
-
-
-        /* ================================================
-           DOUBLES SANS CHOIX
-           ================================================ */
-
-        const doublesSansChoix = [
-            2, 4, 5, 7, 15, 17, 19
-        ];
-
-        if (
-            doublesSansChoix.includes(valeur)
-        ) {
-
-            possibilites.push(
-                creerPossibilite(action)
-            );
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 1
-           ================================================ */
-
-        if (valeur === 1) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 3
-           ================================================ */
-
-        if (valeur === 3) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 9
-           ================================================ */
-
-        if (valeur === 9) {
-
-            /*
-             * Double 9 révèle les mains.
-             *
-             * Cette information sera traitée comme une
-             * information nouvellement révélée pendant
-             * la simulation.
-             */
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-
-                            metadata: {
-                                reveleMains: true
-                            }
-
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 11
-           ================================================ */
-
-        if (valeur === 11) {
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "+20"
-                    }
-                )
-            );
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "-20"
-                    }
-                )
-            );
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 13
-           ================================================ */
-
-        if (valeur === 13) {
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-
-                            metadata: {
-                                nombreCartesVolees: 2
-                            }
-
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 21
-           ================================================ */
-
-        if (valeur === 21) {
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "+40"
-                    }
-                )
-            );
-
-
-            adversaires.forEach(cible => {
-
-                possibilites.push(
-                    creerPossibilite(
-                        action,
-                        {
-                            cible,
-                            choix: "-40"
-                        }
-                    )
-                );
-
-            });
-
-            return possibilites;
-
-        }
-
-
-        /* ================================================
-           DOUBLE JOKER
-           ================================================ */
-
-        if (
-            typeof valeur === "string" &&
-            valeur.toLowerCase() === "joker"
-        ) {
-
-            possibilites.push(
-                creerPossibilite(
-                    action,
-                    {
-                        choix: "passeDeuxTours"
-                    }
-                )
-            );
-
-            return possibilites;
-
-        }
-
-
-        possibilites.push(
-            creerPossibilite(action)
-        );
-
-        return possibilites;
-
-    }
-
-
-    function genererPossibilites(
-        joueur,
-        etat,
-        connaissance
-    ) {
-
-        const actionsLegales =
-            obtenirActionsLegales(
-                joueur
-            );
-
-        const possibilites = [];
-
-
-        actionsLegales.forEach(action => {
-
-            let nouvellesPossibilites;
-
-
-            if (action.type === "double") {
-
-                nouvellesPossibilites =
-                    genererPossibilitesDouble(
-                        action,
-                        joueur,
-                        etat,
-                        connaissance
-                    );
-
-            }
-            else {
-
-                nouvellesPossibilites =
-                    genererPossibilitesCarte(
-                        action,
-                        joueur,
-                        etat,
-                        connaissance
-                    );
-
-            }
-
-
-            nouvellesPossibilites.forEach(
-                possibilite => {
-
-                    possibilites.push(
-                        possibilite
-                    );
-
-                }
-            );
-
-        });
-
-
-        return possibilites;
-
-    }
-
-        /* =====================================================
-       SIMULATION D'UNE POSSIBILITÉ
-       ===================================================== */
-
-    function clonerEtatBot(etat) {
-
-        if (!etat) {
-            return null;
-        }
-
-        return JSON.parse(
-            JSON.stringify(etat)
-        );
-
-    }
-
-
-    function trouverJoueurSimulation(
-        etat,
-        joueur
-    ) {
-
-        if (
-            !etat ||
-            !Array.isArray(etat.joueurs) ||
-            !joueur
-        ) {
-            return null;
-        }
-
-        return etat.joueurs.find(
-            j => j.nom === joueur.nom
-        ) || null;
-
-    }
-
-
-    function retirerCarteMain(
-        joueur,
-        carte
-    ) {
-
-        if (
-            !joueur ||
-            !Array.isArray(joueur.main)
-        ) {
-            return false;
-        }
-
-        const index =
-            joueur.main.indexOf(carte);
-
-        if (index === -1) {
-            return false;
-        }
-
-        joueur.main.splice(index, 1);
-
-        return true;
-
-    }
-
-
-    function ajouterCarteTable(
-        etat,
-        valeur,
-        proprietaire,
-        historiqueCarte = null
-    ) {
-
-        if (!Array.isArray(etat.cartesTable)) {
-            etat.cartesTable = [];
-        }
-
-        etat.cartesTable.push({
-
-            valeur,
-
-            proprietaire,
-
-            liee: false,
-
-            historiqueCarte:
-                historiqueCarte || [valeur]
-
-        });
-
-    }
-
-
-    function ajusterScore(
-        joueur,
-        variation
-    ) {
-
-        if (!joueur) {
-            return;
-        }
-
-        joueur.score =
-            Number(joueur.score || 0)
-            + Number(variation || 0);
-
-    }
-
-
-    function obtenirCartesPoints(
-        etat,
-        nomJoueur
-    ) {
-
-        if (
-            !etat ||
-            !Array.isArray(etat.cartesTable)
-        ) {
-            return [];
-        }
-
-        return etat.cartesTable.filter(
-            carte =>
-                carte.proprietaire === nomJoueur &&
-                Number(carte.valeur) > 0
-        );
-
-    }
-
-
-    function simulerEchangeScores(
-        joueur,
-        cible
-    ) {
-
-        if (!joueur || !cible) {
-            return;
-        }
-
-        const scoreJoueur =
-            joueur.score;
-
-        joueur.score =
-            cible.score;
-
-        cible.score =
-            scoreJoueur;
-
-    }
-
-
-    function simulerCarteSimple(
-        possibilite,
-        etat,
-        joueur
-    ) {
-
-        const valeur =
-            possibilite.valeur;
-
-
-        /* ================================================
-           CARTE À POINTS
-           ================================================ */
-
-        if (
-            typeof valeur === "number" &&
-            valeur % 2 === 0 &&
-            valeur >= 2 &&
-            valeur <= 20
-        ) {
-
-            ajusterScore(
-                joueur,
-                valeur
-            );
-
-            ajouterCarteTable(
-                etat,
-                valeur,
-                joueur.nom
-            );
-
-            return;
-
-        }
-
-
-        /* ================================================
-           1
-           ================================================ */
-
-        if (valeur === 1) {
-
-            const cible =
-                trouverJoueurSimulation(
+    // -------------------------------------------------
+    // 13
+    // -------------------------------------------------
+
+    if (valeur === 13) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            const cartesPoints =
+                Simulator.obtenirCartesPointsJoueur(
                     etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const cartes =
-                obtenirCartesPoints(
-                    etat,
-                    cible.nom
-                );
-
-            if (cartes.length === 0) {
-                return;
-            }
-
-            const carte =
-                cartes[cartes.length - 1];
-
-            const index =
-                etat.cartesTable.indexOf(
-                    carte
-                );
-
-            if (index !== -1) {
-
-                etat.cartesTable.splice(
-                    index,
-                    1
-                );
-
-                ajusterScore(
-                    cible,
-                    -carte.valeur
-                );
-
-                ajusterScore(
-                    joueur,
-                    carte.valeur
-                );
-
-                carte.proprietaire =
-                    joueur.nom;
-
-                etat.cartesTable.push(
-                    carte
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           3
-           ================================================ */
-
-        if (valeur === 3) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (cible) {
-
-                ajusterScore(
-                    cible,
-                    -20
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    -20,
-                    cible.nom,
-                    [3]
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           5
-           ================================================ */
-
-        if (valeur === 5) {
-
-            const nombre =
-                2;
-
-            for (
-                let i = 0;
-                i < nombre;
-                i++
-            ) {
-
-                if (
-                    Array.isArray(etat.paquet) &&
-                    etat.paquet.length > 0
-                ) {
-
-                    /*
-                     * Pour l'instant on ne révèle pas
-                     * le contenu de la pioche.
-                     *
-                     * La recherche probabiliste sera
-                     * ajoutée ensuite.
-                     */
-
-                    etat.paquet.pop();
-
-                    joueur.main.push(
-                        null
-                    );
-
-                }
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           9
-           ================================================ */
-
-        if (valeur === 9) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const mainJoueur =
-                joueur.main;
-
-            joueur.main =
-                cible.main;
-
-            cible.main =
-                mainJoueur;
-
-            return;
-
-        }
-
-
-        /* ================================================
-           11
-           ================================================ */
-
-        if (valeur === 11) {
-
-            if (
-                possibilite.choix === "+10"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    10
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    10,
-                    joueur.nom,
-                    [11]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "-10"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    -10
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    -10,
-                    joueur.nom,
-                    [11]
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           13
-           ================================================ */
-
-        if (valeur === 13) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            /*
-             * Si la carte est inconnue,
-             * on ne l'invente pas.
-             *
-             * La simulation conserve simplement
-             * l'incertitude pour l'étape probabiliste.
-             */
-
-            if (
-                possibilite.metadata &&
-                possibilite.metadata.carteCibleInconnue
-            ) {
-                return;
-            }
-
-            const carte =
-                possibilite.carteCible;
-
-            if (!carte) {
-                return;
-            }
-
-            const index =
-                etat.cartesTable.indexOf(
-                    carte
-                );
-
-            if (index !== -1) {
-
-                etat.cartesTable.splice(
-                    index,
-                    1
-                );
-
-                ajusterScore(
-                    cible,
-                    -carte.valeur
-                );
-
-                ajusterScore(
-                    joueur,
-                    carte.valeur
-                );
-
-                carte.proprietaire =
-                    joueur.nom;
-
-                etat.cartesTable.push(
-                    carte
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           15
-           ================================================ */
-
-        if (valeur === 15) {
-
-            const carte =
-                possibilite.carteCible;
-
-            if (!carte) {
-                return;
-            }
-
-            const valeurCible =
-                obtenirValeurCarte(
-                    carte
-                );
-
-            if (
-                valeurCible <= 0 ||
-                valeurCible === 15
-            ) {
-                return;
-            }
-
-            const bonus =
-                valeurCible;
-
-            ajusterScore(
-                joueur,
-                bonus
-            );
-
-            ajouterCarteTable(
-                etat,
-                bonus,
-                joueur.nom,
-                [15, valeurCible]
-            );
-
-            return;
-
-        }
-
-
-        /* ================================================
-           17
-           ================================================ */
-
-        if (valeur === 17) {
-
-            /*
-             * La carte volée est inconnue.
-             *
-             * Elle sera traitée par les scénarios
-             * probabilistes dans la prochaine couche.
-             */
-
-            return;
-
-        }
-
-
-        /* ================================================
-           19
-           ================================================ */
-
-        if (valeur === 19) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const cartesJoueur =
-                obtenirCartesPoints(
-                    etat,
-                    joueur.nom
-                );
-
-            const cartesCible =
-                obtenirCartesPoints(
-                    etat,
-                    cible.nom
-                );
-
-            if (
-                cartesJoueur.length === 0 ||
-                cartesCible.length === 0
-            ) {
-                return;
-            }
-
-            const carteJoueur =
-                cartesJoueur[
-                    cartesJoueur.length - 1
-                ];
-
-            const carteCible =
-                cartesCible[
-                    cartesCible.length - 1
-                ];
-
-            const valeurJoueur =
-                carteJoueur.valeur;
-
-            const valeurCible =
-                carteCible.valeur;
-
-            carteJoueur.proprietaire =
-                cible.nom;
-
-            carteCible.proprietaire =
-                joueur.nom;
-
-            ajusterScore(
-                joueur,
-                valeurCible - valeurJoueur
-            );
-
-            ajusterScore(
-                cible,
-                valeurJoueur - valeurCible
-            );
-
-            return;
-
-        }
-
-
-        /* ================================================
-           21
-           ================================================ */
-
-        if (valeur === 21) {
-
-            if (
-                possibilite.choix === "+20"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    20
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    20,
-                    joueur.nom,
-                    [21]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "-20"
-            ) {
-
-                const cible =
-                    trouverJoueurSimulation(
-                        etat,
-                        possibilite.cible
-                    );
-
-                if (cible) {
-
-                    ajusterScore(
-                        cible,
-                        -20
-                    );
-
-                    ajouterCarteTable(
-                        etat,
-                        -20,
-                        cible.nom,
-                        [21]
-                    );
-
-                }
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           JOKER
-           ================================================ */
-
-        if (
-            typeof valeur === "string" &&
-            valeur.toLowerCase() === "joker"
-        ) {
-
-            if (
-                possibilite.choix === "10"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    10
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    10,
-                    joueur.nom,
-                    ["joker"]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "22"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    22
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    22,
-                    joueur.nom,
-                    ["joker"]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "echangeScores"
-            ) {
-
-                const cible =
-                    trouverJoueurSimulation(
-                        etat,
-                        possibilite.cible
-                    );
-
-                simulerEchangeScores(
-                    joueur,
                     cible
                 );
 
-            }
+            for (
+                let index = 0;
+                index < cartesPoints.length;
+                index++
+            ) {
 
+                possibilites.push(
+                    creerPossibilite({
+                        type: "carte",
+                        valeur: 13,
+                        cartes: [carte],
+                        joueur: referenceJoueur(joueur),
+                        cible: referenceJoueur(cible),
+                        carteCible: index,
+                        description:
+                            "Voler une carte de points précise"
+                    })
+                );
+            }
         }
 
+        return possibilites;
     }
 
 
-    function simulerDouble(
-        possibilite,
-        etat,
-        joueur
+    // -------------------------------------------------
+    // 15
+    // -------------------------------------------------
+
+    if (valeur === 15) {
+
+        const cartesPoints =
+            Simulator.obtenirCartesPointsJoueur(
+                etat,
+                joueur
+            );
+
+        for (
+            let index = 0;
+            index < cartesPoints.length;
+            index++
+        ) {
+
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 15,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    carteCible: index,
+                    description:
+                        "Doubler une carte de points personnelle"
+                })
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // 17
+    // -------------------------------------------------
+
+    if (valeur === 17) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            if (
+                Simulator.obtenirMain(cible).length === 0
+            ) {
+                continue;
+            }
+
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 17,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    description:
+                        "Voler et jouer une carte aléatoire"
+                })
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // 19
+    // -------------------------------------------------
+
+    if (valeur === 19) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 19,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    description:
+                        "Échanger la dernière carte de points"
+                })
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // 21
+    // -------------------------------------------------
+
+    if (valeur === 21) {
+
+        // +20 pour soi
+        possibilites.push(
+            creerPossibilite({
+                type: "carte",
+                valeur: 21,
+                cartes: [carte],
+                joueur: referenceJoueur(joueur),
+                choix: "plus20",
+                description:
+                    "+20 points pour soi"
+            })
+        );
+
+        // -20 pour un adversaire
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: 21,
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    choix: "moins20",
+                    description:
+                        "-20 points à un adversaire"
+                })
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Joker
+    // -------------------------------------------------
+
+    if (
+        carte === "Joker" ||
+        valeur === "Joker"
     ) {
 
-        const valeur =
-            possibilite.valeur;
+        // +10
+        possibilites.push(
+            creerPossibilite({
+                type: "carte",
+                valeur: "Joker",
+                cartes: [carte],
+                joueur: referenceJoueur(joueur),
+                choix: "plus10",
+                description:
+                    "+10 points"
+            })
+        );
 
+        // +22
+        possibilites.push(
+            creerPossibilite({
+                type: "carte",
+                valeur: "Joker",
+                cartes: [carte],
+                joueur: referenceJoueur(joueur),
+                choix: "plus22",
+                description:
+                    "+22 points"
+            })
+        );
 
-        /* ================================================
-           DOUBLES À POINTS
-           ================================================ */
+        // échange de score
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
 
-        if (
-            typeof valeur === "number" &&
-            valeur % 2 === 0 &&
-            valeur >= 2 &&
-            valeur <= 20
-        ) {
-
-            const points =
-                valeur * 2;
-
-            ajusterScore(
-                joueur,
-                points
+            possibilites.push(
+                creerPossibilite({
+                    type: "carte",
+                    valeur: "Joker",
+                    cartes: [carte],
+                    joueur: referenceJoueur(joueur),
+                    cible: referenceJoueur(cible),
+                    choix: "echangeScores",
+                    description:
+                        "Échanger les scores"
+                })
             );
-
-            ajouterCarteTable(
-                etat,
-                points,
-                joueur.nom,
-                [valeur, valeur]
-            );
-
-            return;
-
         }
 
-
-        /* ================================================
-           DOUBLE 1
-           ================================================ */
-
-        if (valeur === 1) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const cartes =
-                obtenirCartesPoints(
-                    etat,
-                    cible.nom
-                );
-
-            const aVoler =
-                cartes.slice(
-                    Math.max(0, cartes.length - 2)
-                );
-
-            aVoler.forEach(carte => {
-
-                carte.proprietaire =
-                    joueur.nom;
-
-                ajusterScore(
-                    cible,
-                    -carte.valeur
-                );
-
-                ajusterScore(
-                    joueur,
-                    carte.valeur
-                );
-
-            });
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 3
-           ================================================ */
-
-        if (valeur === 3) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (cible) {
-
-                ajusterScore(
-                    cible,
-                    -40
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    -40,
-                    cible.nom,
-                    [3, 3]
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 5
-           ================================================ */
-
-        if (valeur === 5) {
-
-            for (
-                let i = 0;
-                i < 4;
-                i++
-            ) {
-
-                if (
-                    Array.isArray(etat.paquet) &&
-                    etat.paquet.length > 0
-                ) {
-
-                    etat.paquet.pop();
-
-                    joueur.main.push(
-                        null
-                    );
-
-                }
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 9
-           ================================================ */
-
-        if (valeur === 9) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const mainJoueur =
-                joueur.main;
-
-            joueur.main =
-                cible.main;
-
-            cible.main =
-                mainJoueur;
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 11
-           ================================================ */
-
-        if (valeur === 11) {
-
-            if (
-                possibilite.choix === "+20"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    20
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    20,
-                    joueur.nom,
-                    [11, 11]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "-20"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    -20
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    -20,
-                    joueur.nom,
-                    [11, 11]
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 13
-           ================================================ */
-
-        if (valeur === 13) {
-
-            /*
-             * Les deux cartes volées restent dépendantes
-             * de l'information disponible.
-             *
-             * Pour l'instant, si la main est cachée,
-             * on conserve l'incertitude.
-             */
-
-            if (
-                possibilite.metadata &&
-                possibilite.metadata.carteCibleInconnue
-            ) {
-                return;
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 15
-           ================================================ */
-
-        if (valeur === 15) {
-
-            const carte =
-                possibilite.carteCible;
-
-            if (!carte) {
-                return;
-            }
-
-            const valeurCible =
-                obtenirValeurCarte(
-                    carte
-                );
-
-            if (
-                valeurCible <= 0 ||
-                valeurCible === 15
-            ) {
-                return;
-            }
-
-            const bonus =
-                valeurCible * 2;
-
-            ajusterScore(
-                joueur,
-                bonus
-            );
-
-            ajouterCarteTable(
-                etat,
-                bonus,
-                joueur.nom,
-                [15, 15, valeurCible]
-            );
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 17
-           ================================================ */
-
-        if (valeur === 17) {
-
-            /*
-             * Les deux cartes sont inconnues avant le vol.
-             * Le moteur probabiliste les traitera plus tard.
-             */
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 19
-           ================================================ */
-
-        if (valeur === 19) {
-
-            const cible =
-                trouverJoueurSimulation(
-                    etat,
-                    possibilite.cible
-                );
-
-            if (!cible) {
-                return;
-            }
-
-            const cartesJoueur =
-                obtenirCartesPoints(
-                    etat,
-                    joueur.nom
-                );
-
-            const cartesCible =
-                obtenirCartesPoints(
-                    etat,
-                    cible.nom
-                );
-
-            const nombre =
-                Math.min(
-                    cartesJoueur.length,
-                    cartesCible.length,
-                    2
-                );
-
-            for (
-                let i = 0;
-                i < nombre;
-                i++
-            ) {
-
-                const carteJoueur =
-                    cartesJoueur[
-                        cartesJoueur.length -
-                        1 -
-                        i
-                    ];
-
-                const carteCible =
-                    cartesCible[
-                        cartesCible.length -
-                        1 -
-                        i
-                    ];
-
-                const valeurJoueur =
-                    carteJoueur.valeur;
-
-                const valeurCible =
-                    carteCible.valeur;
-
-                carteJoueur.proprietaire =
-                    cible.nom;
-
-                carteCible.proprietaire =
-                    joueur.nom;
-
-                ajusterScore(
-                    joueur,
-                    valeurCible -
-                    valeurJoueur
-                );
-
-                ajusterScore(
-                    cible,
-                    valeurJoueur -
-                    valeurCible
-                );
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE 21
-           ================================================ */
-
-        if (valeur === 21) {
-
-            if (
-                possibilite.choix === "+40"
-            ) {
-
-                ajusterScore(
-                    joueur,
-                    40
-                );
-
-                ajouterCarteTable(
-                    etat,
-                    40,
-                    joueur.nom,
-                    [21, 21]
-                );
-
-            }
-
-            else if (
-                possibilite.choix === "-40"
-            ) {
-
-                const cible =
-                    trouverJoueurSimulation(
-                        etat,
-                        possibilite.cible
-                    );
-
-                if (cible) {
-
-                    ajusterScore(
-                        cible,
-                        -40
-                    );
-
-                    ajouterCarteTable(
-                        etat,
-                        -40,
-                        cible.nom,
-                        [21, 21]
-                    );
-
-                }
-
-            }
-
-            return;
-
-        }
-
-
-        /* ================================================
-           DOUBLE JOKER
-           ================================================ */
-
-        if (
-            typeof valeur === "string" &&
-            valeur.toLowerCase() === "joker"
-        ) {
-
-            /*
-             * Effet temporaire.
-             * Il sera représenté dans l'état simulé
-             * lors de la prochaine étape de recherche.
-             */
-
-            etat.doubleJokerTours =
-                (etat.doubleJokerTours || 0)
-                + 2;
-
-        }
-
+        return possibilites;
     }
 
 
-    function simulerPossibilite(
-        possibilite,
-        etat
-    ) {
+    // -------------------------------------------------
+    // Cartes simples sans cible
+    // -------------------------------------------------
 
-        const simulation =
-            clonerEtatBot(etat);
-
-        if (!simulation) {
-            return null;
-        }
-
-
-        const joueur =
-            trouverJoueurSimulation(
-                simulation,
-                possibilite.joueur ||
-                etat.joueurActuel
-            );
-
-
-        /*
-         * Si la possibilité ne possède pas encore
-         * de référence joueur, on utilise le joueur
-         * actuellement actif.
-         */
-
-        const joueurSimulation =
-            joueur ||
-            (
-                Array.isArray(
-                    simulation.joueurs
-                )
-                    ? simulation.joueurs[
-                        simulation.joueurActuel
-                    ]
-                    : null
-            );
-
-
-        if (!joueurSimulation) {
-            return simulation;
-        }
-
-
-        if (
-            possibilite.type === "double"
-        ) {
-
-            simulerDouble(
-                possibilite,
-                simulation,
-                joueurSimulation
-            );
-
-        }
-        else {
-
-            simulerCarteSimple(
-                possibilite,
-                simulation,
-                joueurSimulation
-            );
-
-        }
-
-
-        /*
-         * Une action consomme les cartes jouées.
-         * On le fait dans la copie, jamais dans la vraie partie.
-         */
-
-        if (
-            Array.isArray(
-                joueurSimulation.main
-            )
-        ) {
-
-            const nombreCartes =
-                possibilite.cartes
-                    ? possibilite.cartes.length
-                    : 1;
-
-            /*
-             * Pour les cartes représentées par null
-             * dans une simulation probabiliste,
-             * on retire simplement le nombre nécessaire.
-             */
-
-            for (
-                let i = 0;
-                i < nombreCartes;
-                i++
-            ) {
-
-                if (
-                    joueurSimulation.main.length > 0
-                ) {
-
-                    joueurSimulation.main.shift();
-
-                }
-
-            }
-
-        }
-
-
-        return simulation;
-
-    }
-
-    /* =====================================================
-       API INTERNE DU MOTEUR
-       ===================================================== */
-
-    const BOT = {
-
-        config: BOT_DIFFICULTES,
-
-        coefficients: BOT_COEFFICIENTS,
-
-        obtenirDifficulte:
-            obtenirDifficulteBot,
-
-        obtenirConfiguration:
-            obtenirConfigurationDifficulte,
-
-        obtenirEtat:
-            obtenirEtatBot,
-
-        construireConnaissance:
-            construireConnaissanceBot,
-
-        obtenirActionsLegales:
-            obtenirActionsLegales,
-
-        actionEstLegale:
-            actionEstLegale,
-
-        obtenirValeurCarte:
-            obtenirValeurCarte,
-
-        genererPossibilites:
-            genererPossibilites,
-
-        genererPossibilitesCarte:
-            genererPossibilitesCarte,
-
-        genererPossibilitesDouble:
-            genererPossibilitesDouble,
-
-        clonerEtat:
-            clonerEtatBot,
-
-        simulerPossibilite:
-            simulerPossibilite,
-
-        limiter,
-
-        moyenne,
-
-        valeurFinition
-
-    };
-
-
-    /* =====================================================
-       EXPOSITION
-       ===================================================== */
-
-    globalThis.AtoumoulinBot = BOT;
-
-
-    console.log(
-        "Atoumoulin : nouveau moteur IA chargé."
+    possibilites.push(
+        creerPossibilite({
+            type: "carte",
+            valeur,
+            cartes: [carte],
+            joueur: referenceJoueur(joueur),
+            description:
+                `Jouer la carte ${valeur}`
+        })
     );
 
-})();
+    return possibilites;
+}
+
+function genererPossibilitesCartesSimples(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return [];
+    }
+
+    const possibilites = [];
+
+    for (const carte of joueurEtat.main) {
+
+        possibilites.push(
+            ...genererPossibilitesCarteSimple(
+                etat,
+                joueurEtat,
+                carte
+            )
+        );
+    }
+
+    return possibilites;
+}
+
+// =====================================================
+// POSSIBILITÉS — DOUBLES
+// =====================================================
+
+
+// -----------------------------------------------------
+// Construire un double à partir de deux cartes
+// -----------------------------------------------------
+
+function creerPossibiliteDouble(
+    etat,
+    joueur,
+    cartes,
+    choix = null,
+    cible = null,
+    carteCible = null,
+    description = ""
+) {
+
+    return creerPossibilite({
+        type: "double",
+        valeur: Simulator.obtenirValeurCarte(cartes[0]),
+        cartes,
+        joueur: referenceJoueur(joueur),
+        cible: cible
+            ? referenceJoueur(cible)
+            : null,
+        carteCible,
+        choix,
+        description
+    });
+}
+
+
+// -----------------------------------------------------
+// Doubles disponibles dans une main
+// -----------------------------------------------------
+
+function obtenirDoublesMain(joueur) {
+
+    const main = Simulator.obtenirMain(joueur);
+
+    const groupes = new Map();
+
+    for (const carte of main) {
+
+        const valeur =
+            Simulator.obtenirValeurCarte(carte);
+
+        if (!groupes.has(valeur)) {
+            groupes.set(valeur, []);
+        }
+
+        groupes.get(valeur).push(carte);
+    }
+
+    const doubles = [];
+
+    for (const [valeur, cartes] of groupes) {
+
+        if (cartes.length >= 2) {
+
+            /*
+             * Même s'il existe 3, 4 ou davantage
+             * de cartes identiques, on ne forme
+             * qu'un seul double.
+             */
+            doubles.push({
+                valeur,
+                cartes: [
+                    cartes[0],
+                    cartes[1]
+                ]
+            });
+        }
+    }
+
+    return doubles;
+}
+
+
+// -----------------------------------------------------
+// Possibilités d'un double
+// -----------------------------------------------------
+
+function genererPossibilitesDouble(
+    etat,
+    joueur,
+    double
+) {
+
+    const valeur = double.valeur;
+    const cartes = double.cartes;
+
+    const possibilites = [];
+
+
+    // -------------------------------------------------
+    // Double 1
+    // -------------------------------------------------
+
+    if (valeur === 1) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            const cartesPoints =
+                Simulator.obtenirCartesPointsJoueur(
+                    etat,
+                    cible
+                );
+
+            if (cartesPoints.length === 0) {
+                continue;
+            }
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    cible,
+                    null,
+                    "Voler jusqu'à 2 dernières cartes de points"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 3
+    // -------------------------------------------------
+
+    if (valeur === 3) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    cible,
+                    null,
+                    "-40 points à un adversaire"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 5
+    // -------------------------------------------------
+
+    if (valeur === 5) {
+
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                null,
+                null,
+                null,
+                "Piocher jusqu'à 4 cartes"
+            )
+        );
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 7
+    // -------------------------------------------------
+
+    if (valeur === 7) {
+
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                null,
+                null,
+                null,
+                "+14 points"
+            )
+        );
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 9
+    // -------------------------------------------------
+
+    if (valeur === 9) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            if (
+                Simulator.obtenirMain(cible).length === 0
+            ) {
+                continue;
+            }
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    cible,
+                    null,
+                    "Révéler puis échanger les mains"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 11
+    // -------------------------------------------------
+
+    if (valeur === 11) {
+
+        // +20
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                "plus20",
+                null,
+                null,
+                "+20 points"
+            )
+        );
+
+        // -20
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    "moins20",
+                    cible,
+                    null,
+                    "-20 points à un adversaire"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 13
+    // -------------------------------------------------
+
+    if (valeur === 13) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            const cartesPoints =
+                Simulator.obtenirCartesPointsJoueur(
+                    etat,
+                    cible
+                );
+
+            if (cartesPoints.length === 0) {
+                continue;
+            }
+
+            /*
+             * Le double 13 peut voler jusqu'à
+             * deux cartes précises.
+             *
+             * On génère :
+             * - chaque carte seule
+             * - chaque paire de cartes
+             */
+
+            for (
+                let i = 0;
+                i < cartesPoints.length;
+                i++
+            ) {
+
+                possibilites.push(
+                    creerPossibiliteDouble(
+                        etat,
+                        joueur,
+                        cartes,
+                        null,
+                        cible,
+                        [i],
+                        "Voler une carte de points précise"
+                    )
+                );
+
+                for (
+                    let j = i + 1;
+                    j < cartesPoints.length;
+                    j++
+                ) {
+
+                    possibilites.push(
+                        creerPossibiliteDouble(
+                            etat,
+                            joueur,
+                            cartes,
+                            null,
+                            cible,
+                            [i, j],
+                            "Voler deux cartes de points précises"
+                        )
+                    );
+                }
+            }
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 15
+    // -------------------------------------------------
+
+    if (valeur === 15) {
+
+        const cartesPoints =
+            Simulator.obtenirCartesPointsJoueur(
+                etat,
+                joueur
+            );
+
+        for (
+            let index = 0;
+            index < cartesPoints.length;
+            index++
+        ) {
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    null,
+                    index,
+                    "Tripler une carte de points personnelle"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 17
+    // -------------------------------------------------
+
+    if (valeur === 17) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            if (
+                Simulator.obtenirMain(cible).length === 0
+            ) {
+                continue;
+            }
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    cible,
+                    null,
+                    "Voler puis jouer jusqu'à 2 cartes"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 19
+    // -------------------------------------------------
+
+    if (valeur === 19) {
+
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            const cartesPoints =
+                Simulator.obtenirCartesPointsJoueur(
+                    etat,
+                    cible
+                );
+
+            if (cartesPoints.length === 0) {
+                continue;
+            }
+
+            /*
+             * Même logique que Double 1 :
+             * l'action peut récupérer jusqu'à deux
+             * dernières cartes de points.
+             */
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    null,
+                    cible,
+                    null,
+                    "Échanger jusqu'à 2 dernières cartes de points"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double 21
+    // -------------------------------------------------
+
+    if (valeur === 21) {
+
+        // +40
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                "plus40",
+                null,
+                null,
+                "+40 points"
+            )
+        );
+
+        // -40
+        for (const cible of obtenirAdversaires(
+            etat,
+            joueur
+        )) {
+
+            possibilites.push(
+                creerPossibiliteDouble(
+                    etat,
+                    joueur,
+                    cartes,
+                    "moins40",
+                    cible,
+                    null,
+                    "-40 points à un adversaire"
+                )
+            );
+        }
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Double Joker
+    // -------------------------------------------------
+
+    if (
+        valeur === "Joker"
+    ) {
+
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                "toursJoker",
+                null,
+                null,
+                "Passer 2 tours"
+            )
+        );
+
+        return possibilites;
+    }
+
+
+    // -------------------------------------------------
+    // Doubles numériques classiques
+    // -------------------------------------------------
+
+    if (
+        typeof valeur === "number" &&
+        valeur % 2 === 0
+    ) {
+
+        possibilites.push(
+            creerPossibiliteDouble(
+                etat,
+                joueur,
+                cartes,
+                null,
+                null,
+                null,
+                `Double ${valeur} → +${valeur * 2}`
+            )
+        );
+
+        return possibilites;
+    }
+
+
+    return possibilites;
+}
+
+
+// -----------------------------------------------------
+// Toutes les possibilités doubles
+// -----------------------------------------------------
+
+function genererPossibilitesDoubles(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return [];
+    }
+
+    const doubles =
+        obtenirDoublesMain(joueurEtat);
+
+    const possibilites = [];
+
+    for (const double of doubles) {
+
+        possibilites.push(
+            ...genererPossibilitesDouble(
+                etat,
+                joueurEtat,
+                double
+            )
+        );
+    }
+
+    return possibilites;
+}
+
+// =====================================================
+// GÉNÉRATEUR GLOBAL
+// =====================================================
+
+function genererToutesPossibilites(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return [];
+    }
+
+
+    // -------------------------------------------------
+    // DOUBLES
+    // -------------------------------------------------
+
+    const doubles =
+        genererPossibilitesDoubles(
+            etat,
+            joueurEtat
+        );
+
+
+    // -------------------------------------------------
+    // CARTES SIMPLES
+    // -------------------------------------------------
+
+    const simples =
+        genererPossibilitesCartesSimples(
+            etat,
+            joueurEtat
+        );
+
+
+    /*
+     * Pour l'instant on retourne toutes les possibilités.
+     *
+     * Le classement par priorité sera fait dans le
+     * moteur de décision, car une priorité de type
+     * "Double 7" ne signifie pas automatiquement
+     * "jouer Double 7".
+     */
+
+    return [
+        ...doubles,
+        ...simples
+    ];
+}
+
+// =====================================================
+// PRIORITÉ DES ACTIONS
+// =====================================================
+
+function obtenirPrioritePossibilite(possibilite) {
+
+    const valeur = possibilite.valeur;
+    const type = possibilite.type;
+
+    // ---------------------------------------------
+    // 1. Double 7
+    // ---------------------------------------------
+
+    if (
+        type === "double" &&
+        valeur === 7
+    ) {
+        return 1;
+    }
+
+    // ---------------------------------------------
+    // 2. 7 simple
+    // ---------------------------------------------
+
+    if (
+        type !== "double" &&
+        valeur === 7
+    ) {
+        return 2;
+    }
+
+    // ---------------------------------------------
+    // 3. Tous les autres doubles
+    // ---------------------------------------------
+
+    if (type === "double") {
+        return 3;
+    }
+
+    // ---------------------------------------------
+    // 4. Toutes les cartes simples
+    // ---------------------------------------------
+
+    return 4;
+}
+
+
+// =====================================================
+// CLASSER LES POSSIBILITÉS PAR PRIORITÉ
+// =====================================================
+
+function classerPossibilitesParPriorite(
+    possibilites
+) {
+
+    return [...possibilites]
+        .map((possibilite, index) => ({
+            possibilite,
+            indexOriginal: index,
+            priorite:
+                obtenirPrioritePossibilite(
+                    possibilite
+                )
+        }))
+        .sort((a, b) => {
+
+            if (a.priorite !== b.priorite) {
+                return a.priorite - b.priorite;
+            }
+
+            return a.indexOriginal - b.indexOriginal;
+        })
+        .map(element => element.possibilite);
+}
+
+
+// =====================================================
+// GROUPER PAR PRIORITÉ
+// =====================================================
+
+function grouperPossibilitesParPriorite(
+    possibilites
+) {
+
+    const groupes = {
+        1: [],
+        2: [],
+        3: [],
+        4: []
+    };
+
+    for (const possibilite of possibilites) {
+
+        const priorite =
+            obtenirPrioritePossibilite(
+                possibilite
+            );
+
+        groupes[priorite].push(
+            possibilite
+        );
+    }
+
+    return groupes;
+}
+
+
+// =====================================================
+// RÉSUMÉ D'UNE POSSIBILITÉ
+// =====================================================
+
+function decrirePossibilite(
+    possibilite
+) {
+
+    const type =
+        possibilite.type === "double"
+            ? "Double"
+            : "Simple";
+
+    let texte =
+        `${type} ${possibilite.valeur}`;
+
+    if (possibilite.choix) {
+        texte += ` → ${possibilite.choix}`;
+    }
+
+    if (possibilite.cible) {
+        texte +=
+            ` → ${possibilite.cible.nom}`;
+    }
+
+    if (
+        possibilite.carteCible !== null &&
+        possibilite.carteCible !== undefined
+    ) {
+        texte +=
+            ` → carte ${JSON.stringify(
+                possibilite.carteCible
+            )}`;
+    }
+
+    return texte;
+}
+
+// =====================================================
+// CONTEXTE DE DÉCISION
+// =====================================================
+
+function construireContexteDecision(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return null;
+    }
+
+    const possibilites =
+        genererToutesPossibilites(
+            etat,
+            joueurEtat
+        );
+
+    const possibilitesClassees =
+        classerPossibilitesParPriorite(
+            possibilites
+        );
+
+    const groupes =
+        grouperPossibilitesParPriorite(
+            possibilites
+        );
+
+    return {
+
+        etat,
+
+        joueur: {
+            index: joueurEtat.index,
+            nom: joueurEtat.nom,
+            score: joueurEtat.score,
+            main: [...joueurEtat.main],
+            nombreCartes:
+                joueurEtat.main.length
+        },
+
+        possibilites:
+            possibilitesClassees,
+
+        groupesPriorite:
+            groupes,
+
+        nombrePossibilites:
+            possibilitesClassees.length
+    };
+}
+
+// =====================================================
+// SIMULATION DES POSSIBILITÉS
+// =====================================================
+
+function simulerPossibilite(
+    etat,
+    possibilite
+) {
+
+    const scenarios =
+        Simulator.simulerAvecScenarios(
+            etat,
+            possibilite
+        );
+
+    if (!Array.isArray(scenarios)) {
+        return [];
+    }
+
+    return scenarios.map(scenario => ({
+
+        possibilite,
+
+        etat:
+            scenario.etat,
+
+        probabilite:
+            Number(scenario.probabilite) || 0,
+
+        description:
+            scenario.description || "",
+
+        metadata:
+            scenario.metadata || {}
+
+    }));
+}
+
+function simulerPossibilites(
+    etat,
+    possibilites
+) {
+
+    const resultats = [];
+
+    for (const possibilite of possibilites) {
+
+        const scenarios =
+            simulerPossibilite(
+                etat,
+                possibilite
+            );
+
+        resultats.push({
+            possibilite,
+            scenarios,
+            nombreScenarios:
+                scenarios.length
+        });
+    }
+
+    return resultats;
+}
+
+function calculerValeurMoyenneScenarios(
+    scenarios,
+    fonctionEvaluation
+) {
+
+    if (
+        !Array.isArray(scenarios) ||
+        scenarios.length === 0
+    ) {
+        return 0;
+    }
+
+    let total = 0;
+    let probabiliteTotale = 0;
+
+    for (const scenario of scenarios) {
+
+        const probabilite =
+            Number(scenario.probabilite) || 0;
+
+        if (probabilite <= 0) {
+            continue;
+        }
+
+        const valeur =
+            Number(
+                fonctionEvaluation(
+                    scenario.etat,
+                    scenario
+                )
+            ) || 0;
+
+        total +=
+            probabilite * valeur;
+
+        probabiliteTotale +=
+            probabilite;
+    }
+
+    if (probabiliteTotale <= 0) {
+        return 0;
+    }
+
+    return total / probabiliteTotale;
+}
+
+// =====================================================
+// MOTEUR D'ÉVALUATION DÉFINITIF
+// =====================================================
+
+function clamp(valeur, min = 0, max = 100) {
+
+    const nombre = Number(valeur);
+
+    if (!Number.isFinite(nombre)) {
+        return min;
+    }
+
+    return Math.max(
+        min,
+        Math.min(max, nombre)
+    );
+}
+
+
+function moyenne(valeurs) {
+
+    if (!Array.isArray(valeurs) || valeurs.length === 0) {
+        return 0;
+    }
+
+    return valeurs.reduce(
+        (total, valeur) =>
+            total + Number(valeur || 0),
+        0
+    ) / valeurs.length;
+}
+
+
+// =====================================================
+// CIBLE
+// =====================================================
+
+function obtenirCibleEtat(etat) {
+
+    const proprietes = [
+        "scoreCible",
+        "cibleScore",
+        "objectifScore",
+        "pointsVictoire",
+        "scoreVictoire",
+        "objectif"
+    ];
+
+    for (const propriete of proprietes) {
+
+        const valeur =
+            Number(etat[propriete]);
+
+        if (
+            Number.isFinite(valeur) &&
+            valeur > 0
+        ) {
+            return valeur;
+        }
+    }
+
+    /*
+     * Certaines versions du jeu peuvent stocker
+     * la cible dans une configuration.
+     */
+
+    if (
+        etat.configuration &&
+        Number.isFinite(
+            Number(etat.configuration.scoreCible)
+        )
+    ) {
+        return Number(
+            etat.configuration.scoreCible
+        );
+    }
+
+    /*
+     * Ne jamais inventer une cible silencieusement.
+     * 0 signifie ici que la cible n'est pas connue.
+     */
+    return 0;
+}
+
+
+// =====================================================
+// FINITION
+// =====================================================
+
+function calculerValeurTours(tours) {
+
+    if (tours === 1) return 100;
+    if (tours === 2) return 70;
+    if (tours === 3) return 45;
+    if (tours === 4) return 25;
+    if (tours >= 5) return 10;
+
+    return 0;
+}
+
+
+function calculerCertitudeFinition(certitude) {
+
+    if (certitude === "certain") return 100;
+    if (certitude === "tres-probable") return 80;
+    if (certitude === "possible") return 55;
+    if (certitude === "faible") return 30;
+
+    return 0;
+}
+
+
+function analyserFinition(etat, joueur) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return {
+            tours: Infinity,
+            certitude: 0,
+            valeur: 0
+        };
+    }
+
+    const cible =
+        obtenirCibleEtat(etat);
+
+    if (cible <= 0) {
+        return {
+            tours: Infinity,
+            certitude: 0,
+            valeur: 0
+        };
+    }
+
+    const score =
+        Number(joueurEtat.score) || 0;
+
+    if (score === cible) {
+        return {
+            tours: 0,
+            certitude: 100,
+            valeur: 100
+        };
+    }
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            joueurEtat
+        );
+
+    let meilleurTour = Infinity;
+    let meilleureCertitude = "faible";
+
+    for (const possibilite of possibilites.possibilites) {
+
+        const valeur =
+            Number(
+                possibilite.valeur
+            );
+
+        /*
+         * Les cartes à effet ne possèdent pas
+         * nécessairement une valeur directe.
+         */
+        if (!Number.isFinite(valeur)) {
+            continue;
+        }
+
+        if (score + valeur === cible) {
+
+            meilleurTour = 1;
+            meilleureCertitude = "certain";
+            break;
+        }
+
+        /*
+         * Si le score est au-dessus de la cible,
+         * le retour exact est également recherché.
+         */
+        if (
+            score > cible &&
+            score - valeur === cible
+        ) {
+
+            meilleurTour = 1;
+            meilleureCertitude = "certain";
+            break;
+        }
+    }
+
+    if (meilleurTour === Infinity) {
+
+        /*
+         * Beaucoup de possibilités de finition :
+         * 2-3 tours envisageables.
+         */
+        if (
+            possibilites.finition >= 60 &&
+            possibilites.actions >= 40
+        ) {
+            meilleurTour = 3;
+            meilleureCertitude = "possible";
+        }
+
+        else if (
+            possibilites.finition > 0
+        ) {
+            meilleurTour = 4;
+            meilleureCertitude = "faible";
+        }
+    }
+
+    const valeurTours =
+        calculerValeurTours(
+            meilleurTour
+        );
+
+    const certitude =
+        calculerCertitudeFinition(
+            meilleureCertitude
+        );
+
+    return {
+
+        tours: meilleurTour,
+
+        certitude,
+
+        valeur:
+            valeurTours *
+            certitude /
+            100
+    };
+}
+
+
+// =====================================================
+// QUALITÉ DE LA MAIN
+// =====================================================
+
+function analyserQualiteMain(
+    etat,
+    joueur
+) {
+
+    const main =
+        Simulator.obtenirMain(joueur);
+
+    if (main.length === 0) {
+        return {
+            actions: 0,
+            finition: 0,
+            manipulation: 0,
+            doubles: 0,
+            synergies: 0,
+            total: 0
+        };
+    }
+
+    let actions = 0;
+    let finition = 0;
+    let manipulation = 0;
+
+    const compteurs =
+        new Map();
+
+    for (const carte of main) {
+
+        const valeur =
+            Simulator.obtenirValeurCarte(carte);
+
+        compteurs.set(
+            valeur,
+            (compteurs.get(valeur) || 0) + 1
+        );
+
+        /*
+         * Actions.
+         */
+        if (
+            [
+                1, 3, 5, 9,
+                11, 13, 15,
+                17, 19, 21
+            ].includes(valeur) ||
+            valeur === "Joker"
+        ) {
+            actions++;
+        }
+
+        /*
+         * Finition / progression directe.
+         */
+        if (
+            [
+                2, 4, 6, 7, 8,
+                10, 12, 14, 16,
+                18, 20
+            ].includes(valeur)
+        ) {
+            finition++;
+        }
+
+        /*
+         * Manipulation.
+         */
+        if (
+            [
+                1, 3, 9, 11,
+                13, 15, 17,
+                19, 21
+            ].includes(valeur) ||
+            valeur === "Joker"
+        ) {
+            manipulation++;
+        }
+    }
+
+    let nombreDoubles = 0;
+
+    for (const nombre of compteurs.values()) {
+
+        if (nombre >= 2) {
+            nombreDoubles++;
+        }
+    }
+
+    /*
+     * Diversité de valeurs.
+     */
+    const diversite =
+        compteurs.size /
+        Math.max(1, main.length);
+
+    const synergies =
+        clamp(
+            diversite * 100 +
+            nombreDoubles * 10
+        );
+
+    const scoreActions =
+        clamp(actions * 15);
+
+    const scoreFinition =
+        clamp(finition * 20);
+
+    const scoreManipulation =
+        clamp(manipulation * 15);
+
+    const scoreDoubles =
+        clamp(nombreDoubles * 25);
+
+    const total =
+        (
+            scoreActions * 25 +
+            scoreFinition * 25 +
+            scoreManipulation * 20 +
+            scoreDoubles * 15 +
+            synergies * 15
+        ) / 100;
+
+    return {
+
+        actions: scoreActions,
+
+        finition: scoreFinition,
+
+        manipulation:
+            scoreManipulation,
+
+        doubles:
+            scoreDoubles,
+
+        synergies,
+
+        total:
+            clamp(total)
+    };
+}
+
+
+// =====================================================
+// POSSIBILITÉS RESTANTES
+// =====================================================
+
+function analyserPossibilitesRestantes(
+    etat,
+    joueur
+) {
+
+    const generator =
+        window.AtoumoulinBotPossibilities;
+
+    if (
+        !generator ||
+        typeof generator.genererToutesPossibilites !==
+            "function"
+    ) {
+        return {
+            actions: 0,
+            diversite: 0,
+            finition: 0,
+            manipulation: 0,
+            reponses: 0,
+            plans: 0,
+            total: 0,
+            possibilites: []
+        };
+    }
+
+    const possibilites =
+        generator.genererToutesPossibilites(
+            etat,
+            joueur
+        );
+
+    if (
+        !Array.isArray(possibilites) ||
+        possibilites.length === 0
+    ) {
+        return {
+            actions: 0,
+            diversite: 0,
+            finition: 0,
+            manipulation: 0,
+            reponses: 0,
+            plans: 0,
+            total: 0,
+            possibilites: []
+        };
+    }
+
+    const valeurs =
+        new Set();
+
+    let finition = 0;
+    let manipulation = 0;
+    let reponses = 0;
+    let plans = 0;
+
+    for (const possibilite of possibilites) {
+
+        valeurs.add(
+            possibilite.valeur
+        );
+
+        if (
+            [
+                2, 4, 6, 7,
+                8, 10, 12,
+                14, 16, 18,
+                20, 21
+            ].includes(
+                possibilite.valeur
+            )
+        ) {
+            finition++;
+        }
+
+        if (
+            [
+                1, 3, 9, 11,
+                13, 15, 17,
+                19, 21
+            ].includes(
+                possibilite.valeur
+            ) ||
+            possibilite.valeur === "Joker"
+        ) {
+            manipulation++;
+        }
+
+        if (
+            possibilite.cible ||
+            possibilite.choix === "moins10" ||
+            possibilite.choix === "moins20" ||
+            possibilite.choix === "moins40"
+        ) {
+            reponses++;
+        }
+
+        if (
+            possibilite.cible ||
+            possibilite.choix ||
+            possibilite.carteCible !== null
+        ) {
+            plans++;
+        }
+    }
+
+    const actions =
+        clamp(
+            possibilites.length * 7
+        );
+
+    const diversite =
+        clamp(
+            valeurs.size * 12
+        );
+
+    const scoreFinition =
+        clamp(
+            finition * 12
+        );
+
+    const scoreManipulation =
+        clamp(
+            manipulation * 10
+        );
+
+    const scoreReponses =
+        clamp(
+            reponses * 10
+        );
+
+    const scorePlans =
+        clamp(
+            plans * 8
+        );
+
+    const total =
+        (
+            actions * 25 +
+            diversite * 20 +
+            scoreFinition * 20 +
+            scoreManipulation * 15 +
+            scoreReponses * 10 +
+            scorePlans * 10
+        ) / 100;
+
+    return {
+
+        actions,
+
+        diversite,
+
+        finition:
+            scoreFinition,
+
+        manipulation:
+            scoreManipulation,
+
+        reponses:
+            scoreReponses,
+
+        plans:
+            scorePlans,
+
+        total:
+            clamp(total),
+
+        possibilites
+    };
+}
+
+
+// =====================================================
+// PROGRESSION
+// =====================================================
+
+function analyserProgression(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return 0;
+    }
+
+    const cible =
+        obtenirCibleEtat(etat);
+
+    if (cible <= 0) {
+        return 0;
+    }
+
+    const score =
+        Number(joueurEtat.score) || 0;
+
+    const amelioration =
+        clamp(
+            Math.abs(score) *
+            100 /
+            cible
+        );
+
+    const finition =
+        analyserFinition(
+            etat,
+            joueurEtat
+        ).valeur;
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            joueurEtat
+        );
+
+    const qualite =
+        analyserQualiteMain(
+            etat,
+            joueurEtat
+        ).total;
+
+    const adaptation =
+        possibilites.reponses;
+
+    return clamp(
+        (
+            amelioration * 25 +
+            finition * 30 +
+            possibilites.diversite * 20 +
+            qualite * 15 +
+            adaptation * 10
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// STABILITÉ
+// =====================================================
+
+function analyserStabilite(
+    etat,
+    joueur
+) {
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            joueur
+        );
+
+    const qualite =
+        analyserQualiteMain(
+            etat,
+            joueur
+        );
+
+    const plans =
+        clamp(
+            (
+                possibilites.plans +
+                possibilites.diversite
+            ) / 2
+        );
+
+    const independance =
+        clamp(
+            (
+                qualite.actions +
+                possibilites.actions +
+                possibilites.diversite
+            ) / 3
+        );
+
+    const recuperation =
+        clamp(
+            (
+                possibilites.reponses +
+                possibilites.manipulation
+            ) / 2
+        );
+
+    return clamp(
+        (
+            plans * 35 +
+            possibilites.diversite * 30 +
+            independance * 20 +
+            recuperation * 15
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// POSITION
+// =====================================================
+
+function analyserPosition(
+    etat,
+    joueur
+) {
+
+    const finition =
+        analyserFinition(
+            etat,
+            joueur
+        ).valeur;
+
+    const progression =
+        analyserProgression(
+            etat,
+            joueur
+        );
+
+    const stabilite =
+        analyserStabilite(
+            etat,
+            joueur
+        );
+
+    return clamp(
+        (
+            finition * 90 +
+            progression * 65 +
+            stabilite * 55
+        ) / 210
+    );
+}
+
+
+// =====================================================
+// FLEXIBILITÉ
+// =====================================================
+
+function analyserFlexibilite(
+    etat,
+    joueur
+) {
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            joueur
+        );
+
+    const diversite =
+        possibilites.diversite;
+
+    const independance =
+        clamp(
+            (
+                possibilites.actions +
+                possibilites.plans
+            ) / 2
+        );
+
+    const adaptationAdversaires =
+        possibilites.reponses;
+
+    const progression =
+        analyserProgression(
+            etat,
+            joueur
+        );
+
+    return clamp(
+        (
+            diversite * 35 +
+            independance * 25 +
+            adaptationAdversaires * 25 +
+            progression * 15
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// POTENTIEL FUTUR
+// =====================================================
+
+function analyserPotentielFutur(
+    etat,
+    joueur
+) {
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            joueur
+        );
+
+    const main =
+        analyserQualiteMain(
+            etat,
+            joueur
+        );
+
+    const flexibilite =
+        analyserFlexibilite(
+            etat,
+            joueur
+        );
+
+    const creation =
+        clamp(
+            (
+                possibilites.plans +
+                possibilites.diversite
+            ) / 2
+        );
+
+    return clamp(
+        (
+            possibilites.total * 35 +
+            main.total * 30 +
+            flexibilite * 30 +
+            creation * 10
+        ) / 105
+    );
+}
+
+
+// =====================================================
+// DANGER ADVERSE
+// =====================================================
+
+function analyserDangerAdversaire(
+    etat,
+    adversaire
+) {
+
+    const finition =
+        analyserFinition(
+            etat,
+            adversaire
+        ).valeur;
+
+    const position =
+        analyserPosition(
+            etat,
+            adversaire
+        );
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            adversaire
+        );
+
+    const stabilite =
+        analyserStabilite(
+            etat,
+            adversaire
+        );
+
+    const nombrePossibilites =
+        clamp(
+            possibilites.actions
+        );
+
+    const diversite =
+        clamp(
+            possibilites.diversite
+        );
+
+    const scorePossibilites =
+        (
+            nombrePossibilites +
+            diversite +
+            possibilites.finition +
+            possibilites.manipulation +
+            possibilites.plans
+        ) / 5;
+
+    return clamp(
+        (
+            finition * 50 +
+            position * 20 +
+            scorePossibilites * 20 +
+            stabilite * 10
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// POTENTIEL FUTUR ADVERSE
+// =====================================================
+
+function analyserPotentielFuturAdversaire(
+    etat,
+    adversaire
+) {
+
+    const progression =
+        analyserProgression(
+            etat,
+            adversaire
+        );
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etat,
+            adversaire
+        );
+
+    const main =
+        analyserQualiteMain(
+            etat,
+            adversaire
+        );
+
+    const manipulation =
+        possibilites.manipulation;
+
+    const creation =
+        possibilites.plans;
+
+    return clamp(
+        (
+            progression * 40 +
+            manipulation * 30 +
+            main.finition * 20 +
+            creation * 10
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// SITUATION ADVERSE
+// =====================================================
+
+function analyserSituationAdverse(
+    etat,
+    adversaire
+) {
+
+    const danger =
+        analyserDangerAdversaire(
+            etat,
+            adversaire
+        );
+
+    const potentiel =
+        analyserPotentielFuturAdversaire(
+            etat,
+            adversaire
+        );
+
+    const stabilite =
+        analyserStabilite(
+            etat,
+            adversaire
+        );
+
+    return clamp(
+        (
+            danger * 100 +
+            potentiel * 65 +
+            stabilite * 50
+        ) / 215
+    );
+}
+
+
+// =====================================================
+// TOUS LES ADVERSAIRES
+// =====================================================
+
+function analyserAdversaires(
+    etat,
+    joueur
+) {
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etat,
+            joueur
+        );
+
+    if (!joueurEtat) {
+        return {
+            dangerMax: 0,
+            dangerMoyen: 0,
+            situationMax: 0,
+            situationMoyenne: 0,
+            adversaires: []
+        };
+    }
+
+    const adversaires =
+        etat.joueurs.filter(
+            autre =>
+                autre.index !== joueurEtat.index
+        );
+
+    const analyses =
+        adversaires.map(
+            adversaire => ({
+
+                joueur: adversaire,
+
+                danger:
+                    analyserDangerAdversaire(
+                        etat,
+                        adversaire
+                    ),
+
+                situation:
+                    analyserSituationAdverse(
+                        etat,
+                        adversaire
+                    )
+            })
+        );
+
+    return {
+
+        dangerMax:
+            analyses.length
+                ? Math.max(
+                    ...analyses.map(
+                        a => a.danger
+                    )
+                )
+                : 0,
+
+        dangerMoyen:
+            moyenne(
+                analyses.map(
+                    a => a.danger
+                )
+            ),
+
+        situationMax:
+            analyses.length
+                ? Math.max(
+                    ...analyses.map(
+                        a => a.situation
+                    )
+                )
+                : 0,
+
+        situationMoyenne:
+            moyenne(
+                analyses.map(
+                    a => a.situation
+                )
+            ),
+
+        adversaires:
+            analyses
+    };
+}
+
+
+// =====================================================
+// IMPACT PERSONNEL
+// =====================================================
+
+function analyserImpactPersonnel(
+    etatAvant,
+    etatApres,
+    joueur
+) {
+
+    const position =
+        analyserPosition(
+            etatApres,
+            joueur
+        );
+
+    const main =
+        analyserQualiteMain(
+            etatApres,
+            joueur
+        );
+
+    const possibilites =
+        analyserPossibilitesRestantes(
+            etatApres,
+            joueur
+        );
+
+    return clamp(
+        (
+            position * 95 +
+            main.total * 60 +
+            possibilites.total * 45
+        ) / 200
+    );
+}
+
+
+// =====================================================
+// IMPACT ADVERSAIRE
+// =====================================================
+
+function analyserImpactAdversaire(
+    etatAvant,
+    etatApres,
+    joueur
+) {
+
+    const avant =
+        analyserAdversaires(
+            etatAvant,
+            joueur
+        );
+
+    const apres =
+        analyserAdversaires(
+            etatApres,
+            joueur
+        );
+
+    /*
+     * Une diminution de la situation adverse
+     * constitue un impact positif.
+     */
+    const reductionMax =
+        avant.situationMax -
+        apres.situationMax;
+
+    const reductionMoyenne =
+        avant.situationMoyenne -
+        apres.situationMoyenne;
+
+    return clamp(
+        (
+            reductionMax * 70 +
+            reductionMoyenne * 30
+        )
+    );
+}
+
+
+// =====================================================
+// COÛT D'OPPORTUNITÉ
+// =====================================================
+
+function analyserCoutOpportunite(
+    etatAvant,
+    etatApres,
+    possibilite
+) {
+
+    const joueur =
+        possibilite.joueur;
+
+    const mainAvant =
+        analyserQualiteMain(
+            etatAvant,
+            joueur
+        ).total;
+
+    const mainApres =
+        analyserQualiteMain(
+            etatApres,
+            joueur
+        ).total;
+
+    const possibilitesAvant =
+        analyserPossibilitesRestantes(
+            etatAvant,
+            joueur
+        );
+
+    const joueurEtat =
+        Simulator.trouverJoueur(
+            etatAvant,
+            joueur
+        );
+
+    const tailleMain =
+        joueurEtat
+            ? Simulator.obtenirMain(
+                joueurEtat
+            ).length
+            : 1;
+
+    const nombreCartesJouees =
+        Array.isArray(
+            possibilite.cartes
+        )
+            ? possibilite.cartes.length
+            : 1;
+
+    const sacrifice =
+        clamp(
+            mainAvant -
+            mainApres
+        );
+
+    const alternativesAbandonnees =
+        clamp(
+            possibilitesAvant.total *
+            Math.min(
+                1,
+                nombreCartesJouees /
+                Math.max(1, tailleMain)
+            )
+        );
+
+    /*
+     * Une main peu diversifiée signifie qu'une carte
+     * peut être difficile à remplacer.
+     */
+    const rarete =
+        clamp(
+            100 -
+            possibilitesAvant.diversite
+        );
+
+    return clamp(
+        (
+            sacrifice * 50 +
+            alternativesAbandonnees * 30 +
+            rarete * 20
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// RISQUE
+// =====================================================
+
+function analyserRisque(
+    etatAvant,
+    etatApres,
+    possibilite
+) {
+
+    const impactAdverseAvant =
+        analyserAdversaires(
+            etatAvant,
+            possibilite.joueur
+        );
+
+    const impactAdverseApres =
+        analyserAdversaires(
+            etatApres,
+            possibilite.joueur
+        );
+
+    const progressionAvant =
+        analyserProgression(
+            etatAvant,
+            possibilite.joueur
+        );
+
+    const progressionApres =
+        analyserProgression(
+            etatApres,
+            possibilite.joueur
+        );
+
+    /*
+     * Hausse de la menace adverse.
+     */
+    const hausseAdverse =
+        Math.max(
+            0,
+            impactAdverseApres.situationMax -
+            impactAdverseAvant.situationMax
+        );
+
+    /*
+     * Perte de progression personnelle.
+     */
+    const perteProgression =
+        Math.max(
+            0,
+            progressionAvant -
+            progressionApres
+        );
+
+    /*
+     * Gravité = conséquence potentielle.
+     */
+    const gravite =
+        clamp(
+            (
+                hausseAdverse +
+                perteProgression
+            ) / 2
+        );
+
+    /*
+     * Difficulté à récupérer.
+     */
+    const recuperation =
+        clamp(
+            100 -
+            analyserStabilite(
+                etatApres,
+                possibilite.joueur
+            )
+        );
+
+    /*
+     * L'incertitude seule n'est pas un risque.
+     */
+    const probabiliteDefavorable =
+        gravite;
+
+    return clamp(
+        (
+            probabiliteDefavorable * 40 +
+            gravite * 40 +
+            recuperation * 20
+        ) / 100
+    );
+}
+
+
+// =====================================================
+// ÉVALUATION DÉFINITIVE D'UN ÉTAT
+// =====================================================
+
+function evaluerEtat(
+    etatAvant,
+    etatApres,
+    possibilite
+) {
+
+    const joueur =
+        possibilite.joueur;
+
+    const impactPersonnel =
+        analyserImpactPersonnel(
+            etatAvant,
+            etatApres,
+            joueur
+        );
+
+    const impactAdversaire =
+        analyserImpactAdversaire(
+            etatAvant,
+            etatApres,
+            joueur
+        );
+
+    const potentielFutur =
+        analyserPotentielFutur(
+            etatApres,
+            joueur
+        );
+
+    const coutOpportunite =
+        analyserCoutOpportunite(
+            etatAvant,
+            etatApres,
+            possibilite
+        );
+
+    const risque =
+        analyserRisque(
+            etatAvant,
+            etatApres,
+            possibilite
+        );
+
+    /*
+     * FORMULE DÉFINITIVE
+     *
+     * 40 % personnel
+     * 30 % adversaire
+     * 15 % futur
+     * -10 % coût
+     * -5 % risque
+     */
+    const scoreFinal =
+        impactPersonnel * 0.40 +
+        impactAdversaire * 0.30 +
+        potentielFutur * 0.15 -
+        coutOpportunite * 0.10 -
+        risque * 0.05;
+
+    return {
+
+        score: scoreFinal,
+
+        impactPersonnel,
+
+        impactAdversaire,
+
+        potentielFutur,
+
+        coutOpportunite,
+
+        risque,
+
+        details: {
+
+            finition:
+                analyserFinition(
+                    etatApres,
+                    joueur
+                ),
+
+            progression:
+                analyserProgression(
+                    etatApres,
+                    joueur
+                ),
+
+            stabilite:
+                analyserStabilite(
+                    etatApres,
+                    joueur
+                ),
+
+            position:
+                analyserPosition(
+                    etatApres,
+                    joueur
+                ),
+
+            qualiteMain:
+                analyserQualiteMain(
+                    etatApres,
+                    joueur
+                ),
+
+            possibilites:
+                analyserPossibilitesRestantes(
+                    etatApres,
+                    joueur
+                ),
+
+            adversaires:
+                analyserAdversaires(
+                    etatApres,
+                    joueur
+                )
+        }
+    };
+}
+
+
+// =====================================================
+// ÉVALUATION D'UNE POSSIBILITÉ
+// =====================================================
+
+function evaluerPossibilite(
+    etat,
+    possibilite
+) {
+
+    const scenarios =
+        simulerPossibilite(
+            etat,
+            possibilite
+        );
+
+    if (
+        !Array.isArray(scenarios) ||
+        scenarios.length === 0
+    ) {
+        return {
+
+            possibilite,
+
+            score: -Infinity,
+
+            scenarios: [],
+
+            details: null
+        };
+    }
+
+    let total = 0;
+    let probabiliteTotale = 0;
+
+    const evaluations = [];
+
+    for (const scenario of scenarios) {
+
+        const evaluation =
+            evaluerEtat(
+                etat,
+                scenario.etat,
+                possibilite
+            );
+
+        const probabilite =
+            Number(
+                scenario.probabilite
+            ) || 0;
+
+        total +=
+            evaluation.score *
+            probabilite;
+
+        probabiliteTotale +=
+            probabilite;
+
+        evaluations.push({
+
+            ...scenario,
+
+            evaluation
+        });
+    }
+
+    const score =
+        probabiliteTotale > 0
+            ? total / probabiliteTotale
+            : -Infinity;
+
+    return {
+
+        possibilite,
+
+        score,
+
+        scenarios:
+            evaluations,
+
+        details:
+            evaluations.length === 1
+                ? evaluations[0].evaluation
+                : null
+    };
+}
+
+
+// =====================================================
+// ÉVALUATION DE TOUTES LES POSSIBILITÉS
+// =====================================================
+
+function evaluerToutesPossibilites(
+    etat,
+    possibilites
+) {
+
+    return possibilites.map(
+        possibilite =>
+            evaluerPossibilite(
+                etat,
+                possibilite
+            )
+    );
+}
+
+window.AtoumoulinBotPriorities = {
+
+    obtenirPrioritePossibilite,
+
+    classerPossibilitesParPriorite,
+
+    grouperPossibilitesParPriorite,
+
+    decrirePossibilite
+};
+
+window.AtoumoulinBotDecision = {
+
+    // Contexte
+    construireContexteDecision,
+
+    // Simulation
+    simulerPossibilite,
+    simulerPossibilites,
+
+    // Scénarios
+    calculerValeurMoyenneScenarios,
+
+    // Évaluation
+    evaluerEtat,
+    evaluerPossibilite,
+    evaluerToutesPossibilites,
+
+    // Analyse personnelle
+    analyserFinition,
+    analyserProgression,
+    analyserStabilite,
+    analyserPosition,
+
+    // Main / potentiel
+    analyserQualiteMain,
+    analyserPossibilitesRestantes,
+    analyserFlexibilite,
+    analyserPotentielFutur,
+
+    // Adversaires
+    analyserDangerAdversaire,
+    analyserSituationAdverse,
+    analyserAdversaires,
+
+    // Action
+    analyserImpactPersonnel,
+    analyserImpactAdversaire,
+    analyserCoutOpportunite,
+    analyserRisque
+};
+
+window.AtoumoulinBotPossibilities = {
+
+    creerPossibilite,
+
+    creerPossibiliteDouble,
+
+    obtenirAdversaires,
+
+    obtenirDoublesMain,
+
+    genererPossibilitesCarteSimple,
+
+    genererPossibilitesCartesSimples,
+
+    genererPossibilitesDouble,
+
+    genererPossibilitesDoubles,
+
+    genererToutesPossibilites
+};
