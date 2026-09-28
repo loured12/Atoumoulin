@@ -5,810 +5,939 @@
  * Pont entre :
  *
  *   nouvelle IA
- *       ↓
+ *      ↓
  *   action complète
- *       ↓
- *   moteur réel Atoumoulin
- *
- * Le fichier ne contient aucune logique stratégique.
- *
- * Son seul rôle est de transformer une action choisie par l'IA
- * en appels aux fonctions déjà exposées par server/engine.js.
+ *      ↓
+ *   moteur script.js
  *
  * IMPORTANT :
- * - l'ancien bot n'est pas modifié ;
- * - script.js n'est pas modifié ;
- * - aucune règle du jeu n'est redéfinie ici ;
- * - une action illégale est refusée ;
- * - les commandes présentes dans action.commands sont prioritaires.
+ * - Ne modifie pas script.js.
+ * - N'utilise pas runBotTurn().
+ * - L'ancien bot reste donc intact.
+ * - Chaque étape est exécutée par les fonctions officielles
+ *   déjà présentes dans le moteur.
  */
 
-
-/* =========================================================
- * UTILITAIRES
- * ========================================================= */
-
-function number(value) {
+function asNumber(value, fallback = null) {
     const n = Number(value);
-
-    return Number.isFinite(n)
-        ? n
-        : null;
+    return Number.isFinite(n) ? n : fallback;
 }
 
+function getCardValue(action) {
+    return action?.card?.value ??
+        action?.cardValue ??
+        action?.card ??
+        null;
+}
 
-function cardValue(card) {
-    if (card == null) {
-        return null;
+function getCardIndex(action) {
+    return action?.cardIndex ??
+        action?.index ??
+        null;
+}
+
+function getDoubleIndices(action) {
+    if (Array.isArray(action?.indices)) {
+        return action.indices.slice();
     }
 
-    if (
-        typeof card === "number" ||
-        typeof card === "string"
-    ) {
-        return card;
+    if (Array.isArray(action?.cardIndices)) {
+        return action.cardIndices.slice();
     }
 
+    if (Array.isArray(action?.selectedIndices)) {
+        return action.selectedIndices.slice();
+    }
+
+    return [];
+}
+
+function getTarget(action) {
+    return action?.target ??
+        action?.targetPlayer ??
+        action?.playerTarget ??
+        null;
+}
+
+function getTableCardIndex(action) {
+    return action?.tableCardIndex ??
+        action?.cardIndexTable ??
+        action?.tableIndex ??
+        null;
+}
+
+function getTableCardIndices(action) {
+    if (Array.isArray(action?.tableCardIndices)) {
+        return action.tableCardIndices.slice();
+    }
+
+    return [];
+}
+
+function getEffect(action) {
+    return action?.effect ?? null;
+}
+
+function getValue(action) {
+    return action?.value ?? null;
+}
+
+function isDoubleAction(action) {
     return (
-        card.value ??
-        card.valeur ??
-        card.cardValue ??
-        null
+        action?.type === "play_double" ||
+        action?.metadata?.double === true ||
+        String(action?.id ?? "").startsWith("double")
     );
 }
 
-
-function normalizeTarget(target) {
-    const n = Number(target);
-
-    return Number.isInteger(n)
-        ? n
-        : null;
+function isSamePlayerTarget(target, playerIndex) {
+    return (
+        target !== null &&
+        target !== undefined &&
+        Number(target) === Number(playerIndex)
+    );
 }
-
-
-function getPlayerIndex(engine, fallback = 0) {
-    if (
-        engine &&
-        typeof engine.currentIndex === "function"
-    ) {
-        return Number(
-            engine.currentIndex()
-        );
-    }
-
-    return Number(fallback);
-}
-
-
-/* =========================================================
- * ADAPTATEUR
- * ========================================================= */
 
 export class AtoumoulinEngineAdapter {
-    constructor(
-        engine,
-        {
-            strict = true,
-            debug = false
-        } = {}
-    ) {
+
+    constructor(engine, {
+        strict = true,
+        autoResolve = true
+    } = {}) {
         if (!engine) {
             throw new Error(
-                "AtoumoulinEngineAdapter : moteur absent."
+                "AtoumoulinEngineAdapter : moteur manquant."
             );
         }
 
         this.engine = engine;
-        this.strict = !!strict;
-        this.debug = !!debug;
+        this.strict = strict;
+        this.autoResolve = autoResolve;
     }
 
-
-    /* =====================================================
-     * LOG
-     * ===================================================== */
-
-    log(...args) {
-        if (this.debug) {
-            console.log(
-                "[Atoumoulin AI adapter]",
-                ...args
-            );
-        }
-    }
-
-
-    /* =====================================================
-     * ÉTAT
-     * ===================================================== */
-
-    getState(
-        playerIndex,
-        selection = null
-    ) {
-        if (
-            typeof this.engine.stateFor !==
-            "function"
-        ) {
-            throw new Error(
-                "Le moteur ne fournit pas stateFor()."
-            );
-        }
-
-        return this.engine.stateFor(
-            playerIndex,
-            selection
-        );
-    }
-
-
-    /* =====================================================
-     * EXÉCUTION BAS NIVEAU
-     * ===================================================== */
-
-    apply(
-        functionName,
-        args = []
-    ) {
-        this.log(
-            "apply",
-            functionName,
-            args
-        );
-
-        return this.engine.apply(
-            functionName,
-            args
-        );
-    }
-
-
-    setPlayer(
-        playerIndex
-    ) {
-        if (
-            typeof this.engine.setPlayerIndex ===
-            "function"
-        ) {
-            this.engine.setPlayerIndex(
-                Number(playerIndex)
-            );
-        }
-    }
-
-
-    setSelection(
-        value
-    ) {
-        if (
-            typeof this.engine.setSelection ===
-            "function"
-        ) {
-            this.engine.setSelection(
-                value
-            );
-        }
-    }
-
-
-    /* =====================================================
-     * COMMANDES EXPLICITES DE L'ACTION
-     *
-     * C'est la voie privilégiée.
-     *
-     * action-generator peut fournir :
-     *
-     * commands: [
-     *   {
-     *      fn: "jouerCarte",
-     *      args: [...]
-     *   }
-     * ]
-     *
-     * ou :
-     *
-     * commands: [
-     *   ["jouerCarte", [...]],
-     *   ["choisirAdversaireCarte13", [1]]
-     * ]
-     * ===================================================== */
-
-    executeCommand(
-        command,
-        playerIndex
-    ) {
-        if (!command) {
-            return false;
-        }
-
-        let functionName = null;
-        let args = [];
-
-        if (
-            Array.isArray(command)
-        ) {
-            functionName =
-                command[0];
-
-            args =
-                Array.isArray(command[1])
-                    ? command[1]
-                    : [];
-        } else if (
-            typeof command === "object"
-        ) {
-            functionName =
-                command.fn ??
-                command.function ??
-                command.functionName ??
-                command.name ??
-                null;
-
-            args =
-                Array.isArray(command.args)
-                    ? command.args
-                    : [];
-        } else if (
-            typeof command === "string"
-        ) {
-            functionName =
-                command;
-
-            args = [];
-        }
-
-        if (
-            typeof functionName !==
-            "string"
-        ) {
-            throw new Error(
-                "Commande IA invalide."
-            );
-        }
-
-        this.setPlayer(
-            playerIndex
-        );
-
-        this.apply(
-            functionName,
-            args
-        );
-
-        return true;
-    }
-
-
-    executeCommands(
-        commands,
-        playerIndex
-    ) {
-        if (
-            !Array.isArray(commands) ||
-            !commands.length
-        ) {
-            return false;
-        }
-
-        let executed = false;
-
-        for (
-            const command of commands
-        ) {
-            this.executeCommand(
-                command,
-                playerIndex
-            );
-
-            executed = true;
-        }
-
-        return executed;
-    }
-
-
-    /* =====================================================
-     * SÉLECTION D'UNE CARTE
-     * ===================================================== */
-
-    selectCard(
-        playerIndex,
-        cardIndex
-    ) {
-        if (
-            !Number.isInteger(
-                Number(cardIndex)
-            )
-        ) {
-            throw new Error(
-                "Index de carte invalide."
-            );
-        }
-
-        this.setPlayer(
-            playerIndex
-        );
-
-        if (
-            typeof this.engine.selectCard ===
-            "function"
-        ) {
-            this.engine.selectCard(
-                Number(cardIndex),
-                Number(playerIndex)
-            );
-
-            return;
-        }
-
-        this.setSelection(
-            Number(cardIndex)
-        );
-    }
-
-
-    selectDouble(
-        playerIndex,
-        cardIndex
-    ) {
-        if (
-            !Number.isInteger(
-                Number(cardIndex)
-            )
-        ) {
-            throw new Error(
-                "Index de double invalide."
-            );
-        }
-
-        this.setPlayer(
-            playerIndex
-        );
-
-        if (
-            typeof this.engine.selectDouble13 ===
-            "function"
-        ) {
-            /*
-             * Le moteur actuel expose cette fonction
-             * pour la sélection spécifique de Double13.
-             *
-             * Les autres doubles passent normalement
-             * par les commandes explicites de l'action.
-             */
-            this.engine.selectDouble13(
-                Number(cardIndex),
-                Number(playerIndex)
-            );
-
-            return;
-        }
-
-        this.setSelection(
-            Number(cardIndex)
-        );
-    }
-
-
-    /* =====================================================
-     * ACTION SIMPLE
-     * ===================================================== */
-
-    playCard(
-        action,
-        playerIndex
-    ) {
+    state(viewIndex = null) {
         const index =
-            number(
-                action.cardIndex
-            );
+            viewIndex === null
+                ? this.engine.currentIndex()
+                : Number(viewIndex);
 
-        if (
-            index === null
-        ) {
+        return this.engine.stateFor(index);
+    }
+
+    setPlayer(playerIndex) {
+        this.engine.setPlayerIndex(Number(playerIndex));
+    }
+
+    apply(fn, args = [], playerIndex = null) {
+        if (playerIndex !== null && playerIndex !== undefined) {
+            this.setPlayer(playerIndex);
+        }
+
+        return this.engine.apply(fn, args);
+    }
+
+    selectCard(index, playerIndex) {
+        return this.engine.selectCard(
+            Number(index),
+            Number(playerIndex)
+        );
+    }
+
+    selectDouble(indexes, playerIndex) {
+        const indices = Array.isArray(indexes)
+            ? indexes.slice()
+            : [];
+
+        if (indices.length !== 2) {
             throw new Error(
-                "Impossible de jouer une carte sans cardIndex."
+                "Une action Double doit contenir exactement 2 indices."
             );
         }
 
-        this.setPlayer(
-            playerIndex
-        );
+        this.setPlayer(playerIndex);
 
         /*
-         * Si action-generator fournit les commandes,
-         * elles sont la source de vérité.
+         * Le moteur possède déjà la logique de sélection
+         * automatique d'un double dans selectionnerCarte().
+         *
+         * On sélectionne donc la première occurrence.
          */
-        if (
-            Array.isArray(
-                action.commands
-            ) &&
-            action.commands.length
-        ) {
-            return this.executeCommands(
-                action.commands,
-                playerIndex
-            );
-        }
-
-        /*
-         * Sinon on prépare la sélection puis on appelle
-         * la fonction centrale du moteur.
-         */
-        this.selectCard(
-            playerIndex,
-            index
+        return this.engine.selectCard(
+            Number(indices[0]),
+            Number(playerIndex)
         );
+    }
 
-        this.apply(
+    playSelectedCard(playerIndex) {
+        return this.apply(
             "jouerCarte",
-            []
-        );
-
-        return true;
-    }
-
-
-    /* =====================================================
-     * DOUBLE
-     * ===================================================== */
-
-    playDouble(
-        action,
-        playerIndex
-    ) {
-        this.setPlayer(
+            [],
             playerIndex
         );
-
-        if (
-            Array.isArray(
-                action.commands
-            ) &&
-            action.commands.length
-        ) {
-            return this.executeCommands(
-                action.commands,
-                playerIndex
-            );
-        }
-
-        const indices =
-            Array.isArray(
-                action.cardIndices
-            )
-                ? action.cardIndices
-                : [];
-
-        /*
-         * Pour un double générique, les indices peuvent
-         * être fournis directement par l'action.
-         *
-         * Si le générateur fournit seulement cardIndex,
-         * on utilise celui-ci comme première sélection.
-         */
-        if (
-            indices.length >= 2
-        ) {
-            this.setSelection(
-                indices.slice(
-                    0,
-                    2
-                )
-            );
-        } else if (
-            action.cardIndex != null
-        ) {
-            this.setSelection(
-                Number(
-                    action.cardIndex
-                )
-            );
-        }
-
-        /*
-         * La logique exacte du double est normalement
-         * décrite par action.commands.
-         *
-         * On ne devine donc pas ici une fonction script.js
-         * qui n'aurait pas été explicitement déclarée.
-         */
-        if (
-            this.strict
-        ) {
-            throw new Error(
-                "Double sans commands explicites : " +
-                "l'adaptateur refuse de deviner la séquence moteur."
-            );
-        }
-
-        return false;
     }
 
-
-    /* =====================================================
-     * ACTION AVEC CIBLE
-     * ===================================================== */
-
-    executeTargetAction(
-        action,
-        playerIndex
-    ) {
-        const target =
-            normalizeTarget(
-                action.target
-            );
-
-        if (
-            target === null
-        ) {
-            throw new Error(
-                "Action ciblée sans cible valide."
-            );
-        }
-
-        this.setPlayer(
-            playerIndex
-        );
-
-        /*
-         * Priorité aux commandes générées.
-         */
-        if (
-            Array.isArray(
-                action.commands
-            ) &&
-            action.commands.length
-        ) {
-            return this.executeCommands(
-                action.commands,
-                playerIndex
-            );
-        }
-
-        /*
-         * Sans commande explicite, on ne lance
-         * aucune fonction arbitraire.
-         */
-        if (
-            this.strict
-        ) {
-            throw new Error(
-                "Action ciblée sans commands explicites."
-            );
-        }
-
-        return false;
-    }
-
-
-    /* =====================================================
-     * ACTION INTERMÉDIAIRE
-     * ===================================================== */
-
-    executePendingAction(
-        action,
-        playerIndex
-    ) {
-        this.setPlayer(
-            playerIndex
-        );
-
-        if (
-            Array.isArray(
-                action.commands
-            ) &&
-            action.commands.length
-        ) {
-            return this.executeCommands(
-                action.commands,
-                playerIndex
-            );
-        }
-
-        if (
-            this.strict
-        ) {
-            throw new Error(
-                "Action intermédiaire sans commands explicites."
-            );
-        }
-
-        return false;
-    }
-
-
-    /* =====================================================
-     * DISPATCH
-     * ===================================================== */
-
-    execute(
-        action,
-        playerIndex = null
-    ) {
+    /**
+     * Exécute l'action complète choisie par la nouvelle IA.
+     */
+    execute(action, playerIndex) {
         if (!action) {
             throw new Error(
-                "Aucune action IA à exécuter."
+                "AtoumoulinEngineAdapter : action absente."
             );
         }
 
-        const actualPlayer =
-            playerIndex === null
-                ? getPlayerIndex(
-                    this.engine
-                )
-                : Number(
-                    playerIndex
-                );
+        const player = Number(playerIndex);
+
+        if (!Number.isInteger(player)) {
+            throw new Error(
+                "AtoumoulinEngineAdapter : playerIndex invalide."
+            );
+        }
 
         if (
-            !Number.isInteger(
-                actualPlayer
-            )
+            isSamePlayerTarget(getTarget(action), player)
         ) {
             throw new Error(
-                "Joueur IA invalide."
+                "Une action ne peut pas cibler le joueur lui-même."
             );
         }
 
-        this.log(
-            "action complète",
-            action
+        switch (action.type) {
+
+            case "play_card":
+            case "play_double":
+                return this.executePlay(action, player);
+
+            case "target":
+                return this.executeTargetAction(action, player);
+
+            case "table_card":
+                return this.executeTableCardAction(action, player);
+
+            case "table_cards":
+                return this.executeTableCardsAction(action, player);
+
+            case "effect":
+                return this.executeEffectAction(action, player);
+
+            case "continue":
+                return this.executeContinueAction(action, player);
+
+            case "terminate":
+                return this.executeTerminateAction(action, player);
+
+            default:
+                throw new Error(
+                    `Type d'action non supporté : ${action.type}`
+                );
+        }
+    }
+
+    /**
+     * Première étape :
+     *
+     * sélection de la carte
+     * →
+     * jouerCarte()
+     * →
+     * résolution du pouvoir.
+     */
+    executePlay(action, playerIndex) {
+
+        const card = getCardValue(action);
+
+        if (
+            card === null ||
+            card === undefined
+        ) {
+            throw new Error(
+                "Impossible de jouer une action sans carte."
+            );
+        }
+
+        const double = isDoubleAction(action);
+        const indices = getDoubleIndices(action);
+
+        if (double) {
+
+            if (indices.length === 2) {
+                this.selectDouble(
+                    indices,
+                    playerIndex
+                );
+            } else if (getCardIndex(action) !== null) {
+                /*
+                 * selectionnerCarte() détecte elle-même
+                 * qu'il s'agit d'un double et sélectionne
+                 * les deux cartes.
+                 */
+                this.selectCard(
+                    getCardIndex(action),
+                    playerIndex
+                );
+            } else {
+                throw new Error(
+                    `Double ${card} sans indices de main.`
+                );
+            }
+
+        } else {
+
+            const index = getCardIndex(action);
+
+            if (index === null || index === undefined) {
+                throw new Error(
+                    `Carte ${card} sans cardIndex.`
+                );
+            }
+
+            this.selectCard(
+                index,
+                playerIndex
+            );
+        }
+
+        /*
+         * jouerCarte() est la seule porte d'entrée du moteur
+         * pour jouer réellement la carte.
+         */
+        let state = this.playSelectedCard(
+            playerIndex
         );
 
-        const kind =
-            String(
-                action.kind ??
-                action.type ??
-                ""
-            ).toUpperCase();
+        if (!this.autoResolve) {
+            return state;
+        }
 
         /*
-         * 1. Commandes explicites.
+         * Les cartes paires simples et certains cas de fin
+         * terminent déjà le tour dans jouerCarte().
          *
-         * C'est la priorité absolue :
-         * l'action-generator connaît alors exactement
-         * comment transformer l'action en commandes moteur.
+         * Les pouvoirs impairs laissent actionEnCours
+         * avec le choix correspondant.
          */
-        if (
-            Array.isArray(
-                action.commands
-            ) &&
-            action.commands.length
-        ) {
-            this.executeCommands(
-                action.commands,
-                actualPlayer
-            );
-
-            return this.getState(
-                actualPlayer
-            );
-        }
-
-        /*
-         * 2. Action simple.
-         */
-        if (
-            kind === "PLAY_CARD" ||
-            String(
-                action.type
-            ).toLowerCase() === "card"
-        ) {
-            this.playCard(
-                action,
-                actualPlayer
-            );
-
-            return this.getState(
-                actualPlayer
-            );
-        }
-
-        /*
-         * 3. Double.
-         */
-        if (
-            kind === "PLAY_DOUBLE" ||
-            String(
-                action.type
-            ).toLowerCase() === "double"
-        ) {
-            this.playDouble(
-                action,
-                actualPlayer
-            );
-
-            return this.getState(
-                actualPlayer
-            );
-        }
-
-        /*
-         * 4. Action intermédiaire.
-         */
-        if (
-            kind === "CONTINUE" ||
-            kind === "FINISH" ||
-            kind === "CHOOSE_EFFECT" ||
-            kind === "CHOOSE_TABLE_CARD" ||
-            kind === "CHOOSE_MULTIPLE_TABLE_CARDS" ||
-            kind === "CHOOSE_REVEALED_CARD"
-        ) {
-            this.executePendingAction(
-                action,
-                actualPlayer
-            );
-
-            return this.getState(
-                actualPlayer
-            );
-        }
-
-        /*
-         * 5. Action ciblée.
-         */
-        if (
-            kind === "CHOOSE_TARGET"
-        ) {
-            this.executeTargetAction(
-                action,
-                actualPlayer
-            );
-
-            return this.getState(
-                actualPlayer
-            );
-        }
-
-        /*
-         * 6. Type inconnu.
-         */
-        throw new Error(
-            `Type d'action IA inconnu : ${kind || "inconnu"}`
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            state
         );
     }
 
-
-    /* =====================================================
-     * EXÉCUTION SÉCURISÉE
-     * ===================================================== */
-
-    tryExecute(
-        action,
-        playerIndex = null
+    /**
+     * Résolution d'une action déjà engagée dans le moteur.
+     */
+    resolvePendingAction(
+        originalAction,
+        playerIndex,
+        state = null
     ) {
-        try {
-            const state =
-                this.execute(
-                    action,
+        let current =
+            state ??
+            this.state(playerIndex);
+
+        const action = current?.action;
+
+        if (!action) {
+            return current;
+        }
+
+        const card = getCardValue(originalAction);
+        const target = getTarget(originalAction);
+        const effect = getEffect(originalAction);
+        const value = getValue(originalAction);
+        const tableCardIndex =
+            getTableCardIndex(originalAction);
+
+        /*
+         * --------------------------------------------------
+         * 1
+         * --------------------------------------------------
+         */
+        if (action === "vol1") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireVol1",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double1") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireDouble1",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 3
+         * --------------------------------------------------
+         */
+        if (action === "carte3") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireCarte3",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double3") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireDouble3",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 9
+         * --------------------------------------------------
+         */
+        if (action === "carte9") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireCarte9",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double9") {
+            this.requireTarget(target, originalAction);
+            return this.apply(
+                "choisirAdversaireDouble9",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 11
+         * --------------------------------------------------
+         */
+        if (action === "carte11") {
+            const chosenValue =
+                value === 10 || value === -10
+                    ? value
+                    : effect === "score_self_negative"
+                        ? -10
+                        : 10;
+
+            return this.apply(
+                "effetCarte11",
+                [chosenValue],
+                playerIndex
+            );
+        }
+
+        if (action === "double11") {
+            const chosenValue =
+                value === 20 || value === -20
+                    ? value
+                    : effect === "score_self_negative"
+                        ? -20
+                        : 20;
+
+            return this.apply(
+                "effetDouble11",
+                [chosenValue],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 13
+         * --------------------------------------------------
+         */
+        if (action === "carte13") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireCarte13",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "carte13choix") {
+            if (tableCardIndex === null) {
+                throw new Error(
+                    "13 : tableCardIndex manquant."
+                );
+            }
+
+            return this.apply(
+                "volerCarte13",
+                [Number(tableCardIndex)],
+                playerIndex
+            );
+        }
+
+        if (action === "double13") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireDouble13",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double13choix") {
+
+            const indices =
+                getTableCardIndices(originalAction);
+
+            if (indices.length === 0) {
+                return this.apply(
+                    "terminerDouble13",
+                    [],
                     playerIndex
                 );
+            }
+
+            /*
+             * Le moteur attend une sélection via carteChoisie.
+             * L'engine expose selectDouble13().
+             */
+            this.setPlayer(playerIndex);
+
+            for (const index of indices.slice(0, 2)) {
+                this.engine.sandbox.__atoumoulinSetSelection(
+                    index
+                );
+            }
+
+            /*
+             * Sécurité : le moteur possède une fonction
+             * de sélection dédiée, mais la résolution finale
+             * se fait par volerCartesDouble13().
+             */
+            this.engine.sandbox.__atoumoulinSetSelection(
+                indices.slice(0, 2)
+            );
+
+            return this.apply(
+                "volerCartesDouble13",
+                [],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 15
+         * --------------------------------------------------
+         */
+        if (action === "carte15") {
+
+            if (tableCardIndex === null) {
+                throw new Error(
+                    "15 : tableCardIndex manquant."
+                );
+            }
+
+            return this.apply(
+                "doublerCarte15",
+                [Number(tableCardIndex)],
+                playerIndex
+            );
+        }
+
+        if (action === "double15") {
+
+            if (tableCardIndex === null) {
+                throw new Error(
+                    "Double 15 : tableCardIndex manquant."
+                );
+            }
+
+            return this.apply(
+                "triplerCarte15",
+                [Number(tableCardIndex)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 17
+         * --------------------------------------------------
+         */
+        if (action === "carte17") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireCarte17",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * Le 17 a tiré une carte cachée.
+         * Le moteur la révèle.
+         *
+         * La décision sur la carte révélée peut alors être
+         * fournie à nouveau par l'IA.
+         */
+        if (action === "carte17revelee") {
+
+            if (
+                originalAction?.metadata?.cancel === true
+            ) {
+                return this.apply(
+                    "terminer17SansCarte",
+                    [],
+                    playerIndex
+                );
+            }
+
+            return this.apply(
+                "continuerCarte17",
+                [],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * Double 17
+         * --------------------------------------------------
+         */
+        if (action === "double17") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireDouble17",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double17revelee") {
+
+            const revealedIndex =
+                originalAction?.cardIndex ??
+                originalAction?.metadata?.revealedIndex;
+
+            if (
+                revealedIndex === null ||
+                revealedIndex === undefined
+            ) {
+                throw new Error(
+                    "Double 17 : index de carte révélée manquant."
+                );
+            }
+
+            return this.apply(
+                "choisirCarteDouble17",
+                [Number(revealedIndex)],
+                playerIndex
+            );
+        }
+
+        if (action === "double17jouer") {
+            return this.apply(
+                "continuerDouble17",
+                [],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 19
+         * --------------------------------------------------
+         */
+        if (action === "carte19") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireCarte19",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double19") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "choisirAdversaireDouble19",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * 21
+         * --------------------------------------------------
+         */
+        if (action === "carte21") {
+
+            const chosenValue =
+                value === 20 || value === -20
+                    ? value
+                    : effect === "score_target"
+                        ? -20
+                        : 20;
+
+            return this.apply(
+                "effetCarte21",
+                [chosenValue],
+                playerIndex
+            );
+        }
+
+        if (action === "carte21cible") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "cibleCarte21",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        if (action === "double21") {
+
+            const chosenValue =
+                value === 40 || value === -40
+                    ? value
+                    : effect === "score_target"
+                        ? -40
+                        : 40;
+
+            return this.apply(
+                "effetDouble21",
+                [chosenValue],
+                playerIndex
+            );
+        }
+
+        if (action === "double21cible") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "cibleDouble21",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * Joker
+         * --------------------------------------------------
+         */
+        if (action === "joker") {
+
+            if (
+                effect === "exchange_scores"
+            ) {
+                return this.apply(
+                    "effetJoker",
+                    ["echange"],
+                    playerIndex
+                );
+            }
+
+            const jokerValue =
+                value === 22
+                    ? 22
+                    : 10;
+
+            return this.apply(
+                "effetJoker",
+                [jokerValue],
+                playerIndex
+            );
+        }
+
+        if (action === "jokerCible") {
+            this.requireTarget(target, originalAction);
+
+            return this.apply(
+                "echangeJoker",
+                [Number(target)],
+                playerIndex
+            );
+        }
+
+        /*
+         * --------------------------------------------------
+         * Fins explicites
+         * --------------------------------------------------
+         */
+        if (action === "terminerDouble13") {
+            return this.apply(
+                "terminerDouble13",
+                [],
+                playerIndex
+            );
+        }
+
+        if (action === "terminerDouble15") {
+            return this.apply(
+                "terminerDouble15",
+                [],
+                playerIndex
+            );
+        }
+
+        if (action === "terminer17SansCarte") {
+            return this.apply(
+                "terminer17SansCarte",
+                [],
+                playerIndex
+            );
+        }
+
+        /*
+         * Le moteur a déjà terminé l'action.
+         */
+        return current;
+    }
+
+    executeTargetAction(action, playerIndex) {
+        const target = getTarget(action);
+        const current = this.state(playerIndex);
+
+        /*
+         * Une action TARGET peut être :
+         *
+         * - une action en attente après jouerCarte()
+         * - une action complète construite par le générateur.
+         */
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            current
+        );
+    }
+
+    executeTableCardAction(action, playerIndex) {
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            this.state(playerIndex)
+        );
+    }
+
+    executeTableCardsAction(action, playerIndex) {
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            this.state(playerIndex)
+        );
+    }
+
+    executeEffectAction(action, playerIndex) {
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            this.state(playerIndex)
+        );
+    }
+
+    executeContinueAction(action, playerIndex) {
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            this.state(playerIndex)
+        );
+    }
+
+    executeTerminateAction(action, playerIndex) {
+        return this.resolvePendingAction(
+            action,
+            playerIndex,
+            this.state(playerIndex)
+        );
+    }
+
+    requireTarget(target, action) {
+        if (
+            target === null ||
+            target === undefined
+        ) {
+            throw new Error(
+                `Action ${action?.id ?? "inconnue"} : cible manquante.`
+            );
+        }
+    }
+
+    /**
+     * Exécute une ligne complète d'actions.
+     *
+     * Utile lorsque le search retourne plusieurs étapes.
+     */
+    executeLine(actions, playerIndex) {
+
+        if (!Array.isArray(actions)) {
+            throw new Error(
+                "executeLine attend un tableau d'actions."
+            );
+        }
+
+        let state = null;
+
+        for (const action of actions) {
+            state = this.execute(
+                action,
+                playerIndex
+            );
+        }
+
+        return state;
+    }
+
+    /**
+     * Mode sécurisé :
+     * tente l'action et retourne un résultat exploitable
+     * sans casser la partie.
+     */
+    tryExecute(action, playerIndex) {
+
+        try {
+
+            const state = this.execute(
+                action,
+                playerIndex
+            );
 
             return {
                 ok: true,
-                state,
                 action,
+                state,
                 error: null
             };
+
         } catch (error) {
+
+            if (this.strict) {
+                throw error;
+            }
+
             return {
                 ok: false,
-                state: null,
                 action,
-                error:
-                    error?.message ||
-                    String(error)
+                state: this.state(playerIndex),
+                error
             };
         }
     }
 }
-
-
-/* =========================================================
- * FONCTIONS UTILITAIRES
- * ========================================================= */
 
 export function createEngineAdapter(
     engine,
@@ -820,8 +949,7 @@ export function createEngineAdapter(
     );
 }
 
-
-export function executeBotAction(
+export function executeEngineAction(
     engine,
     action,
     playerIndex,
@@ -839,29 +967,4 @@ export function executeBotAction(
     );
 }
 
-
-export function tryExecuteBotAction(
-    engine,
-    action,
-    playerIndex,
-    options = {}
-) {
-    const adapter =
-        new AtoumoulinEngineAdapter(
-            engine,
-            options
-        );
-
-    return adapter.tryExecute(
-        action,
-        playerIndex
-    );
-}
-
-
-export default {
-    AtoumoulinEngineAdapter,
-    createEngineAdapter,
-    executeBotAction,
-    tryExecuteBotAction
-};
+export default AtoumoulinEngineAdapter;
