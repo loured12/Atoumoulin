@@ -2572,680 +2572,646 @@ afficherJeu();
 
 }
 
+/* ========================================================================== *
+ * IA Atoumoulin - moteur stratégique
+ *
+ * L'IA ne choisit plus une carte ou une cible à partir de quelques règles
+ * isolées. Elle :
+ *   1. filtre les actions légales (7 > double > carte simple),
+ *   2. génère des actions complètes,
+ *   3. les évalue dans le contexte de la partie,
+ *   4. regroupe les choix proches,
+ *   5. applique la difficulté pour la sélection finale.
+ *
+ * Les fonctions de simulation restent volontairement prudentes : elles
+ * utilisent uniquement les informations que le bot est censé connaître.
+ * ========================================================================== */
+
+const BOT_CONFIG = {
+    facile:  { strategic: 0.40, tolerance: 10 },
+    normal:  { strategic: 0.75, tolerance: 7 },
+    difficile:{ strategic: 0.90, tolerance: 5 },
+    expert:  { strategic: 1.00, tolerance: 3 }
+};
+
+function botConfig(){
+    return BOT_CONFIG[niveauBots] || BOT_CONFIG.facile;
+}
+
+function botAdversaires(){
+    return joueurs
+        .map((j,index)=>index)
+        .filter(index=>index!==joueurActuel);
+}
+
+function botDerniereCarte(indexJoueur){
+    const nom = joueurs[indexJoueur]?.nom;
+    if(!nom) return null;
+    for(let i=cartesTable.length-1;i>=0;i--){
+        if(cartesTable[i].proprietaire===nom && cartesTable[i].valeur!==0){
+            return cartesTable[i];
+        }
+    }
+    return null;
+}
+
+function botDernieresCartes(indexJoueur, nombre){
+    const nom = joueurs[indexJoueur]?.nom;
+    if(!nom) return [];
+    const resultat=[];
+    for(let i=cartesTable.length-1;i>=0 && resultat.length<nombre;i--){
+        if(cartesTable[i].proprietaire===nom && cartesTable[i].valeur!==0){
+            resultat.push(cartesTable[i]);
+        }
+    }
+    return resultat;
+}
+
+function botQualiteScore(score){
+    const cible=obtenirScoreVictoire();
+    const distance=Math.abs(cible-score);
+    let qualite=-distance*4;
+
+    if(score===cible) qualite+=10000;
+    // Atteindre puis dépasser le seuil n'est pas automatiquement une victoire
+    // dans Atoumoulin : l'exactitude reste donc prioritaire.
+    if(score>cible) qualite-=Math.min(120,(score-cible)*2);
+    return qualite;
+}
+
+function botValeurPosition(index){
+    if(index===joueurActuel) return botQualiteScore(joueurs[index].score);
+
+    const adversaire=joueurs[index];
+    // Plus un adversaire est proche du score cible, plus il représente une
+    // menace. Réduire cette menace est donc positif pour l'IA.
+    return -botQualiteScore(adversaire.score);
+}
+
+function botEvalDeltaScore(index, delta){
+    const avant=joueurs[index].score;
+    const apres=avant+delta;
+    return botValeurPosition(index===joueurActuel ? index : index)
+        - (index===joueurActuel ? botQualiteScore(avant) : botValeurPosition(index));
+}
+
+function botVariationPosition(index, delta){
+    const avant=joueurs[index].score;
+    const apres=avant+delta;
+    if(index===joueurActuel){
+        return botQualiteScore(apres)-botQualiteScore(avant);
+    }
+    return botValeurPosition(index); // recalcul ci-dessous pour les adversaires
+}
+
+function botImpactAdversaire(index, delta){
+    const avant=joueurs[index].score;
+    const apres=avant+delta;
+    return botValeurPosition(index, avant) - botValeurPosition(index, apres);
+}
+
+// Variante de botValeurPosition qui permet de comparer un état hypothétique.
+function botValeurScoreHypothetique(index, score){
+    if(index===joueurActuel) return botQualiteScore(score);
+    return -botQualiteScore(score);
+}
+
+function botDeltaValeur(index, delta){
+    const avant=joueurs[index].score;
+    return botValeurScoreHypothetique(index, avant+delta)
+        - botValeurScoreHypothetique(index, avant);
+}
+
+function botMeilleureCarteVolee(indexCible, nombre=1){
+    const cartes=botDernieresCartes(indexCible, nombre);
+    return cartes.reduce((total,c)=>total+c.valeur,0);
+}
+
+function botMeilleuresCartesPossedees(indexCible, nombre=1){
+    const nom=joueurs[indexCible]?.nom;
+    if(!nom) return [];
+    return cartesTable
+        .filter(c=>c.proprietaire===nom && c.valeur!==0)
+        .sort((a,b)=>b.valeur-a.valeur)
+        .slice(0,nombre);
+}
+
+function botValeurCartesPossedees(indexCible, nombre=1){
+    return botMeilleuresCartesPossedees(indexCible,nombre)
+        .reduce((total,c)=>total+c.valeur,0);
+}
+
+function botPointsDisponiblesPour15(indexJoueur, multiplicateur){
+    const cartes=cartesTable.filter(c=>c.proprietaire===joueurs[indexJoueur].nom && c.valeur!==0);
+    if(!cartes.length) return {gain:0, carte:null};
+
+    let meilleur=null;
+    let meilleurGain=-Infinity;
+    cartes.forEach(c=>{
+        const gain=c.valeur*(multiplicateur-1);
+        if(gain>meilleurGain){
+            meilleurGain=gain;
+            meilleur=c;
+        }
+    });
+    return {gain:meilleurGain, carte:meilleur};
+}
+
+function botCibleParScore(delta){
+    const candidats=botAdversaires();
+    if(!candidats.length) return null;
+    return candidats.reduce((meilleur,index)=>
+        botDeltaValeur(index,delta)>botDeltaValeur(meilleur,delta)?index:meilleur,
+        candidats[0]
+    );
+}
+
+function botCandidatsCarte(valeur, index, estDouble){
+    const joueur=joueurs[joueurActuel];
+    const cibleScore=obtenirScoreVictoire();
+    const candidats=[];
+
+    const push=(description,score,plan={})=>candidats.push({
+        description, score, carte:valeur, index, estDouble, ...plan
+    });
+
+    const deltaPoints=estDouble ? valeur*2 : valeur;
+
+    if(typeof valeur==='number' && valeur%2===0){
+        if(valeur===0) return candidats;
+        push(`+${deltaPoints}`, botDeltaValeur(joueurActuel,deltaPoints)
+            + (joueur.score+deltaPoints===cibleScore?12000:0));
+        return candidats;
+    }
+
+    if(valeur===1){
+        botAdversaires().forEach(cible=>{
+            const gain=botMeilleureCarteVolee(cible,estDouble?2:1);
+            const effet=estDouble?2:1;
+            if(gain===0){
+                push(`vol 1 sur ${cible}`, -12, {cible});
+            }else{
+                const score=botDeltaValeur(joueurActuel,gain)
+                    +botDeltaValeur(cible,-gain)
+                    +gain*effet*0.8;
+                push(`vol 1 sur ${cible}`,score,{cible});
+            }
+        });
+        return candidats;
+    }
+
+    if(valeur===3){
+        botAdversaires().forEach(cible=>{
+            const delta=estDouble?-40:-20;
+            push(`${delta} à ${cible}`,botDeltaValeur(cible,delta)+Math.abs(delta)*0.8,{cible});
+        });
+        return candidats;
+    }
+
+    if(valeur===5){
+        // Le 5 ne marque pas de points mais augmente la main et les options
+        // futures. La valeur exacte de la future pioche reste inconnue.
+        push('pioche', 10 + Math.min(12, (paquet.length>0?2:0)*3) + joueur.main.length*0.5);
+        return candidats;
+    }
+
+    if(valeur===7){
+        const delta=estDouble?40:20;
+        push(`+${delta}`,botDeltaValeur(joueurActuel,delta)
+            +(joueur.score+delta===cibleScore?12000:0));
+        return candidats;
+    }
+
+    if(valeur===9){
+        botAdversaires().forEach(cible=>{
+            // Pour un 9 simple, le contenu de la main adverse est caché.
+            // Seule sa taille est connue. On évite donc toute lecture de main.
+            const difference=joueur.main.length-joueurs[cible].main.length;
+            const score=(difference<0?Math.abs(difference)*5:-Math.abs(difference)*2);
+            push(`échange main avec ${cible}`,score,{cible});
+        });
+        return candidats;
+    }
+
+    if(valeur===11){
+        const delta=estDouble?20:10;
+        [delta,-delta].forEach(choix=>{
+            push(`${choix>0?'+':''}${choix}`,botDeltaValeur(joueurActuel,choix)
+                +(joueur.score+choix===cibleScore?12000:0),{choix});
+        });
+        return candidats;
+    }
+
+    if(valeur===13){
+        botAdversaires().forEach(cible=>{
+            const gain=botValeurCartesPossedees(cible,estDouble?2:1);
+            const score=botDeltaValeur(joueurActuel,gain)
+                +botDeltaValeur(cible,-gain)+gain;
+            push(`vol ${gain} à ${cible}`,score,{cible});
+        });
+        return candidats;
+    }
+
+    if(valeur===15){
+        const mult=estDouble?3:2;
+        const info=botPointsDisponiblesPour15(joueurActuel,mult);
+        if(info.carte){
+            push(`${mult}x ${info.carte.valeur}`,botDeltaValeur(joueurActuel,info.gain)
+                +Math.max(0,info.gain),{carteTable:info.carte});
+        }else{
+            push('sans carte cible',-8);
+        }
+        return candidats;
+    }
+
+    if(valeur===17){
+        // La carte volée est inconnue avant le vol. On utilise l'espérance
+        // des cartes visibles dans la composition du paquet, sans regarder
+        // la main adverse.
+        botAdversaires().filter(c=>joueurs[c].main.length>0).forEach(cible=>{
+            const nb=joueurs[cible].main.length;
+            const esperance=botEsperanceCartePiochee();
+            const menace=botDeltaValeur(cible,-Math.max(0,esperance*0.25));
+            push(`vol aléatoire sur ${cible}`,
+                esperance*0.7+menace+(nb===1?4:0),{cible});
+        });
+        return candidats;
+    }
+
+    if(valeur===19){
+        botAdversaires().forEach(cible=>{
+            const moi=botDerniereCarte(joueurActuel);
+            const eux=botDerniereCarte(cible);
+            if(!moi || !eux){
+                push(`échange 19 avec ${cible}`,-6,{cible});
+                return;
+            }
+            const deltaMoi=eux.valeur-moi.valeur;
+            const deltaCible=moi.valeur-eux.valeur;
+            push(`échange ${moi.valeur}/${eux.valeur}`,
+                botDeltaValeur(joueurActuel,deltaMoi)
+                +botDeltaValeur(cible,deltaCible)
+                +deltaMoi*0.7,{cible});
+        });
+        return candidats;
+    }
+
+    if(valeur===21){
+        const delta=estDouble?40:20;
+        push(`+${delta}`,botDeltaValeur(joueurActuel,delta)
+            +(joueur.score+delta===cibleScore?12000:0),{choix:delta});
+        botAdversaires().forEach(cible=>{
+            push(`${-delta} à ${cible}`,
+                botDeltaValeur(cible,-delta)+Math.abs(delta)*0.9,{choix:-delta,cible});
+        });
+        return candidats;
+    }
+
+    if(valeur==='Joker'){
+        push('+10',botDeltaValeur(joueurActuel,10)
+            +(joueur.score+10===cibleScore?12000:0),{choix:10});
+        push('+22',botDeltaValeur(joueurActuel,22)
+            +(joueur.score+22===cibleScore?12000:0),{choix:22});
+        botAdversaires().forEach(cible=>{
+            const avant=joueur.score;
+            const cibleAvant=joueurs[cible].score;
+            const gain=botValeurScoreHypothetique(joueurActuel,cibleAvant)
+                -botValeurScoreHypothetique(joueurActuel,avant)
+                +botValeurScoreHypothetique(cible,avant)
+                -botValeurScoreHypothetique(cible,cibleAvant);
+            push(`échange score avec ${cible}`,gain,{choix:'echange',cible});
+        });
+        return candidats;
+    }
+
+    return candidats;
+}
+
+function botEsperanceCartePiochee(){
+    // On ne regarde jamais les mains adverses. On utilise uniquement le
+    // paquet encore présent, qui est une information publique du jeu.
+    if(!paquet.length) return 0;
+    let total=0;
+    paquet.forEach(c=>{
+        if(typeof c==='number' && c%2===0) total+=c;
+        else if(c===7) total+=20;
+        else if(c===11) total+=10;
+        else if(c===21) total+=20;
+        else if(c==='Joker') total+=10;
+    });
+    return total/paquet.length;
+}
+
+function botGenererActionsInitiales(){
+    const joueur=joueurs[joueurActuel];
+    if(!joueur || !joueur.main.length) return [];
+
+    const sept=joueur.main.findIndex(c=>c===7);
+    if(sept!==-1){
+        return [{index:sept,valeur:7,estDouble:false,score:0}];
+    }
+
+    const doubles=trouverDoubles(joueur.main);
+    if(doubles.length){
+        const actions=[];
+        doubles.forEach(valeur=>{
+            const indices=[];
+            joueur.main.forEach((c,i)=>{
+                if(c===valeur && indices.length<2) indices.push(i);
+            });
+            const sousActions=botCandidatsCarte(valeur,indices[0],true);
+            sousActions.forEach(a=>actions.push({...a,indices,valeur}));
+        });
+        return actions;
+    }
+
+    const actions=[];
+    joueur.main.forEach((valeur,index)=>{
+        botCandidatsCarte(valeur,index,false).forEach(a=>actions.push(a));
+    });
+    return actions;
+}
+
+function botChoisirAction(actions){
+    if(!actions.length) return null;
+    actions.sort((a,b)=>b.score-a.score);
+
+    const config=botConfig();
+    const complexite=actions.length>=8?'complexe':actions.length>=4?'moyenne':'simple';
+    const tol=complexite==='complexe'?config.tolerance+3:complexite==='moyenne'?config.tolerance:Math.max(2,config.tolerance-2);
+    const meilleurs=actions.filter(a=>a.score>=actions[0].score-tol);
+
+    if(Math.random()>config.strategic){
+        return actions[Math.floor(Math.random()*actions.length)];
+    }
+
+    return meilleurs[Math.floor(Math.random()*meilleurs.length)];
+}
+
 function jouerTourBot(){
-    let joueur=joueurs[joueurActuel];
-    if(!joueur.bot)return;
+    const joueur=joueurs[joueurActuel];
+    if(!joueur || !joueur.bot || !joueur.main.length) return;
 
-    // Le 7 est prioritaire
-    let indexSept=joueur.main.findIndex(carte=>carte===7);
-    if(indexSept!==-1){
-        carteChoisie=indexSept;
-        jouerCarte();
-        return;
+    const action=botChoisirAction(botGenererActionsInitiales());
+    if(!action) return;
+
+    if(action.estDouble){
+        carteChoisie=action.indices;
+    }else{
+        carteChoisie=action.index;
     }
-
-    // Un double doit être joué
-    let doubles=trouverDoubles(joueur.main);
-    if(doubles.length>0){
-        let valeurDouble=doubles[Math.floor(Math.random()*doubles.length)];
-        carteChoisie=[];
-        let n=0;
-        joueur.main.forEach((carte,index)=>{
-            if(carte===valeurDouble&&n<2){
-                carteChoisie.push(index);
-                n++;
-            }
-        });
-        jouerCarte();
-        return;
-    }
-
-    // Mode facile
-    if(niveauBots==="facile"){
-        carteChoisie=Math.floor(Math.random()*joueur.main.length);
-        jouerCarte();
-        return;
-    }
-
-    // Mode normal
-    let scoreRequis=obtenirScoreVictoire();
-    let scoreActuel=joueur.score;
-
-    if(scoreActuel<scoreRequis){
-        let manque=scoreRequis-scoreActuel;
-
-        // Chercher le score exact
-        let indexExact=joueur.main.findIndex(carte=>typeof carte==="number"&&carte===manque);
-        if(indexExact!==-1){
-            carteChoisie=indexExact;
-            jouerCarte();
-            return;
-        }
-
-        // Chercher la plus grande valeur sans dépasser
-        let meilleurIndex=-1;
-        let meilleureValeur=-Infinity;
-        joueur.main.forEach((carte,index)=>{
-            if(typeof carte==="number"&&carte>0&&carte<=manque&&carte>meilleureValeur){
-                meilleureValeur=carte;
-                meilleurIndex=index;
-            }
-        });
-
-        if(meilleurIndex!==-1){
-            carteChoisie=meilleurIndex;
-            jouerCarte();
-            return;
-        }
-
-        // Sinon prendre la plus forte valeur
-        let indexForte=-1;
-        let valeurForte=-Infinity;
-        joueur.main.forEach((carte,index)=>{
-            if(typeof carte==="number"&&carte>valeurForte){
-                valeurForte=carte;
-                indexForte=index;
-            }
-        });
-
-        if(indexForte!==-1){
-            carteChoisie=indexForte;
-            jouerCarte();
-            return;
-        }
-    }
-
-    // Au-dessus du score : chercher à réduire
-    if(scoreActuel>=scoreRequis){
-        let indexReduction=-1;
-        let meilleureReduction=Infinity;
-        joueur.main.forEach((carte,index)=>{
-            if(typeof carte==="number"&&carte<0&&carte<meilleureReduction){
-                meilleureReduction=carte;
-                indexReduction=index;
-            }
-        });
-
-        if(indexReduction!==-1){
-            carteChoisie=indexReduction;
-            jouerCarte();
-            return;
-        }
-    }
-
-    // Choix de secours
-    carteChoisie=Math.floor(Math.random()*joueur.main.length);
     jouerCarte();
 }
 
+function botChoisirSousAction(actions){
+    return botChoisirAction(actions);
+}
+
 function gererActionBot(){
+    const joueur=joueurs[joueurActuel];
+    if(!joueur || !joueur.bot || actionEnCours===null) return;
 
-    let joueur = joueurs[joueurActuel];
+    const adversaires=botAdversaires();
+    const choix=[];
+    const cibleParScore=(delta)=>botCibleParScore(delta);
 
-    if(!joueur.bot){
+    if(actionEnCours==='vol1' || actionEnCours==='double1'){
+        adversaires.forEach(cible=>{
+            const gain=botMeilleureCarteVolee(cible,actionEnCours==='double1'?2:1);
+            choix.push({cible,score:botDeltaValeur(joueurActuel,gain)+botDeltaValeur(cible,-gain)+gain});
+        });
+        const choixFinal=botChoisirSousAction(choix);
+        if(choixFinal) (actionEnCours==='double1'?choisirAdversaireDouble1:choisirAdversaireVol1)(choixFinal.cible);
         return;
     }
 
-    if(actionEnCours === null){
+    if(actionEnCours==='carte3' || actionEnCours==='double3'){
+        const delta=actionEnCours==='double3'?-40:-20;
+        adversaires.forEach(cible=>choix.push({cible,score:botDeltaValeur(cible,delta)+Math.abs(delta)}));
+        const c=botChoisirSousAction(choix);
+        if(c) (actionEnCours==='double3'?choisirAdversaireDouble3:choisirAdversaireCarte3)(c.cible);
         return;
     }
 
-    // CHOISIR UN ADVERSAIRE
-
-  function choisirAdversaireAleatoire(){
-
-    let adversaires = joueurs
-        .map((joueur,index) => index)
-        .filter(index => index !== joueurActuel);
-
-    if(adversaires.length === 0){
-        return null;
-    }
-
-    return adversaires[
-        Math.floor(Math.random() * adversaires.length)
-    ];
-
-}
-
-  function choisirMeilleureCible(){
-
-    let adversaires = joueurs
-        .map((joueur,index) => index)
-        .filter(index => index !== joueurActuel);
-
-    if(adversaires.length === 0){
-        return null;
-    }
-
-    let meilleureCible = adversaires[0];
-
-    adversaires.forEach(index => {
-
-        if(joueurs[index].score > joueurs[meilleureCible].score){
-
-            meilleureCible = index;
-
-        }
-
-    });
-
-    return meilleureCible;
-}
-
-    // CARTE 1
-
-    if(actionEnCours === "vol1"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireVol1(cible);
-        }
-
+    if(actionEnCours==='carte9' || actionEnCours==='double9'){
+        // Le Double 9 révèle les mains : cette information devient légale
+        // seulement à cette étape. Le 9 simple reste limité aux tailles.
+        adversaires.forEach(cible=>{
+            let score;
+            if(actionEnCours==='double9'){
+                const mainCible=joueurs[cible].main;
+                const qualiteCible=mainCible.reduce((s,c)=>s+(typeof c==='number'&&c%2===0?c:(c===7?20:0)),0);
+                const qualiteMoi=joueur.main.reduce((s,c)=>s+(typeof c==='number'&&c%2===0?c:(c===7?20:0)),0);
+                score=(qualiteCible-qualiteMoi)*1.5;
+            }else{
+                score=(joueur.main.length-joueurs[cible].main.length)<0?8:-(joueur.main.length-joueurs[cible].main.length)*3;
+            }
+            choix.push({cible,score});
+        });
+        const c=botChoisirSousAction(choix);
+        if(c) (actionEnCours==='double9'?choisirAdversaireDouble9:choisirAdversaireCarte9)(c.cible);
         return;
     }
 
-    // DOUBLE 1
-
-    if(actionEnCours === "double1"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireDouble1(cible);
-        }
-
-        return;
-    }
-
-    // CARTE 3
-
-    if(actionEnCours === "carte3"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireCarte3(cible);
-        }
-
-        return;
-    }
-
-    // DOUBLE 3
-
-    if(actionEnCours === "double3"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireDouble3(cible);
-        }
-
-        return;
-    }
-
-    // CARTE 9
-
-    if(actionEnCours === "carte9"){
-
-        let cible=niveauBots==="normal"?choisirCible9Bot():choisirAdversaireAleatoire();
-        
-        if(cible !== null){
-            choisirAdversaireCarte9(cible);
-        }
-
-        return;
-    }
-
-    // DOUBLE 9
-
-    if(actionEnCours === "double9"){
-
-        let cible=niveauBots==="normal"?choisirCible9Bot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireDouble9(cible);
-        }
-
-        return;
-    }
-
-    // CARTE 11
-
-    if(actionEnCours === "carte11"){
-
-        let choix = Math.random() < 0.5 ? 10 : -10;
-
-        effetCarte11(choix);
-
-        return;
-    }
-
-    // DOUBLE 11
-
-    if(actionEnCours === "double11"){
-
-        let choix = Math.random() < 0.5 ? 20 : -20;
-
-        effetDouble11(choix);
-
-        return;
-    }
-
-    // CARTE 13
-
-    if(actionEnCours === "carte13"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireCarte13(cible);
-        }
-
-        return;
-    }
-
-    // CARTE 13 : CHOIX DE LA CARTE
-
-    if(actionEnCours === "carte13choix"){
-
-    let cible = joueurs[cibleChoisie];
-
-    let cartesDisponibles = cartesTable
-        .map((carte,index) => ({carte,index}))
-        .filter(element =>
-            element.carte.proprietaire === cible.nom &&
-            element.carte.valeur !== 0
-        );
-
-    if(cartesDisponibles.length === 0){
-
-        historique +=
-            `${joueur.nom} ne trouve aucune carte à voler avec le 13<br>`;
-
-        actionEnCours = null;
-        cibleChoisie = null;
-        carteChoisie = null;
-
-        if(!gererFinTourMultijoueur()){
-            passerJoueur();
-        }
-
-        afficherJeu();
-
-        return;
-    }
-
-    let choix =
-        cartesDisponibles[
-            Math.floor(Math.random() * cartesDisponibles.length)
+    if(actionEnCours==='carte11' || actionEnCours==='double11'){
+        const delta=actionEnCours==='double11'?20:10;
+        const actions=[
+            {choix:delta,score:botDeltaValeur(joueurActuel,delta)+(joueur.score+delta===obtenirScoreVictoire()?12000:0)},
+            {choix:-delta,score:botDeltaValeur(joueurActuel,-delta)+(joueur.score-delta===obtenirScoreVictoire()?12000:0)}
         ];
-
-    volerCarte13(choix.index);
-
-    return;
-}
-    
-    // DOUBLE 13
-
-    if(actionEnCours === "double13"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireDouble13(cible);
-        }
-
+        const a=botChoisirSousAction(actions);
+        if(a) (actionEnCours==='double11'?effetDouble11:effetCarte11)(a.choix);
         return;
     }
 
-    // DOUBLE 13 : CHOIX DES CARTES
-
-    if(actionEnCours === "double13choix"){
-
-        let cible = joueurs[cibleChoisie];
-
-        let cartesDisponibles = cartesTable
-            .map((carte,index) => ({carte,index}))
-            .filter(element =>
-                element.carte.proprietaire === cible.nom &&
-                element.carte.valeur !== 0
-            );
-
-        let nombreASelectionner =
-            Math.min(2, cartesDisponibles.length);
-
-        if(nombreASelectionner === 0){
-            terminerDouble13();
-            return;
-        }
-
-        carteChoisie = [];
-
-        cartesDisponibles
-            .slice(0,nombreASelectionner)
-            .forEach(element => {
-
-                carteChoisie.push(element.index);
-
-            });
-
-        volerCartesDouble13();
-
+    if(actionEnCours==='carte13' || actionEnCours==='double13'){
+        adversaires.forEach(cible=>{
+            const gain=botValeurCartesPossedees(cible,actionEnCours==='double13'?2:1);
+            choix.push({cible,score:botDeltaValeur(joueurActuel,gain)+botDeltaValeur(cible,-gain)+gain});
+        });
+        const c=botChoisirSousAction(choix);
+        if(c) (actionEnCours==='double13'?choisirAdversaireDouble13:choisirAdversaireCarte13)(c.cible);
         return;
     }
 
-    // CARTE 15
- 
-    if(actionEnCours === "carte15"){
-
-    let cartesDisponibles = cartesTable
-        .map((carte,index) => ({carte,index}))
-        .filter(element =>
-            element.carte.proprietaire === joueur.nom &&
-            element.carte.valeur !== 0
-        );
-
-    if(cartesDisponibles.length === 0){
-
-        historique +=
-            `${joueur.nom} ne trouve aucune carte à doubler avec le 15<br>`;
-
-        actionEnCours = null;
-        cibleChoisie = null;
-        carteChoisie = null;
-
-        if(!gererFinTourMultijoueur()){
-            passerJoueur();
-        }
-
-        afficherJeu();
-
+    if(actionEnCours==='carte13choix'){
+        const cible=joueurs[cibleChoisie];
+        if(!cible) return;
+        const cartes=cartesTable.map((carte,index)=>({carte,index}))
+            .filter(x=>x.carte.proprietaire===cible.nom&&x.carte.valeur!==0)
+            .sort((a,b)=>b.carte.valeur-a.carte.valeur);
+        if(!cartes.length){ volerCarte13?.(-1); return; }
+        volerCarte13(cartes[0].index);
         return;
     }
 
-    let choix =
-        cartesDisponibles[
-            Math.floor(Math.random() * cartesDisponibles.length)
-        ];
-
-    doublerCarte15(choix.index);
-
-    return;
-}
-
-    // DOUBLE 15
-
-    if(actionEnCours === "double15"){
-
-        let cartesDisponibles = cartesTable
-            .map((carte,index) => ({carte,index}))
-            .filter(element =>
-                element.carte.proprietaire === joueur.nom &&
-                element.carte.valeur !== 0
-            );
-
-        if(cartesDisponibles.length === 0){
-            terminerDouble15();
-            return;
-        }
-
-        let choix =
-            cartesDisponibles[
-                Math.floor(Math.random() * cartesDisponibles.length)
-            ];
-
-        triplerCarte15(choix.index);
-
+    if(actionEnCours==='double13choix'){
+        const cible=joueurs[cibleChoisie];
+        if(!cible){ terminerDouble13(); return; }
+        const cartes=cartesTable.map((carte,index)=>({carte,index}))
+            .filter(x=>x.carte.proprietaire===cible.nom&&x.carte.valeur!==0)
+            .sort((a,b)=>b.carte.valeur-a.carte.valeur);
+        carteChoisie=cartes.slice(0,2).map(x=>x.index);
+        if(carteChoisie.length) volerCartesDouble13(); else terminerDouble13();
         return;
     }
 
-    // CARTE 17
-
-    if(actionEnCours === "carte17"){
-
-        let adversaires = joueurs
-            .map((joueur,index) => index)
-            .filter(index =>
-                index !== joueurActuel &&
-                joueurs[index].main.length > 0
-            );
-
-        if(adversaires.length === 0){
-            terminer17SansCarte();
-            return;
-        }
-
-        let cible=niveauBots==="normal"
-            ?adversaires.reduce((meilleur,index)=>
-              joueurs[index].score>joueurs[meilleur].score?index:meilleur,
-              adversaires[0]
-            )
-            :adversaires[Math.floor(Math.random()*adversaires.length)];
-
-        choisirAdversaireCarte17(cible);
-
-        return;
-    }
-
-    // CARTE 17 : CARTE REVELEE
-
-    if(actionEnCours === "carte17revelee"){
-
-        continuerCarte17();
-
-        return;
-    }
-
-    // DOUBLE 17
-
-    if(actionEnCours === "double17"){
-
-        let adversaires = joueurs
-            .map((joueur,index) => index)
-            .filter(index =>
-                index !== joueurActuel &&
-                joueurs[index].main.length > 0
-            );
-
-        if(adversaires.length === 0){
-            return;
-        }
-
-        let cible=niveauBots==="normal"
-            ?adversaires.reduce((meilleur,index)=>
-              joueurs[index].score>joueurs[meilleur].score?index:meilleur,
-              adversaires[0]
-            )
-            :adversaires[Math.floor(Math.random()*adversaires.length)];
-
-        choisirAdversaireDouble17(cible);
-
-        return;
-    }
-
-    // DOUBLE 17 : CARTE REVELEE
-
-    if(actionEnCours === "double17revelee"){
-
-        if(cartesDouble17.length === 0){
-            return;
-        }
-
-        let choix =
-            Math.floor(Math.random() * cartesDouble17.length);
-
-        choisirCarteDouble17(choix);
-
-        return;
-    }
-
-    // DOUBLE 17 : JOUER LA CARTE
-
-    if(actionEnCours === "double17jouer"){
-
-        continuerDouble17();
-
-        return;
-    }
-
-    // CARTE 19
-
-    if(actionEnCours === "carte19"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireCarte19(cible);
-        }
-
-        return;
-    }
-
-    // DOUBLE 19
-
-    if(actionEnCours === "double19"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-
-        if(cible !== null){
-            choisirAdversaireDouble19(cible);
-        }
-
-        return;
-    }
-
-    // CARTE 21
-
-    if(actionEnCours === "carte21"){
-
-        let choix = Math.random() < 0.5 ? 20 : -20;
-
-        effetCarte21(choix);
-
-        return;
-    }
-
-    // CARTE 21 : CHOIX DE LA CIBLE
-
-    if(actionEnCours === "carte21cible"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-        
-        if(cible !== null){
-            cibleCarte21(cible);
-        }
-
-        return;
-    }
-
-    // DOUBLE 21
-
-    if(actionEnCours === "double21"){
-
-        let choix = Math.random() < 0.5 ? 40 : -40;
-
-        effetDouble21(choix);
-
-        return;
-    }
-
-    // DOUBLE 21 : CHOIX DE LA CIBLE
-
-    if(actionEnCours === "double21cible"){
-
-        let cible=niveauBots==="normal"?choisirCibleBot():choisirAdversaireAleatoire();
-        
-        if(cible !== null){
-            cibleDouble21(cible);
-        }
-
-        return;
-    }
-
-    // JOKER
-
-    if(actionEnCours === "joker"){
-
-        let choix = Math.floor(Math.random() * 3);
-
-        if(choix === 0){
-
-            effetJoker(10);
-
-        }else if(choix === 1){
-
-            effetJoker(22);
-
+    if(actionEnCours==='carte15' || actionEnCours==='double15'){
+        const mult=actionEnCours==='double15'?3:2;
+        const info=botPointsDisponiblesPour15(joueurActuel,mult);
+        if(info.carte){
+            const index=cartesTable.indexOf(info.carte);
+            (actionEnCours==='double15'?triplerCarte15:doublerCarte15)(index);
         }else{
-
-            effetJoker("echange");
-
+            (actionEnCours==='double15'?terminerDouble15:terminerActionPouvoir)();
         }
-
         return;
     }
 
-    // JOKER : CHOIX DE LA CIBLE
-    if(actionEnCours==="jokerCible"){
-      let cible=choisirCibleJokerBot();
-        
-    if(cible!==null){
-        echangeJoker(cible);
-    }
-        
-    return;
-        
+    if(actionEnCours==='carte17' || actionEnCours==='double17'){
+        const possibles=adversaires.filter(i=>joueurs[i].main.length>0)
+            .map(cible=>({cible,score:botDeltaValeur(cible,-Math.max(0,botEsperanceCartePiochee()*0.25))+ (joueurs[cible].main.length===1?5:0)}));
+        const c=botChoisirSousAction(possibles);
+        if(c){
+            (actionEnCours==='double17'?choisirAdversaireDouble17:choisirAdversaireCarte17)(c.cible);
+        }else if(actionEnCours==='carte17'){
+            terminer17SansCarte();
+        }
+        return;
     }
 
+    if(actionEnCours==='carte17revelee'){
+        continuerCarte17();
+        return;
+    }
+
+    if(actionEnCours==='double17revelee'){
+        if(!cartesDouble17.length) return;
+        // Les cartes révélées sont maintenant connues et peuvent être
+        // comparées sans violer l'information cachée.
+        const actions=cartesDouble17.map((carte,index)=>({
+            index,
+            score:botEvalCarteRevelee(carte)
+        }));
+        const c=botChoisirSousAction(actions);
+        if(c) choisirCarteDouble17(c.index);
+        return;
+    }
+
+    if(actionEnCours==='double17jouer'){
+        continuerDouble17();
+        return;
+    }
+
+    if(actionEnCours==='carte19' || actionEnCours==='double19'){
+        adversaires.forEach(cible=>{
+            const moi=botDernieresCartes(joueurActuel,actionEnCours==='double19'?2:1);
+            const eux=botDernieresCartes(cible,actionEnCours==='double19'?2:1);
+            if(moi.length===0 || eux.length===0){ choix.push({cible,score:-8}); return; }
+            const n=Math.min(moi.length,eux.length,actionEnCours==='double19'?2:1);
+            let deltaMoi=0;
+            let deltaCible=0;
+            for(let i=0;i<n;i++){
+                deltaMoi+=eux[i].valeur-moi[i].valeur;
+                deltaCible+=moi[i].valeur-eux[i].valeur;
+            }
+            choix.push({cible,score:botDeltaValeur(joueurActuel,deltaMoi)+botDeltaValeur(cible,deltaCible)+deltaMoi});
+        });
+        const c=botChoisirSousAction(choix);
+        if(c) (actionEnCours==='double19'?choisirAdversaireDouble19:choisirAdversaireCarte19)(c.cible);
+        return;
+    }
+
+    if(actionEnCours==='carte21' || actionEnCours==='double21'){
+        const delta=actionEnCours==='double21'?40:20;
+        const actions=[{choix:delta,score:botDeltaValeur(joueurActuel,delta)+(joueur.score+delta===obtenirScoreVictoire()?12000:0)}];
+        adversaires.forEach(cible=>actions.push({choix:-delta,cible,score:botDeltaValeur(cible,-delta)+Math.abs(delta)}));
+        const a=botChoisirSousAction(actions);
+        if(a) (actionEnCours==='double21'?effetDouble21:effetCarte21)(a.choix);
+        return;
+    }
+
+    if(actionEnCours==='carte21cible' || actionEnCours==='double21cible'){
+        const delta=actionEnCours==='double21cible'?-40:-20;
+        adversaires.forEach(cible=>choix.push({cible,score:botDeltaValeur(cible,delta)+Math.abs(delta)}));
+        const c=botChoisirSousAction(choix);
+        if(c) (actionEnCours==='double21cible'?cibleDouble21:cibleCarte21)(c.cible);
+        return;
+    }
+
+    if(actionEnCours==='joker'){
+        const actions=[
+            {choix:10,score:botDeltaValeur(joueurActuel,10)+(joueur.score+10===obtenirScoreVictoire()?12000:0)},
+            {choix:22,score:botDeltaValeur(joueurActuel,22)+(joueur.score+22===obtenirScoreVictoire()?12000:0)}
+        ];
+        adversaires.forEach(cible=>{
+            const avant=joueur.score, cibleAvant=joueurs[cible].score;
+            const score=botValeurScoreHypothetique(joueurActuel,cibleAvant)
+                -botValeurScoreHypothetique(joueurActuel,avant)
+                +botValeurScoreHypothetique(cible,avant)
+                -botValeurScoreHypothetique(cible,cibleAvant);
+            actions.push({choix:'echange',cible,score});
+        });
+        const a=botChoisirSousAction(actions);
+        if(a){
+            if(a.choix==='echange') echangeJoker(a.cible);
+            else effetJoker(a.choix);
+        }
+        return;
+    }
+
+    if(actionEnCours==='jokerCible'){
+        const actions=adversaires.map(cible=>{
+            const avant=joueur.score, cibleAvant=joueurs[cible].score;
+            const score=botValeurScoreHypothetique(joueurActuel,cibleAvant)
+                -botValeurScoreHypothetique(joueurActuel,avant)
+                +botValeurScoreHypothetique(cible,avant)
+                -botValeurScoreHypothetique(cible,cibleAvant);
+            return {cible,score};
+        });
+        const a=botChoisirSousAction(actions);
+        if(a) echangeJoker(a.cible);
+    }
+}
+
+function botEvalCarteRevelee(carte){
+    if(typeof carte==='number' && carte%2===0){
+        return botDeltaValeur(joueurActuel,carte)+(joueurs[joueurActuel].score+carte===obtenirScoreVictoire()?12000:0);
+    }
+    if(carte===7) return botDeltaValeur(joueurActuel,20)+(joueurs[joueurActuel].score+20===obtenirScoreVictoire()?12000:0);
+    if(carte===11) return Math.max(botDeltaValeur(joueurActuel,10),botDeltaValeur(joueurActuel,-10));
+    if(carte===21) return Math.max(botDeltaValeur(joueurActuel,20),...botAdversaires().map(i=>botDeltaValeur(i,-20)));
+    if(carte===17) return botAdversaires().length?5:0;
+    if(carte===5) return 10;
+    if(carte===13 || carte===1 || carte===3 || carte===9 || carte===15 || carte===19 || carte==='Joker') return 6;
+    return 0;
 }
 
 function choisirCibleBot(){
-
-    let adversaires = joueurs
-        .map((joueur,index) => index)
-        .filter(index => index !== joueurActuel);
-
-    if(adversaires.length === 0){
-        return null;
-    }
-
-    return adversaires.reduce((meilleur, index) => {
-
-        if(joueurs[index].score > joueurs[meilleur].score){
-            return index;
-        }
-
-        return meilleur;
-
-    }, adversaires[0]);
+    const actions=botAdversaires().map(cible=>({cible,score:botDeltaValeur(cible,-20)+20}));
+    const choix=botChoisirSousAction(actions);
+    return choix?choix.cible:null;
 }
 
 function choisirCible9Bot(){
-    
-    let adversaires=joueurs.map((joueur,index)=>index).filter(index=>index!==joueurActuel);
-    if(adversaires.length===0)return null;
-
-    return adversaires.reduce((meilleur,index)=>
-        joueurs[index].main.length>joueurs[meilleur].main.length?index:meilleur,
-        adversaires[0]
-    );
+    const actions=botAdversaires().map(cible=>({
+        cible,
+        score:(joueurs[joueurActuel].main.length-joueurs[cible].main.length)<0?8:-(joueurs[joueurActuel].main.length-joueurs[cible].main.length)*3
+    }));
+    const choix=botChoisirSousAction(actions);
+    return choix?choix.cible:null;
 }
 
 function choisirCibleJokerBot(){
-    let adversaires=joueurs.map((joueur,index)=>index).filter(index=>index!==joueurActuel);
-    if(adversaires.length===0)return null;
-
-    let scoreRequis=obtenirScoreVictoire();
-    let candidats=adversaires.filter(index=>joueurs[index].score<scoreRequis);
-
-    if(candidats.length===0)return null;
-
-    return candidats.reduce((meilleur,index)=>
-        joueurs[index].score>joueurs[meilleur].score?index:meilleur,
-        candidats[0]
-    );
+    const actions=botAdversaires().map(cible=>({
+        cible,
+        score:botValeurScoreHypothetique(joueurActuel,joueurs[cible].score)
+            -botValeurScoreHypothetique(joueurActuel,joueurs[joueurActuel].score)
+            +botValeurScoreHypothetique(cible,joueurs[joueurActuel].score)
+            -botValeurScoreHypothetique(cible,joueurs[cible].score)
+    }));
+    const choix=botChoisirSousAction(actions);
+    return choix?choix.cible:null;
 }
 
 function afficherChoixCible(){
