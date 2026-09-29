@@ -1286,20 +1286,8 @@ let cartesDisponibles = cartesTable.filter(carte =>
 );
 
 if(cartesDisponibles.length === 0){
-
-historique +=
-`${joueurs[joueurActuel].nom} joue 13, aucune carte disponible<br>`;
-
-actionEnCours = null;
-
-if(!gererFinTourMultijoueur()){
-        passerJoueur();
-}
-
-afficherJeu();
-
-return;
-
+    terminerCarte13SansCible();
+    return;
 }
 
 zoneJeu.innerHTML +=
@@ -3085,7 +3073,18 @@ function jouerTourBot(){
 }
 
 function botChoisirCibleStrategique(mode){
-    const adversaires=botAdversaires();
+    // Ne proposer que des cibles légalement sélectionnables.
+    // 13 : la cible doit posséder au moins une carte à points sur la table.
+    // 17 : la cible doit avoir au moins une carte en main à voler.
+    const adversaires=botAdversaires().filter(i=>{
+        if(mode==='13' || mode==='double13'){
+            return botCartesScore(joueurs[i].nom).length > 0;
+        }
+        if(mode==='17' || mode==='double17'){
+            return joueurs[i].main.length > 0;
+        }
+        return true;
+    });
     if(!adversaires.length)return null;
     const evals=adversaires.map(i=>{
         let score=-Infinity;
@@ -3190,9 +3189,28 @@ function gererActionBot(){
         case 'double9': cible=botChoisirCibleStrategique('double9'); if(cible!==null) choisirAdversaireDouble9(cible); return;
         case 'carte11': { const choix=botChoisirOption([{value:10,score:botScoreValeur(10)},{value:-10,score:botScoreValeur(-10)}]); if(choix)effetCarte11(choix.value); return; }
         case 'double11': { const choix=botChoisirOption([{value:20,score:botScoreValeur(20)},{value:-20,score:botScoreValeur(-20)}]); if(choix)effetDouble11(choix.value); return; }
-        case 'carte13': cible=botChoisirCibleStrategique('13'); if(cible!==null) choisirAdversaireCarte13(cible); return;
-        case 'carte13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,1); if(choix.length)volerCarte13(choix[0]); return; }
-        case 'double13': cible=botChoisirCibleStrategique('double13'); if(cible!==null) choisirAdversaireDouble13(cible); return;
+        case 'carte13': {
+            cible=botChoisirCibleStrategique('13');
+            if(cible!==null) {
+                choisirAdversaireCarte13(cible);
+            } else {
+                terminerCarte13SansCible();
+            }
+            return;
+        }
+        case 'carte13choix': {
+            const cibleValide = joueurs[cibleChoisie] && botCartesScore(joueurs[cibleChoisie].nom).length > 0;
+            const choix = cibleValide ? botChoisirCartesScore(joueurs[cibleChoisie].nom,1) : [];
+            if(choix.length) volerCarte13(choix[0]);
+            else terminerCarte13SansCible();
+            return;
+        }
+        case 'double13': {
+            cible=botChoisirCibleStrategique('double13');
+            if(cible!==null) choisirAdversaireDouble13(cible);
+            else terminerDouble13();
+            return;
+        }
         case 'double13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,2); carteChoisie=choix; if(choix.length)volerCartesDouble13(); else terminerDouble13(); return; }
         case 'carte15': {
             const options=botCartesScore(joueur.nom).map(c=>{
@@ -3212,7 +3230,12 @@ function gererActionBot(){
             if(choix)triplerCarte15(choix.value); else terminerActionPouvoir();
             return;
         }
-        case 'carte17': cible=botChoisirCibleStrategique('17'); if(cible!==null) choisirAdversaireCarte17(cible); return;
+        case 'carte17': {
+            cible=botChoisirCibleStrategique('17');
+            if(cible!==null) choisirAdversaireCarte17(cible);
+            else terminer17SansCarte();
+            return;
+        }
         case 'carte17revelee': continuerCarte17(); return;
         case 'double17': cible=botChoisirCibleStrategique('double17'); if(cible!==null) choisirAdversaireDouble17(cible); return;
         case 'double17revelee': { const i=botChoisirCarte17(); if(i!==null)choisirCarteDouble17(i); return; }
@@ -3529,13 +3552,40 @@ function effetCarte11(valeur){
 
 }
 
+function terminerCarte13SansCible(){
+    const joueur = joueurs[joueurActuel];
+    historique +=
+        `${joueur.nom} ne peut pas utiliser le 13 : aucune carte à points disponible. Le 13 est défaussé sans effet.<br>`;
+
+    defaussePouvoirs.push({
+        valeur: 13,
+        joueur: joueur.nom
+    });
+
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
+
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+
+    afficherJeu();
+}
+
 function choisirAdversaireCarte13(index){
 
-cibleChoisie = index;
+    const cible = joueurs[index];
+    const joueur = joueurs[joueurActuel];
 
-actionEnCours = "carte13choix";
+    if(!cible || index === joueurActuel || botCartesScore(cible.nom).length === 0){
+        terminerCarte13SansCible();
+        return;
+    }
 
-afficherJeu();
+    cibleChoisie = index;
+    actionEnCours = "carte13choix";
+    afficherJeu();
 
 }
 
