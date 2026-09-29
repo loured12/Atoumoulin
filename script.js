@@ -4494,6 +4494,49 @@ function verifierFinDeManche(){
     return true;
 }
 
+function genererHistoriqueFinHTML(){
+
+    let historiqueInverse = historique
+        .split("<br>")
+        .filter(function(ligne){
+            return ligne.trim() !== "" &&
+                   !ligne.includes("Score :");
+        })
+        .reverse()
+        .map(function(ligne){
+
+            let joueurTrouve = joueurs
+                .slice()
+                .sort(function(a, b){
+                    return b.nom.length - a.nom.length;
+                })
+                .find(function(joueur){
+                    return ligne.trim().startsWith(joueur.nom);
+                });
+
+            if(joueurTrouve){
+
+                let indexJoueur = joueurs.indexOf(joueurTrouve);
+
+                return `${couleurJoueur(indexJoueur)} ${ligne}`;
+
+            }
+
+            return ligne;
+
+        })
+        .join("<br>");
+
+    return `
+        <div class="historique-jeu">
+            <h3>Historique :</h3>
+            <div class="historique-contenu">
+                ${historiqueInverse}
+            </div>
+        </div>
+    `;
+}
+
 function verifierFinPartie(){
 
     if(mancheTerminee){
@@ -4581,6 +4624,9 @@ if(modeJeu === 1){
 
     </div>
     </div>
+
+    ${genererHistoriqueFinHTML()}
+
     `;
 
     return true;
@@ -4673,6 +4719,9 @@ if(modeJeu === 1){
 
     </div>
     </div>
+
+    ${genererHistoriqueFinHTML()}
+
     `;
 
     return true;
@@ -4760,6 +4809,9 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
 
     </div>
     </div>
+
+    ${genererHistoriqueFinHTML()}
+
     `;
 
     return true;
