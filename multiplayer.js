@@ -107,7 +107,8 @@
      fn:"nouvellePartieMultijoueur",
      args:[
      Number(document.getElementById("modeJeu").value || 1),
-     Number(document.getElementById("nombreJoueurs").value || 2)
+     Number(document.getElementById("nombreJoueurs").value || 2),
+     document.getElementById("niveauBots")?.value || "facile"
      ]
     });
 
