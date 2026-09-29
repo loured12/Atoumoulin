@@ -282,17 +282,10 @@ export class AtoumoulinEngine {
       return false;
     }
 
-    const previousRemote = !!s.__atoumoulinRemote;
-    s.__atoumoulinRemote = false;
-
-    try {
-      if (state.actionEnCours === null) {
+    if (state.actionEnCours === null) {
         s.jouerTourBot();
-      } else {
+    } else {
         s.gererActionBot();
-      }
-    } finally {
-      s.__atoumoulinRemote = previousRemote;
     }
 
     return true;
