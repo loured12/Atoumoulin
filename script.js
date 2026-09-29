@@ -2627,106 +2627,38 @@ function botEcartsInteressants(){
     };
 }
 
-/* =========================================================
-   IA STRATEGIQUE V7
-   - Toutes les decisions sont basees sur la position obtenue,
-     pas sur la valeur brute de la carte.
-   - Les adversaires humains et bots sont strictement identiques.
-   - En debut/milieu de partie, la menace est liee a la capacite
-     d'atteindre exactement la cible.
-   - Au-dessus de la cible, un adversaire est peu dangereux tant
-     que la fin de partie n'impose pas le departage par proximite.
-   - En fin de partie, la proximite a la cible devient prioritaire.
-   ========================================================= */
-function botEtatFinPartie(){
-    const mains = joueurs.reduce((n,j)=>n+j.main.length,0);
-    const total = paquet.length + mains;
-    const seuil = Math.max(joueurs.length * 3, 10);
-    return {
-        restantes: total,
-        finissante: total <= seuil,
-        tresFinissante: total <= Math.max(joueurs.length, 6)
-    };
-}
-
 function botMenaceScore(score){
     const cible=obtenirScoreVictoire();
     const ecart=cible-score;
-    if(ecart===0)return 100000;
+    if(ecart===0)return 10000;
 
-    const fin=botEtatFinPartie();
     const groupes=botEcartsInteressants();
     let menace=0;
 
     if(groupes.tresBonne.includes(ecart)) menace=900;
     else if(groupes.bonne.includes(ecart)) menace=650;
     else if(groupes.possible.includes(ecart)) menace=400;
-    else if(ecart < 0){
-        // En debut/milieu de partie, depasser la cible est une zone
-        // peu dangereuse : on ne transforme surtout pas +2 en menace 2.
-        menace=0;
-    }else{
-        // Les ecarts hors categories restent tres peu dangereux,
-        // mais ils peuvent etre departages entre eux par proximite.
-        menace=Math.max(0,120-ecart*0.65);
+    else {
+        const distance=Math.abs(ecart);
+        // Faible menace de base. La proximité brute n'écrase
+        // pas les catégories de cartes réellement favorables.
+        menace=Math.max(0,80-distance*1.5);
     }
 
+    const fin=botEtatFinPartie();
     if(fin.finissante){
-        // Si personne ne termine exactement, le plus proche gagne.
-        // Cette proximite ne doit cependant pas ecraser les grosses
-        // categories tant que la partie n'est pas presque terminee.
+        // En fin de partie, si personne n'atteint exactement la cible,
+        // le joueur le plus proche remporte la manche. La proximité
+        // devient donc progressivement plus importante.
         menace += Math.max(0,260-Math.abs(ecart)*8);
     }
     if(fin.tresFinissante){
         menace += Math.max(0,360-Math.abs(ecart)*10);
     }
 
+    // Un joueur au-dessus de la cible peut encore être dangereux :
+    // il faut surtout regarder sa distance à la cible, pas son score brut.
     return menace;
-}
-
-function botPossibiliteFuture(index, scoreOverride=null){
-    const joueur=joueurs[index];
-    const cible=obtenirScoreVictoire();
-    const score=scoreOverride===null?joueur.score:scoreOverride;
-    if(score===cible)return 10000;
-    if(score>cible)return 0;
-
-    let bonus=0;
-    const ecart=cible-score;
-
-    // Pour soi, on connait la main. Pour les adversaires, on ne regarde
-    // que les cartes deja visibles sur la table.
-    const valeurs=[];
-    if(index===joueurActuel){
-        joueur.main.forEach(c=>{
-            if(typeof c==='number' && c>0) valeurs.push(c);
-        });
-    }
-    cartesTable.forEach(c=>{
-        if(c.proprietaire===joueur.nom && typeof c.valeur==='number' && c.valeur!==0){
-            valeurs.push(c.valeur);
-        }
-    });
-
-    valeurs.forEach(v=>{
-        if(score+v===cible) bonus=Math.max(bonus,5000);
-    });
-
-    for(let a=0;a<valeurs.length;a++){
-        for(let b=a+1;b<valeurs.length;b++){
-            if(score+valeurs[a]+valeurs[b]===cible){
-                bonus=Math.max(bonus,3000);
-            }
-        }
-    }
-
-    // Les positions classiques restent prioritaires meme lorsqu'une
-    // combinaison visible n'existe pas encore.
-    if(ecart===20) bonus+=300;
-    else if([16,12,10,8,4,-20].includes(ecart)) bonus+=180;
-    else if([22,18,14,6,2,-10].includes(ecart)) bonus+=100;
-
-    return bonus;
 }
 
 function botDeltaScoreJoueur(index,delta){
@@ -2744,14 +2676,42 @@ function botDeltaScoreJoueur(index,delta){
     };
 }
 
-function botScorePositionPropre(score){
+function botScoreValeur(valeur){
+    const joueur=joueurs[joueurActuel];
     const cible=obtenirScoreVictoire();
-    if(score===cible)return 100000;
-    if(score>cible)return -1800-(score-cible)*18;
+    const apres=joueur.score+valeur;
+    const etat=botDeltaScoreJoueur(joueurActuel,valeur);
+    let v=valeur*1.05;
 
-    let v=botMenaceScore(score)*1.15;
-    v+=botPossibiliteFuture(joueurActuel,score);
+    if(apres===cible)return 10000+v;
+    if(apres>cible)return -900-(apres-cible)*12+Math.max(0,valeur);
+
+    v += (Math.abs(cible-joueur.score)-Math.abs(cible-apres))*4;
+    v += botMenaceScore(apres)*0.08;
+    if(etat.menaceApres>etat.menaceAvant)v+=12;
     return v;
+}
+
+function botProximiteStrategique(score){
+    const cible=obtenirScoreVictoire();
+    const ecart=cible-score;
+    const distance=Math.abs(ecart);
+
+    // En début/milieu de partie, la proximité ne remplace PAS les
+    // catégories de menace : elle sert surtout à départager les joueurs
+    // qui ne sont dans aucune zone dangereuse.
+    if(ecart===20)return 900;
+    if([16,12,10,8,4,-20].includes(ecart))return 650;
+    if([22,18,14,6,2,-10].includes(ecart))return 400;
+
+    // Pour les positions lointaines, plus on est proche de la cible,
+    // plus l'adversaire mérite d'être surveillé. Cette composante est
+    // volontairement bornée pour ne jamais écraser les zones ci-dessus.
+    return Math.max(0,220-distance*2.2);
+}
+
+function botDangerStrategique(score){
+    return botMenaceScore(score) + botProximiteStrategique(score)*0.65;
 }
 
 function botEvalAction(cible,selfDelta,targetDelta){
@@ -2762,49 +2722,42 @@ function botEvalAction(cible,selfDelta,targetDelta){
     const adversaire=joueurs[cible];
     const adversaireAvant=adversaire.score;
     const adversaireApres=adversaireAvant+targetDelta;
-
-    // Victoire immediate du bot : priorite absolue.
-    if(moiApres===cibleVictoire)return 1000000;
+    const avantDanger=botDangerStrategique(adversaireAvant);
+    const apresDanger=botDangerStrategique(adversaireApres);
 
     let v=0;
 
-    // On ne valorise jamais une simple baisse ou hausse : on valorise
-    // uniquement la qualite de la position obtenue.
-    v += (botScorePositionPropre(moiApres)-botScorePositionPropre(moiAvant))*1.0;
+    // La priorité absolue reste notre propre possibilité d'atteindre
+    // exactement la cible. Dépasser la cible est généralement mauvais.
+    if(moiApres===cibleVictoire)return 100000;
+    if(moiApres>cibleVictoire)v-=1400+(moiApres-cibleVictoire)*20;
+    else v+=(Math.abs(cibleVictoire-moiAvant)-Math.abs(cibleVictoire-moiApres))*8;
 
-    // Une action defensive doit reduire la capacite de l'adversaire
-    // a atteindre exactement la cible.
-    const menaceAvant=botMenaceScore(adversaireAvant);
-    const menaceApres=botMenaceScore(adversaireApres);
-    const futurAvant=botPossibiliteFuture(cible,adversaireAvant);
-    const futurApres=botPossibiliteFuture(cible,adversaireApres);
+    // Pour une action contre un adversaire, on compare sa situation
+    // complète AVANT/APRES. Cela évite de choisir un joueur très loin
+    // simplement parce qu'on peut lui retirer beaucoup de points.
+    v += (avantDanger-apresDanger)*3.8;
 
-    v += (menaceAvant-menaceApres)*6.0;
-    v += (futurAvant-futurApres)*1.5;
-
-    // Mettre un adversaire exactement sur la cible est catastrophique
-    // sauf si l'action nous fait gagner avant lui.
-    if(adversaireApres===cibleVictoire)v-=300000;
-
-    // En phase finale, le departage par proximite devient important.
-    const fin=botEtatFinPartie();
-    if(fin.finissante){
-        v += (Math.abs(cibleVictoire-adversaireApres)-Math.abs(cibleVictoire-adversaireAvant))*1.8;
-        v += (Math.abs(cibleVictoire-moiAvant)-Math.abs(cibleVictoire-moiApres))*2.2;
+    // Si deux adversaires sont hors des zones de menace, la proximité
+    // à la cible sert de départage stratégique.
+    if(avantDanger < 500 && apresDanger < 500){
+        v += (botProximiteStrategique(adversaireAvant)-botProximiteStrategique(adversaireApres))*1.8;
     }
 
+    if(adversaireApres===cibleVictoire)v-=2500;
+
+    // Le transfert reste intéressant quand il améliore notre propre score,
+    // mais sa valeur ne doit jamais masquer la qualité stratégique de la cible.
+    v += selfDelta*0.8;
     return v;
 }
 
-function botScoreValeur(valeur){
-    const moi=joueurs[joueurActuel];
-    return botScorePositionPropre(moi.score+valeur)-botScorePositionPropre(moi.score);
-}
-
+// Version transfert : le bot gagne exactement ce que l'adversaire perd.
 function botValeurCible(cible,delta){
     return botEvalAction(cible,delta,-delta);
 }
 
+// Version purement offensive : l'adversaire perd des points, le bot n'en gagne pas.
 function botValeurCibleSansGain(cible,deltaPerte){
     return botEvalAction(cible,0,-Math.abs(deltaPerte));
 }
@@ -3084,81 +3037,42 @@ function jouerTourBot(){
 function botChoisirCibleStrategique(mode){
     const adversaires=botAdversaires();
     if(!adversaires.length)return null;
-
-    const moi=joueurs[joueurActuel];
-
     const evals=adversaires.map(i=>{
         let score=-Infinity;
-        const cible=joueurs[i];
-
-        if(mode==='1'){
-            const cartes=botCartesScore(cible.nom);
-            score=cartes.length
-                ? Math.max(...cartes.map(c=>botValeurCible(i,c.valeur)))
-                : -1000;
-        }
-        else if(mode==='3') score=botValeurCibleSansGain(i,20);
-        else if(mode==='double3') score=botValeurCibleSansGain(i,40);
-        else if(mode==='9' || mode==='double9'){
-            // Le 9 echange les mains : la cible reste choisie selon sa
-            // dangerosite, puis le nombre de cartes ne sert qu'au departage.
-            score=botMenaceScore(cible.score)*2.0;
-            score+=botPossibiliteFuture(i)*0.8;
-            score+=(cible.main.length-moi.main.length)*0.5;
-        }
-        else if(mode==='13'){
-            const cartes=botCartesScore(cible.nom);
-            score=cartes.length
-                ? Math.max(...cartes.map(c=>botValeurCible(i,c.valeur)))
-                : -1000;
-        }
+        if(mode==='1')score=botValeurDoubleVol1(i);
+        else if(mode==='3')score=botValeurCibleSansGain(i,20);
+        else if(mode==='9')score=botDangerStrategique(joueurs[i].score)*0.7+(joueurs[i].main.length-joueurs[joueurActuel].main.length)*4;
+        else if(mode==='13')score=botCartesScore(joueurs[i].nom).reduce((m,c)=>Math.max(m,botValeurCible(i,c.valeur)),-Infinity);
+        else if(mode==='17')score=botExpectedStolenValue(i)+botProximiteStrategique(joueurs[i].score)*0.8;
+        else if(mode==='19')score=botEval19Target(i,false);
+        else if(mode==='21')score=botValeurCibleSansGain(i,20);
+        else if(mode==='double3')score=botValeurCibleSansGain(i,40);
+        else if(mode==='double9')score=botDangerStrategique(joueurs[i].score)*0.8+botQualiteMain(i)-botQualiteMain(joueurActuel);
         else if(mode==='double13'){
-            const vals=botCartesScore(cible.nom).map(c=>c.valeur);
-            for(let a=0;a<vals.length;a++){
-                for(let b=a+1;b<vals.length;b++){
-                    score=Math.max(score,botValeurCible(i,vals[a]+vals[b]));
-                }
-            }
-            if(score===-Infinity)score=-1000;
+            const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
+            for(let a=0;a<vals.length;a++)for(let b=a+1;b<vals.length;b++)score=Math.max(score,botValeurCible(i,vals[a]+vals[b]));
         }
-        else if(mode==='17' || mode==='double17'){
-            // La carte adverse est inconnue avant le tirage : on ne simule
-            // pas une carte inventee. On choisit donc la cible strategique,
-            // selon sa menace actuelle et sa capacite publique a finir.
-            score=botMenaceScore(cible.score)*2.0;
-            score+=botPossibiliteFuture(i);
-            score+=cible.main.length*0.5;
-        }
-        else if(mode==='19'){
-            score=botEval19Target(i,false);
-        }
-        else if(mode==='double19'){
-            score=botEval19Target(i,true);
-        }
-        else if(mode==='21'){
-            score=botValeurCibleSansGain(i,20);
-        }
-        else if(mode==='double21'){
-            score=botValeurCibleSansGain(i,40);
-        }
+        else if(mode==='double17')score=botExpectedStolenValue(i)+botProximiteStrategique(joueurs[i].score)*0.8;
+        else if(mode==='double19')score=botEval19Target(i,true);
+        else if(mode==='double21')score=botValeurCibleSansGain(i,40);
         else if(mode==='joker'){
-            // Le Joker echange les scores : on evalue directement la
-            // position des deux joueurs apres l'echange.
-            const deltaMoi=cible.score-moi.score;
-            const deltaCible=moi.score-cible.score;
-            score=botEvalAction(i,deltaMoi,deltaCible);
+            const avant=botMenaceScore(joueurs[i].score);
+            const apres=botMenaceScore(joueurs[joueurActuel].score);
+            score=avant-apres;
+            if(joueurs[i].score-joueurs[joueurActuel].score>0)score+=30;
         }
-        else if(mode==='score'){
-            score=botMenaceScore(cible.score)+botPossibiliteFuture(i);
-        }
-
         return {index:i,score};
-    });
-
-    evals.sort((a,b)=>{
-        if(b.score!==a.score)return b.score-a.score;
-        // Departage neutre et deterministe : aucun critere humain/bot.
-        return a.index-b.index;
+    }).sort((a,b)=>{
+        const d=b.score-a.score;
+        if(Math.abs(d)>0.000001)return d;
+        const da=Math.abs(obtenirScoreVictoire()-joueurs[a.index].score);
+        const db=Math.abs(obtenirScoreVictoire()-joueurs[b.index].score);
+        if(da!==db)return da-db;
+        // Aucun statut humain/bot ni numéro de joueur n'entre dans le choix.
+        // En dernier recours, conserver l'ordre circulaire après le joueur actif.
+        const ra=(a.index-joueurActuel+joueurs.length)%joueurs.length;
+        const rb=(b.index-joueurActuel+joueurs.length)%joueurs.length;
+        return ra-rb;
     });
 
     if(!evals.length)return null;
@@ -3261,10 +3175,12 @@ function gererActionBot(){
             const moi=joueurs[joueurActuel];
             const vals=[{v:10,s:botScoreValeur(10)},{v:22,s:botScoreValeur(22)}];
             botAdversaires().forEach(i=>{
-                const cible=joueurs[i];
-                const deltaMoi=cible.score-moi.score;
-                const deltaCible=moi.score-cible.score;
-                vals.push({v:'echange',cible:i,s:botEvalAction(i,deltaMoi,deltaCible)});
+                const apresMoi=joueurs[i].score;
+                const apresAdv=moi.score;
+                let s=botMenaceScore(apresAdv)-botMenaceScore(moi.score);
+                if(apresMoi===obtenirScoreVictoire())s+=100000;
+                if(apresAdv===obtenirScoreVictoire())s-=2500;
+                vals.push({v:'echange',cible:i,s});
             });
             vals.sort((a,b)=>b.s-a.s);
             const cfg=botConfig();
