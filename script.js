@@ -2572,6 +2572,10 @@ afficherJeu();
 
 }
 
+/*
+   REGLE EXPERT : toutes les cibles sont évaluées sans distinction humain/bot.
+   Le niveau de difficulté ne change jamais cette égalité de traitement.
+*/
 function botConfig(){
     const configs = {
         facile:{strategique:.40,tolerance:18},
@@ -2583,7 +2587,23 @@ function botConfig(){
 }
 
 function botAdversaires(){
-    return joueurs.map((j,i)=>i).filter(i=>i!==joueurActuel);
+    // Tous les autres joueurs sont des adversaires équivalents pour l'IA.
+    // Il n'existe volontairement aucun test sur joueur.bot, joueur humain,
+    // position du joueur humain ou identité du joueur.
+    return joueurs
+        .map((j,i)=>i)
+        .filter(i=>i!==joueurActuel);
+}
+
+function botDepartageCible(indexA,indexB){
+    // Départage strictement neutre lorsque deux cibles ont exactement la
+    // même valeur stratégique. On ne regarde jamais si une cible est
+    // humaine ou bot. La distance dans l'ordre des joueurs est seulement
+    // un départage technique stable, pas un avantage stratégique.
+    const n=joueurs.length;
+    const distanceA=(indexA-joueurActuel+n)%n || n;
+    const distanceB=(indexB-joueurActuel+n)%n || n;
+    return distanceA-distanceB;
 }
 
 function botCartesScore(proprietaire){
@@ -3110,7 +3130,11 @@ function botChoisirCibleStrategique(mode){
             if(joueurs[i].score-joueurs[joueurActuel].score>0)score+=30;
         }
         return {index:i,score};
-    }).sort((a,b)=>b.score-a.score);
+    }).sort((a,b)=>{
+        const diff=b.score-a.score;
+        if(Math.abs(diff)>1e-9)return diff;
+        return botDepartageCible(a.index,b.index);
+    });
 
     if(!evals.length)return null;
     const cfg=botConfig();
