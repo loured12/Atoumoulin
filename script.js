@@ -2973,18 +2973,52 @@ function botEval19Target(index,doubleMode){
 }
 
 function botEvalJoker(){
-    const moi=joueurs[joueurActuel];
-    let best=Math.max(botScoreValeur(10),botScoreValeur(22));
-    botAdversaires().forEach(i=>{
-        const echange=joueurs[i].score-moi.score;
-        const apresMoi=joueurs[i].score;
-        const apresAdv=moi.score;
-        let v=(botMenaceScore(apresAdv)-botMenaceScore(moi.score))*0.5;
-        if(apresMoi===obtenirScoreVictoire())v+=100000;
-        if(apresAdv===obtenirScoreVictoire())v-=2500;
-        v+=Math.abs(echange)*0.8;
-        best=Math.max(best,v);
+
+    const moi = joueurs[joueurActuel];
+
+    let best = Math.max(
+        botScoreValeur(10),
+        botScoreValeur(22)
+    );
+
+    botAdversaires().forEach(i => {
+
+        const adversaire = joueurs[i];
+
+        // Simulation de l'échange :
+        // le bot prend le score de l'adversaire
+        // l'adversaire prend le score du bot.
+        const nouveauScoreMoi = adversaire.score;
+        const nouveauScoreAdversaire = moi.score;
+
+        let valeur = 0;
+
+        // Valeur de notre nouvelle position
+        valeur += botScoreValeur(
+            nouveauScoreMoi - moi.score
+        );
+
+        // Valeur de la nouvelle position de l'adversaire.
+        // Plus l'adversaire devient dangereux, plus cette option
+        // doit être pénalisée.
+        valeur -= botMenaceScore(
+            nouveauScoreAdversaire
+        );
+
+        // Victoire immédiate du bot
+        if(nouveauScoreMoi === obtenirScoreVictoire()){
+            valeur += 100000;
+        }
+
+        // L'adversaire atteint exactement la cible
+        if(nouveauScoreAdversaire === obtenirScoreVictoire()){
+            valeur -= 100000;
+        }
+
+        best = Math.max(best, valeur);
+
     });
+
     return best;
 }
 
@@ -3258,24 +3292,96 @@ function gererActionBot(){
             return;
         }
         case 'double21cible': cible=botChoisirCibleStrategique('double21'); if(cible!==null)cibleDouble21(cible); return;
-        case 'joker': {
-            const moi=joueurs[joueurActuel];
-            const vals=[{v:10,s:botScoreValeur(10)},{v:22,s:botScoreValeur(22)}];
-            botAdversaires().forEach(i=>{
-                const apresMoi=joueurs[i].score;
-                const apresAdv=moi.score;
-                let s=botMenaceScore(apresAdv)-botMenaceScore(moi.score);
-                if(apresMoi===obtenirScoreVictoire())s+=100000;
-                if(apresAdv===obtenirScoreVictoire())s-=2500;
-                vals.push({v:'echange',cible:i,s});
-            });
-            vals.sort((a,b)=>b.s-a.s);
-            const cfg=botConfig();
-            const pool=vals.filter(x=>x.s>=vals[0].s-cfg.tolerance);
-            const choix=niveauBots==='expert'?vals[0]:(Math.random()>cfg.strategique?pool[Math.floor(Math.random()*pool.length)]:pool[0]);
-            if(choix.v==='echange'){actionEnCours='jokerCible';cibleChoisie=choix.cible;echangeJoker(choix.cible);}else effetJoker(choix.v);
-            return;
+    case 'joker': {
+    const moi = joueurs[joueurActuel];
+
+    const vals = [
+        {
+            v: 10,
+            s: botScoreValeur(10)
+        },
+        {
+            v: 22,
+            s: botScoreValeur(22)
         }
+    ];
+
+    // Comparer chaque échange possible avec le même moteur stratégique
+    botAdversaires().forEach(i => {
+
+        const adversaire = joueurs[i];
+
+        // Simulation de l'échange :
+        // moi -> score de l'adversaire
+        // adversaire -> mon score
+        const nouveauScoreMoi = adversaire.score;
+        const nouveauScoreAdversaire = moi.score;
+
+        const deltaMoi =
+            nouveauScoreMoi - moi.score;
+
+        let scoreOption =
+            botScoreValeur(deltaMoi);
+
+        // L'adversaire doit également être évalué
+        scoreOption -=
+            botMenaceScore(nouveauScoreAdversaire);
+
+        // Victoire immédiate
+        if(nouveauScoreMoi === obtenirScoreVictoire()){
+            scoreOption += 100000;
+        }
+
+        // On évite de donner immédiatement la cible
+        // au joueur adverse.
+        if(nouveauScoreAdversaire === obtenirScoreVictoire()){
+            scoreOption -= 100000;
+        }
+
+        vals.push({
+            v: 'echange',
+            cible: i,
+            s: scoreOption
+        });
+
+    });
+
+    // Meilleure option en premier
+    vals.sort((a, b) => b.s - a.s);
+
+    const cfg = botConfig();
+
+    // Expert = meilleure option exacte.
+    // Autres niveaux = possibilité de choisir parmi
+    // les options suffisamment proches de la meilleure.
+    const pool = vals.filter(option =>
+        option.s >= vals[0].s - cfg.tolerance
+    );
+
+    const choix =
+        niveauBots === 'expert'
+            ? vals[0]
+            : (
+                Math.random() > cfg.strategique
+                    ? pool[Math.floor(Math.random() * pool.length)]
+                    : pool[0]
+            );
+
+    if(choix.v === 'echange'){
+
+        actionEnCours = 'jokerCible';
+        cibleChoisie = choix.cible;
+
+        echangeJoker(choix.cible);
+
+    }else{
+
+        effetJoker(choix.v);
+
+    }
+
+    return;
+}
         case 'jokerCible': if(cibleChoisie!==null)echangeJoker(cibleChoisie); return;
     }
 }
