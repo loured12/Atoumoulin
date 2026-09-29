@@ -2992,12 +2992,54 @@ function botEvalJoker(){
     return best;
 }
 
+function botChoisirOption(options){
+    // La difficulté ne s'applique qu'une fois les choix légaux déterminés.
+    // options = [{value: ..., score: ...}]
+    const valides=options.filter(o=>o && Number.isFinite(o.score));
+    if(!valides.length)return null;
+
+    valides.sort((a,b)=>b.score-a.score);
+    const cfg=botConfig();
+
+    // Expert : meilleur choix stratégique sans aléa.
+    if(niveauBots==='expert')return valides[0];
+
+    // Une partie des décisions reste volontairement optimale selon le niveau.
+    if(Math.random() < cfg.strategique)return valides[0];
+
+    // Sinon, on autorise une erreur dans la tolérance prévue par le niveau.
+    const proches=valides.filter(o=>o.score>=valides[0].score-cfg.tolerance);
+    if(proches.length>1){
+        return proches[1 + Math.floor(Math.random()*(proches.length-1))];
+    }
+
+    // Si les scores sont très éloignés, la tolérance ne doit pas rendre
+    // les niveaux artificiellement identiques : le choix imparfait se fait
+    // parmi les meilleures options légales restantes.
+    const largeur=Math.min(valides.length,Math.max(2,Math.ceil(valides.length*(1-cfg.strategique))));
+    return valides[1 + Math.floor(Math.random()*Math.max(1,largeur-1))] || valides[0];
+}
+
 function botChoisirValeurInitiale(){
     const joueur=joueurs[joueurActuel];
     let candidats=[];
-    const sept=joueur.main.findIndex(c=>c===7);
-    if(sept!==-1)return {type:'simple',index:sept,score:Infinity};
 
+    // Règle absolue : le 7 est prioritaire.
+    // S'il existe au moins deux 7, c'est donc le Double 7 qui doit être joué.
+    const indicesSept=joueur.main
+        .map((carte,index)=>carte===7?index:-1)
+        .filter(index=>index!==-1);
+
+    if(indicesSept.length>=2){
+        return {type:'double',valeur:7,score:Infinity};
+    }
+
+    if(indicesSept.length===1){
+        return {type:'simple',index:indicesSept[0],score:Infinity};
+    }
+
+    // Deux cartes identiques ou plus : un seul double est joué.
+    // S'il y a trois exemplaires, le troisième reste donc en main.
     const doubles=trouverDoubles(joueur.main);
     if(doubles.length){
         doubles.forEach(v=>candidats.push({type:'double',valeur:v,score:botEvalDouble(v)}));
@@ -3084,28 +3126,38 @@ function botChoisirCibleStrategique(mode){
         : pool[0].index;
 }
 
-function botChoisirCarteScore(cibleNom,nombre){
-    const disponibles=cartesTable.map((c,i)=>({c,i})).filter(x=>x.c.proprietaire===cibleNom && typeof x.c.valeur==='number' && x.c.valeur!==0);
+function botChoisirCartesScore(cibleNom,nombre){
+    const disponibles=cartesTable.map((c,i)=>({c,i}))
+        .filter(x=>x.c.proprietaire===cibleNom && typeof x.c.valeur==='number' && x.c.valeur!==0);
     if(!disponibles.length)return [];
     const cible=joueurs.findIndex(j=>j.nom===cibleNom);
+    if(cible<0)return disponibles.slice(0,nombre).map(x=>x.i);
 
-    if(nombre===1 && cible>=0){
-        disponibles.sort((a,b)=>botValeurCible(cible,b.c.valeur)-botValeurCible(cible,a.c.valeur));
-        return [disponibles[0].i];
+    if(nombre===1){
+        const options=disponibles.map(x=>({value:[x.i],score:botValeurCible(cible,x.c.valeur)}));
+        return botChoisirOption(options)?.value || [];
     }
 
-    if(nombre===2 && cible>=0){
-        let meilleur=null;
+    if(nombre===2){
+        const options=[];
         for(let a=0;a<disponibles.length;a++){
             for(let b=a+1;b<disponibles.length;b++){
                 const somme=disponibles[a].c.valeur+disponibles[b].c.valeur;
-                const score=botValeurCible(cible,somme);
-                if(!meilleur||score>meilleur.score)meilleur={score,inds:[disponibles[a].i,disponibles[b].i]};
+                options.push({
+                    value:[disponibles[a].i,disponibles[b].i],
+                    score:botValeurCible(cible,somme)
+                });
             }
         }
-        return meilleur?meilleur.inds:[];
+        return botChoisirOption(options)?.value || [];
     }
+
     return disponibles.slice(0,nombre).map(x=>x.i);
+}
+
+// Compatibilité avec les éventuels appels existants.
+function botChoisirCarteScore(cibleNom,nombre){
+    return botChoisirCartesScore(cibleNom,nombre);
 }
 
 function botChoisirCarte17(){
@@ -3128,28 +3180,28 @@ function gererActionBot(){
         case 'double3': cible=botChoisirCibleStrategique('double3'); if(cible!==null) choisirAdversaireDouble3(cible); return;
         case 'carte9': cible=botChoisirCibleStrategique('9'); if(cible!==null) choisirAdversaireCarte9(cible); return;
         case 'double9': cible=botChoisirCibleStrategique('double9'); if(cible!==null) choisirAdversaireDouble9(cible); return;
-        case 'carte11': effetCarte11(botScoreValeur(10)>=botScoreValeur(-10)?10:-10); return;
-        case 'double11': effetDouble11(botScoreValeur(20)>=botScoreValeur(-20)?20:-20); return;
+        case 'carte11': { const choix=botChoisirOption([{value:10,score:botScoreValeur(10)},{value:-10,score:botScoreValeur(-10)}]); if(choix)effetCarte11(choix.value); return; }
+        case 'double11': { const choix=botChoisirOption([{value:20,score:botScoreValeur(20)},{value:-20,score:botScoreValeur(-20)}]); if(choix)effetDouble11(choix.value); return; }
         case 'carte13': cible=botChoisirCibleStrategique('13'); if(cible!==null) choisirAdversaireCarte13(cible); return;
-        case 'carte13choix': { const inds=botChoisirCarteScore(joueurs[cibleChoisie].nom,1); if(inds.length)volerCarte13(inds[0]); return; }
+        case 'carte13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,1); if(choix.length)volerCarte13(choix[0]); return; }
         case 'double13': cible=botChoisirCibleStrategique('double13'); if(cible!==null) choisirAdversaireDouble13(cible); return;
-        case 'double13choix': { const inds=botChoisirCarteScore(joueurs[cibleChoisie].nom,2); carteChoisie=inds; if(inds.length)volerCartesDouble13(); else terminerDouble13(); return; }
+        case 'double13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,2); carteChoisie=choix; if(choix.length)volerCartesDouble13(); else terminerDouble13(); return; }
         case 'carte15': {
-            let meilleur=null;
-            botCartesScore(joueur.nom).forEach(c=>{
-                const idx=cartesTable.indexOf(c), s=botValeurCarte15(idx,2);
-                if(!meilleur||s>meilleur.score)meilleur={idx,score:s};
+            const options=botCartesScore(joueur.nom).map(c=>{
+                const idx=cartesTable.indexOf(c);
+                return {value:idx,score:botValeurCarte15(idx,2)};
             });
-            if(meilleur)doublerCarte15(meilleur.idx); else terminerActionPouvoir();
+            const choix=botChoisirOption(options);
+            if(choix)doublerCarte15(choix.value); else terminerActionPouvoir();
             return;
         }
         case 'double15': {
-            let meilleur=null;
-            botCartesScore(joueur.nom).forEach(c=>{
-                const idx=cartesTable.indexOf(c), s=botValeurCarte15(idx,3);
-                if(!meilleur||s>meilleur.score)meilleur={idx,score:s};
+            const options=botCartesScore(joueur.nom).map(c=>{
+                const idx=cartesTable.indexOf(c);
+                return {value:idx,score:botValeurCarte15(idx,3)};
             });
-            if(meilleur)triplerCarte15(meilleur.idx); else terminerActionPouvoir();
+            const choix=botChoisirOption(options);
+            if(choix)triplerCarte15(choix.value); else terminerActionPouvoir();
             return;
         }
         case 'carte17': cible=botChoisirCibleStrategique('17'); if(cible!==null) choisirAdversaireCarte17(cible); return;
@@ -3160,15 +3212,19 @@ function gererActionBot(){
         case 'carte19': cible=botChoisirCibleStrategique('19'); if(cible!==null) choisirAdversaireCarte19(cible); return;
         case 'double19': cible=botChoisirCibleStrategique('double19'); if(cible!==null) choisirAdversaireDouble19(cible); return;
         case 'carte21': {
-            let meilleur=botScoreValeur(20), choix=20;
-            botAdversaires().forEach(i=>{const v=botValeurCibleSansGain(i,20);if(v>meilleur){meilleur=v;choix=-20;}});
-            effetCarte21(choix); return;
+            const options=[{value:20,score:botScoreValeur(20)}];
+            botAdversaires().forEach(i=>options.push({value:-20,score:botValeurCibleSansGain(i,20)}));
+            const choix=botChoisirOption(options);
+            if(choix)effetCarte21(choix.value);
+            return;
         }
         case 'carte21cible': cible=botChoisirCibleStrategique('21'); if(cible!==null)cibleCarte21(cible); return;
         case 'double21': {
-            let meilleur=botScoreValeur(40), choix=40;
-            botAdversaires().forEach(i=>{const v=botValeurCibleSansGain(i,40);if(v>meilleur){meilleur=v;choix=-40;}});
-            effetDouble21(choix); return;
+            const options=[{value:40,score:botScoreValeur(40)}];
+            botAdversaires().forEach(i=>options.push({value:-40,score:botValeurCibleSansGain(i,40)}));
+            const choix=botChoisirOption(options);
+            if(choix)effetDouble21(choix.value);
+            return;
         }
         case 'double21cible': cible=botChoisirCibleStrategique('double21'); if(cible!==null)cibleDouble21(cible); return;
         case 'joker': {
