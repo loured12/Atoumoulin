@@ -4656,8 +4656,19 @@ if(modeJeu === 1){
 
     gagnantManche = gagnant;
 
-    historique +=
-    `🏆 ${gagnant.nom} remporte la manche ! (${victoires[indexGagnant]} victoire${victoires[indexGagnant] > 1 ? "s" : ""})<br>`;
+    // Partie unique : le joueur remporte directement la partie
+    if(modeJeu === 1){
+
+        historique +=
+        `🏆 ${gagnant.nom} remporte la partie !<br>`;
+
+    } else {
+
+    // Plusieurs manches : le joueur remporte la manche
+        historique +=
+        `🏆 ${gagnant.nom} remporte la manche ! (${victoires[indexGagnant]} victoire${victoires[indexGagnant] > 1 ? "s" : ""})<br>`;
+
+    }
 
 // Partie unique
 
