@@ -114,6 +114,8 @@ export class AtoumoulinEngine {
       filename: "script.js"
     });
 
+    this.sandbox.__atoumoulinSetBotLevel?.(botLevel);
+
     this.sandbox.__atoumoulinInitMultiplayer(
       names,
       bots,
