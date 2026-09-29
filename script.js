@@ -2627,125 +2627,130 @@ function botEcartsInteressants(){
     };
 }
 
-/*
-   MOTEUR CENTRAL DE DECISION EXPERT
-   ---------------------------------
-   Le bot ne cherche pas a maximiser les points gagnes.
-   Il cherche a maximiser sa capacite a atteindre EXACTEMENT la cible,
-   ou, en fin de partie, a etre le plus proche si personne ne l'atteint.
-
-   Une baisse de score n'est donc jamais positive en elle-meme.
-   Elle n'est positive que si la nouvelle position est strategiquement
-   meilleure pour atteindre la cible dans les coups suivants.
-*/
-function botPositionValeur(score, pourAdversaire=false){
-    const cible=obtenirScoreVictoire();
-    const ecart=cible-score;
-    const fin=botEtatFinPartie();
-
-    if(ecart===0){
-        return pourAdversaire ? 100000 : 100000;
-    }
-
-    // Avant la fin, un score au-dessus de la cible est une mauvaise
-    // position pour gagner : il existe peu de moyens de redescendre.
-    if(ecart<0){
-        if(fin.finissante){
-            const distance=Math.abs(ecart);
-            return 4800-distance*120;
-        }
-        return -300-Math.abs(ecart)*4;
-    }
-
-    const groupes=botEcartsInteressants();
-    let valeur;
-
-    if(groupes.tresBonne.includes(ecart)) valeur=900;
-    else if(groupes.bonne.includes(ecart)) valeur=650;
-    else if(groupes.possible.includes(ecart)) valeur=400;
-    else valeur=Math.max(0,80-Math.abs(ecart)*1.5);
-
-    // Petit bonus seulement pour une possibilite concrete visible dans
-    // les cartes deja marquees. Ce bonus ne remplace jamais l'echelle
-    // strategique des ecarts.
-    valeur += botOpportuniteVisible(score)*0.35;
-
-    if(fin.finissante){
-        // Plus la fin approche, plus la proximite brute devient importante.
-        valeur += Math.max(0,420-Math.abs(ecart)*18);
-    }
-    if(fin.tresFinissante){
-        valeur += Math.max(0,700-Math.abs(ecart)*28);
-    }
-
-    return valeur;
-}
-
-function botOpportuniteVisible(score){
-    const cible=obtenirScoreVictoire();
-    const besoin=cible-score;
-    if(besoin<=0)return 0;
-
-    const valeurs=[];
-    cartesTable.forEach(c=>{
-        if(typeof c.valeur==='number' && c.valeur>0){
-            valeurs.push(c.valeur);
-            valeurs.push(c.valeur*2);
-            valeurs.push(c.valeur*3);
-        }
-    });
-
-    let bonus=0;
-    valeurs.forEach(v=>{
-        if(v===besoin)bonus=Math.max(bonus,30);
-        else if(Math.abs(v-besoin)<=2)bonus=Math.max(bonus,8);
-    });
-    return bonus;
+/* =========================================================
+   IA STRATEGIQUE V7
+   - Toutes les decisions sont basees sur la position obtenue,
+     pas sur la valeur brute de la carte.
+   - Les adversaires humains et bots sont strictement identiques.
+   - En debut/milieu de partie, la menace est liee a la capacite
+     d'atteindre exactement la cible.
+   - Au-dessus de la cible, un adversaire est peu dangereux tant
+     que la fin de partie n'impose pas le departage par proximite.
+   - En fin de partie, la proximite a la cible devient prioritaire.
+   ========================================================= */
+function botEtatFinPartie(){
+    const mains = joueurs.reduce((n,j)=>n+j.main.length,0);
+    const total = paquet.length + mains;
+    const seuil = Math.max(joueurs.length * 3, 10);
+    return {
+        restantes: total,
+        finissante: total <= seuil,
+        tresFinissante: total <= Math.max(joueurs.length, 6)
+    };
 }
 
 function botMenaceScore(score){
     const cible=obtenirScoreVictoire();
-    if(score===cible)return 10000;
+    const ecart=cible-score;
+    if(ecart===0)return 100000;
 
-    // La meme evaluation que pour notre propre position, mais un joueur
-    // au-dessus de la cible reste volontairement peu dangereux hors fin.
-    return botPositionValeur(score,true);
+    const fin=botEtatFinPartie();
+    const groupes=botEcartsInteressants();
+    let menace=0;
+
+    if(groupes.tresBonne.includes(ecart)) menace=900;
+    else if(groupes.bonne.includes(ecart)) menace=650;
+    else if(groupes.possible.includes(ecart)) menace=400;
+    else if(ecart < 0){
+        // En debut/milieu de partie, depasser la cible est une zone
+        // peu dangereuse : on ne transforme surtout pas +2 en menace 2.
+        menace=0;
+    }else{
+        // Les ecarts hors categories restent tres peu dangereux,
+        // mais ils peuvent etre departages entre eux par proximite.
+        menace=Math.max(0,120-ecart*0.65);
+    }
+
+    if(fin.finissante){
+        // Si personne ne termine exactement, le plus proche gagne.
+        // Cette proximite ne doit cependant pas ecraser les grosses
+        // categories tant que la partie n'est pas presque terminee.
+        menace += Math.max(0,260-Math.abs(ecart)*8);
+    }
+    if(fin.tresFinissante){
+        menace += Math.max(0,360-Math.abs(ecart)*10);
+    }
+
+    return menace;
+}
+
+function botPossibiliteFuture(index, scoreOverride=null){
+    const joueur=joueurs[index];
+    const cible=obtenirScoreVictoire();
+    const score=scoreOverride===null?joueur.score:scoreOverride;
+    if(score===cible)return 10000;
+    if(score>cible)return 0;
+
+    let bonus=0;
+    const ecart=cible-score;
+
+    // Pour soi, on connait la main. Pour les adversaires, on ne regarde
+    // que les cartes deja visibles sur la table.
+    const valeurs=[];
+    if(index===joueurActuel){
+        joueur.main.forEach(c=>{
+            if(typeof c==='number' && c>0) valeurs.push(c);
+        });
+    }
+    cartesTable.forEach(c=>{
+        if(c.proprietaire===joueur.nom && typeof c.valeur==='number' && c.valeur!==0){
+            valeurs.push(c.valeur);
+        }
+    });
+
+    valeurs.forEach(v=>{
+        if(score+v===cible) bonus=Math.max(bonus,5000);
+    });
+
+    for(let a=0;a<valeurs.length;a++){
+        for(let b=a+1;b<valeurs.length;b++){
+            if(score+valeurs[a]+valeurs[b]===cible){
+                bonus=Math.max(bonus,3000);
+            }
+        }
+    }
+
+    // Les positions classiques restent prioritaires meme lorsqu'une
+    // combinaison visible n'existe pas encore.
+    if(ecart===20) bonus+=300;
+    else if([16,12,10,8,4,-20].includes(ecart)) bonus+=180;
+    else if([22,18,14,6,2,-10].includes(ecart)) bonus+=100;
+
+    return bonus;
 }
 
 function botDeltaScoreJoueur(index,delta){
     const score=joueurs[index].score;
+    const cible=obtenirScoreVictoire();
     const apres=score+delta;
     return {
         avant:score,
         apres,
         delta,
-        victoire:apres===obtenirScoreVictoire(),
-        depasse:apres>obtenirScoreVictoire(),
+        victoire:apres===cible,
+        depasse:apres>cible,
         menaceAvant:botMenaceScore(score),
         menaceApres:botMenaceScore(apres)
     };
 }
 
-function botScoreValeur(valeur){
-    const joueur=joueurs[joueurActuel];
+function botScorePositionPropre(score){
     const cible=obtenirScoreVictoire();
-    const apres=joueur.score+valeur;
+    if(score===cible)return 100000;
+    if(score>cible)return -1800-(score-cible)*18;
 
-    if(apres===cible)return 100000+Math.max(0,valeur);
-
-    const avant=botPositionValeur(joueur.score,false);
-    const apresValeur=botPositionValeur(apres,false);
-
-    // La position finale compte beaucoup plus que la valeur nominale de la carte.
-    let v=(apresValeur-avant)*3;
-
-    // Depasser la cible est particulierement mauvais avant la fin.
-    if(apres>cible && joueur.score<=cible){
-        v-=1200+(apres-cible)*25;
-    }
-
-    // La valeur des points ne sert qu'en dernier departage.
-    v+=valeur*0.03;
+    let v=botMenaceScore(score)*1.15;
+    v+=botPossibiliteFuture(joueurActuel,score);
     return v;
 }
 
@@ -2758,34 +2763,42 @@ function botEvalAction(cible,selfDelta,targetDelta){
     const adversaireAvant=adversaire.score;
     const adversaireApres=adversaireAvant+targetDelta;
 
+    // Victoire immediate du bot : priorite absolue.
     if(moiApres===cibleVictoire)return 1000000;
 
-    const moiAvantValeur=botPositionValeur(moiAvant,false);
-    const moiApresValeur=botPositionValeur(moiApres,false);
+    let v=0;
 
+    // On ne valorise jamais une simple baisse ou hausse : on valorise
+    // uniquement la qualite de la position obtenue.
+    v += (botScorePositionPropre(moiApres)-botScorePositionPropre(moiAvant))*1.0;
+
+    // Une action defensive doit reduire la capacite de l'adversaire
+    // a atteindre exactement la cible.
     const menaceAvant=botMenaceScore(adversaireAvant);
     const menaceApres=botMenaceScore(adversaireApres);
+    const futurAvant=botPossibiliteFuture(cible,adversaireAvant);
+    const futurApres=botPossibiliteFuture(cible,adversaireApres);
 
-    // Pour nous : ameliorer la position vers la victoire.
-    // Pour l'adversaire : diminuer sa capacite a gagner.
-    let v=(moiApresValeur-moiAvantValeur)*4;
-    v+=(menaceAvant-menaceApres)*4;
+    v += (menaceAvant-menaceApres)*6.0;
+    v += (futurAvant-futurApres)*1.5;
 
-    // Une victoire adverse immediate est a eviter absolument.
-    if(adversaireApres===cibleVictoire)v-=1000000;
+    // Mettre un adversaire exactement sur la cible est catastrophique
+    // sauf si l'action nous fait gagner avant lui.
+    if(adversaireApres===cibleVictoire)v-=300000;
 
-    // Un score au-dessus de la cible chez l'adversaire est normalement
-    // moins dangereux qu'un score sous la cible dans les zones favorables.
-    // Ne jamais favoriser une cible uniquement parce qu'elle a beaucoup de points.
-    if(adversaireAvant>cibleVictoire && adversaireApres<=cibleVictoire){
-        v-=500;
+    // En phase finale, le departage par proximite devient important.
+    const fin=botEtatFinPartie();
+    if(fin.finissante){
+        v += (Math.abs(cibleVictoire-adversaireApres)-Math.abs(cibleVictoire-adversaireAvant))*1.8;
+        v += (Math.abs(cibleVictoire-moiAvant)-Math.abs(cibleVictoire-moiApres))*2.2;
     }
 
-    // Les points eux-memes ne sont qu'un departage tres faible.
-    v+=selfDelta*0.02;
-    v-=targetDelta*0.01;
-
     return v;
+}
+
+function botScoreValeur(valeur){
+    const moi=joueurs[joueurActuel];
+    return botScorePositionPropre(moi.score+valeur)-botScorePositionPropre(moi.score);
 }
 
 function botValeurCible(cible,delta){
@@ -2813,19 +2826,19 @@ function botValeurCarte15(carteIndex,multiplicateur){
     const carte=cartesTable[carteIndex];
     const moi=joueurs[joueurActuel];
     if(!carte || carte.proprietaire!==moi.nom || typeof carte.valeur!=='number' || carte.valeur<=0)return -Infinity;
-
-    const delta=carte.valeur*(multiplicateur-1);
-    const cible=obtenirScoreVictoire();
+    const ancienne=carte.valeur;
+    const delta=ancienne*(multiplicateur-1);
     const apres=moi.score+delta;
+    const cible=obtenirScoreVictoire();
+    if(apres===cible)return 100000;
+    if(apres>cible)return -1800-(apres-cible)*18;
 
-    if(apres===cible)return 1000000;
-
-    let v=botPositionValeur(apres,false)-botPositionValeur(moi.score,false);
-
-    if(apres>cible)v-=1200+(apres-cible)*25;
-    if(carte.liee)v-=2;
-
-    return v*4+delta*0.02;
+    let v=delta*1.4;
+    v+=(Math.abs(cible-moi.score)-Math.abs(cible-apres))*7;
+    // Une carte déjà issue d'un pouvoir peut être moins intéressante si
+    // elle pousse inutilement au-delà de la cible.
+    if(carte.liee)v-=4;
+    return v;
 }
 
 function botEvalCarteSimple(carte){
@@ -2841,21 +2854,29 @@ function botEvalCarteSimple(carte){
         return isFinite(best)?best:0;
     }
 
-    if(carte===3)return Math.max(...botAdversaires().map(i=>botValeurCibleSansGain(i,20)),-50);
+    if(carte===3){
+        return Math.max(...botAdversaires().map(i=>botValeurCibleSansGain(i,20)), -50);
+    }
 
     if(carte===5){
+        // La valeur du 5 est surtout sa capacité à augmenter les possibilités
+        // futures. Elle devient plus utile quand la main est courte et la pioche disponible.
         return 22 + Math.max(0,5-moi.main.length)*5 + (paquet.length>4?5:0);
     }
 
     if(carte===9){
         let best=-Infinity;
         botAdversaires().forEach(i=>{
-            best=Math.max(best,botMenaceScore(joueurs[i].score)*0.9);
+            const menace=botMenaceScore(joueurs[i].score);
+            const diffMain=joueurs[i].main.length-moi.main.length;
+            best=Math.max(best,menace*0.55+diffMain*5);
         });
         return isFinite(best)?best:0;
     }
 
-    if(carte===11)return Math.max(botScoreValeur(10),botScoreValeur(-10));
+    if(carte===11){
+        return Math.max(botScoreValeur(10),botScoreValeur(-10));
+    }
 
     if(carte===13){
         let best=-Infinity;
@@ -2867,7 +2888,7 @@ function botEvalCarteSimple(carte){
 
     if(carte===15){
         let best=-Infinity;
-        botCartesScore(moi.nom).forEach(c=>{
+        botCartesScore(moi.nom).forEach((c,i)=>{
             const idx=cartesTable.indexOf(c);
             best=Math.max(best,botValeurCarte15(idx,2));
         });
@@ -2877,9 +2898,11 @@ function botEvalCarteSimple(carte){
     if(carte===17){
         let best=-Infinity;
         botAdversaires().forEach(i=>{
-            // Le 17 ne connait pas la carte adverse avant le tirage.
-            // La menace publique reste donc prioritaire.
-            best=Math.max(best,botMenaceScore(joueurs[i].score));
+            // Pas de lecture de la main adverse : on estime seulement
+            // l'intérêt de la cible via ses informations publiques.
+            const menace=botMenaceScore(joueurs[i].score);
+            const q=botQualiteMain(i);
+            best=Math.max(best,menace*0.8+q*0.5);
         });
         return isFinite(best)?best:0;
     }
@@ -2910,13 +2933,17 @@ function botEvalDouble(valeur){
         return isFinite(best)?best:0;
     }
 
-    if(valeur===3)return Math.max(...botAdversaires().map(i=>botValeurCibleSansGain(i,40)),-50);
+    if(valeur===3){
+        let best=-Infinity;
+        botAdversaires().forEach(i=>best=Math.max(best,botValeurCibleSansGain(i,40)));
+        return isFinite(best)?best:0;
+    }
 
     if(valeur===5)return 34 + Math.max(0,4-moi.main.length)*5;
 
     if(valeur===9){
         let best=-Infinity;
-        botAdversaires().forEach(i=>best=Math.max(best,botMenaceScore(joueurs[i].score)));
+        botAdversaires().forEach(i=>best=Math.max(best,botMenaceScore(joueurs[i].score)*0.7+botQualiteMain(i)-botQualiteMain(joueurActuel)));
         return isFinite(best)?best:0;
     }
 
@@ -2926,7 +2953,9 @@ function botEvalDouble(valeur){
         let best=-Infinity;
         botAdversaires().forEach(i=>{
             const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
-            for(let a=0;a<vals.length;a++)for(let b=a+1;b<vals.length;b++)best=Math.max(best,botValeurCible(i,vals[a]+vals[b]));
+            for(let a=0;a<vals.length;a++){
+                for(let b=a+1;b<vals.length;b++)best=Math.max(best,botValeurCible(i,vals[a]+vals[b]));
+            }
         });
         return isFinite(best)?best:0;
     }
@@ -2942,7 +2971,7 @@ function botEvalDouble(valeur){
 
     if(valeur===17){
         let best=-Infinity;
-        botAdversaires().forEach(i=>best=Math.max(best,botMenaceScore(joueurs[i].score)));
+        botAdversaires().forEach(i=>best=Math.max(best,botMenaceScore(joueurs[i].score)*0.9+botQualiteMain(i)));
         return isFinite(best)?best:0;
     }
 
@@ -2958,7 +2987,7 @@ function botEvalDouble(valeur){
         return best;
     }
 
-    if(valeur==='Joker')return botEvalJoker();
+    if(valeur==='Joker')return 50;
     return 0;
 }
 
@@ -2971,14 +3000,16 @@ function botValeurDoubleVol1(cible){
 function botExpectedStolenValue(cible){
     const main=joueurs[cible].main;
     if(!main.length)return -20;
-    return botMenaceScore(joueurs[cible].score) + main.length*0.5;
+    // Le 17 simple ne révèle pas la main adverse avant le tirage.
+    // On n'utilise donc ni le contenu ni la valeur d'une carte cachée.
+    return main.length*2.5 + botMenaceScore(joueurs[cible].score)*0.4;
 }
 
 function botEval19Target(index,doubleMode){
     const moi=joueurs[joueurActuel];
     const cartesA=botCartesScore(moi.nom);
     const cartesB=botCartesScore(joueurs[index].nom);
-    if(!cartesA.length||!cartesB.length)return -Infinity;
+    if(!cartesA.length||!cartesB.length)return -20;
 
     let delta;
     if(doubleMode){
@@ -2989,38 +3020,23 @@ function botEval19Target(index,doubleMode){
         delta=cartesB[cartesB.length-1].valeur-cartesA[cartesA.length-1].valeur;
     }
 
-    // L'echange est bon seulement si le nouveau score du bot est meilleur
-    // et/ou si le nouvel ecart de l'adversaire reduit sa menace.
     return botValeurCible(index,delta);
 }
 
-function botEvalEchangeJoker(index){
-    const moi=joueurs[joueurActuel];
-    const adversaire=joueurs[index];
-    const cible=obtenirScoreVictoire();
-
-    const apresMoi=adversaire.score;
-    const apresAdversaire=moi.score;
-
-    if(apresMoi===cible)return 1000000;
-
-    const gainPosition=botPositionValeur(apresMoi,false)-botPositionValeur(moi.score,false);
-    const reductionMenace=botMenaceScore(adversaire.score)-botMenaceScore(apresAdversaire);
-
-    return gainPosition*4+reductionMenace*4;
-}
-
 function botEvalJoker(){
-    const vals=[
-        {v:10,s:botScoreValeur(10)},
-        {v:22,s:botScoreValeur(22)}
-    ];
-
+    const moi=joueurs[joueurActuel];
+    let best=Math.max(botScoreValeur(10),botScoreValeur(22));
     botAdversaires().forEach(i=>{
-        vals.push({v:'echange',cible:i,s:botEvalEchangeJoker(i)});
+        const echange=joueurs[i].score-moi.score;
+        const apresMoi=joueurs[i].score;
+        const apresAdv=moi.score;
+        let v=(botMenaceScore(apresAdv)-botMenaceScore(moi.score))*0.5;
+        if(apresMoi===obtenirScoreVictoire())v+=100000;
+        if(apresAdv===obtenirScoreVictoire())v-=2500;
+        v+=Math.abs(echange)*0.8;
+        best=Math.max(best,v);
     });
-
-    return Math.max(...vals.map(x=>x.s));
+    return best;
 }
 
 function botChoisirValeurInitiale(){
@@ -3069,52 +3085,86 @@ function botChoisirCibleStrategique(mode){
     const adversaires=botAdversaires();
     if(!adversaires.length)return null;
 
+    const moi=joueurs[joueurActuel];
+
     const evals=adversaires.map(i=>{
         let score=-Infinity;
+        const cible=joueurs[i];
 
-        if(mode==='1')score=botValeurDoubleVol1(i);
-        else if(mode==='3')score=botValeurCibleSansGain(i,20);
-        else if(mode==='9')score=botMenaceScore(joueurs[i].score);
-        else if(mode==='13'){
-            score=botCartesScore(joueurs[i].nom)
-                .reduce((m,c)=>Math.max(m,botValeurCible(i,c.valeur)),-Infinity);
+        if(mode==='1'){
+            const cartes=botCartesScore(cible.nom);
+            score=cartes.length
+                ? Math.max(...cartes.map(c=>botValeurCible(i,c.valeur)))
+                : -1000;
         }
-        else if(mode==='17')score=botExpectedStolenValue(i);
-        else if(mode==='19')score=botEval19Target(i,false);
-        else if(mode==='21')score=botValeurCibleSansGain(i,20);
-        else if(mode==='double3')score=botValeurCibleSansGain(i,40);
-        else if(mode==='double9')score=botMenaceScore(joueurs[i].score);
+        else if(mode==='3') score=botValeurCibleSansGain(i,20);
+        else if(mode==='double3') score=botValeurCibleSansGain(i,40);
+        else if(mode==='9' || mode==='double9'){
+            // Le 9 echange les mains : la cible reste choisie selon sa
+            // dangerosite, puis le nombre de cartes ne sert qu'au departage.
+            score=botMenaceScore(cible.score)*2.0;
+            score+=botPossibiliteFuture(i)*0.8;
+            score+=(cible.main.length-moi.main.length)*0.5;
+        }
+        else if(mode==='13'){
+            const cartes=botCartesScore(cible.nom);
+            score=cartes.length
+                ? Math.max(...cartes.map(c=>botValeurCible(i,c.valeur)))
+                : -1000;
+        }
         else if(mode==='double13'){
-            const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
+            const vals=botCartesScore(cible.nom).map(c=>c.valeur);
             for(let a=0;a<vals.length;a++){
                 for(let b=a+1;b<vals.length;b++){
                     score=Math.max(score,botValeurCible(i,vals[a]+vals[b]));
                 }
             }
+            if(score===-Infinity)score=-1000;
         }
-        else if(mode==='double17')score=botExpectedStolenValue(i);
-        else if(mode==='double19')score=botEval19Target(i,true);
-        else if(mode==='double21')score=botValeurCibleSansGain(i,40);
-        else if(mode==='joker')score=botEvalEchangeJoker(i);
-        else score=botMenaceScore(joueurs[i].score);
+        else if(mode==='17' || mode==='double17'){
+            // La carte adverse est inconnue avant le tirage : on ne simule
+            // pas une carte inventee. On choisit donc la cible strategique,
+            // selon sa menace actuelle et sa capacite publique a finir.
+            score=botMenaceScore(cible.score)*2.0;
+            score+=botPossibiliteFuture(i);
+            score+=cible.main.length*0.5;
+        }
+        else if(mode==='19'){
+            score=botEval19Target(i,false);
+        }
+        else if(mode==='double19'){
+            score=botEval19Target(i,true);
+        }
+        else if(mode==='21'){
+            score=botValeurCibleSansGain(i,20);
+        }
+        else if(mode==='double21'){
+            score=botValeurCibleSansGain(i,40);
+        }
+        else if(mode==='joker'){
+            // Le Joker echange les scores : on evalue directement la
+            // position des deux joueurs apres l'echange.
+            const deltaMoi=cible.score-moi.score;
+            const deltaCible=moi.score-cible.score;
+            score=botEvalAction(i,deltaMoi,deltaCible);
+        }
+        else if(mode==='score'){
+            score=botMenaceScore(cible.score)+botPossibiliteFuture(i);
+        }
 
         return {index:i,score};
     });
 
     evals.sort((a,b)=>{
         if(b.score!==a.score)return b.score-a.score;
-        // Departage strictement neutre : aucune information humain/bot.
-        // L'ordre des sieges est le seul departage stable.
+        // Departage neutre et deterministe : aucun critere humain/bot.
         return a.index-b.index;
     });
 
     if(!evals.length)return null;
-
     const cfg=botConfig();
     const pool=evals.filter(x=>x.score>=evals[0].score-cfg.tolerance);
-
     if(niveauBots==='expert')return evals[0].index;
-
     return Math.random()>cfg.strategique
         ? pool[Math.floor(Math.random()*pool.length)].index
         : pool[0].index;
@@ -3208,28 +3258,19 @@ function gererActionBot(){
         }
         case 'double21cible': cible=botChoisirCibleStrategique('double21'); if(cible!==null)cibleDouble21(cible); return;
         case 'joker': {
-            const vals=[
-                {v:10,s:botScoreValeur(10)},
-                {v:22,s:botScoreValeur(22)}
-            ];
+            const moi=joueurs[joueurActuel];
+            const vals=[{v:10,s:botScoreValeur(10)},{v:22,s:botScoreValeur(22)}];
             botAdversaires().forEach(i=>{
-                vals.push({v:'echange',cible:i,s:botEvalEchangeJoker(i)});
+                const cible=joueurs[i];
+                const deltaMoi=cible.score-moi.score;
+                const deltaCible=moi.score-cible.score;
+                vals.push({v:'echange',cible:i,s:botEvalAction(i,deltaMoi,deltaCible)});
             });
             vals.sort((a,b)=>b.s-a.s);
             const cfg=botConfig();
             const pool=vals.filter(x=>x.s>=vals[0].s-cfg.tolerance);
-            const choix=niveauBots==='expert'
-                ? vals[0]
-                : (Math.random()>cfg.strategique
-                    ? pool[Math.floor(Math.random()*pool.length)]
-                    : pool[0]);
-            if(choix.v==='echange'){
-                actionEnCours='jokerCible';
-                cibleChoisie=choix.cible;
-                echangeJoker(choix.cible);
-            }else{
-                effetJoker(choix.v);
-            }
+            const choix=niveauBots==='expert'?vals[0]:(Math.random()>cfg.strategique?pool[Math.floor(Math.random()*pool.length)]:pool[0]);
+            if(choix.v==='echange'){actionEnCours='jokerCible';cibleChoisie=choix.cible;echangeJoker(choix.cible);}else effetJoker(choix.v);
             return;
         }
         case 'jokerCible': if(cibleChoisie!==null)echangeJoker(cibleChoisie); return;
