@@ -64,6 +64,14 @@ let gagnantManche = null;
 let mancheTerminee = false;
 let niveauBots = "facile";
 
+globalThis.__atoumoulinSetBotLevel = function(level){
+    const niveaux = ["facile", "normal", "difficile", "expert"];
+
+    if(niveaux.includes(String(level))){
+        niveauBots = String(level);
+    }
+};
+
 const couleursJoueurs = [
     { couleur: "#FBC02D", rond: "🟡" }, // Joueur 1
     { couleur: "#F44336", rond: "🔴" }, // Joueur 2
