@@ -583,8 +583,8 @@ if(fn==="nouvellePartieMultijoueur"){
   if(room.spectators.some(p => p.id === player.id))
     throw Error("Un spectateur ne peut pas lancer une nouvelle partie.");
 
-  const nouveauMode=
-    Number(args[0])||room.mode||1;
+  const nouveauMode = Number(args[0]) || room.mode || 1;
+  const nouveauNiveau = String(args[2] || room.botLevel || "facile");
 
   const joueursHumains =
     room.players.filter(p => !p.bot);
@@ -676,6 +676,7 @@ if(nombreJoueurs < nombreHumains)
   });
 
   room.mode=nouveauMode;
+  room.botLevel=nouveauNiveau;
 
   room.engine=new AtoumoulinEngine(
     room.players.map(p=>p.name),
