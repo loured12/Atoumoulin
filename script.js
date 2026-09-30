@@ -6368,8 +6368,8 @@ function afficherFinManche(gagnant){
     : `⚖️ ÉGALITÉ`;
 
     let messageGagnant = gagnant
-    ? `remporte la manche !`
-    : `aucun joueur ne remporte la manche.`;
+    ? `Remporte la manche !`
+    : `Aucun joueur ne remporte la manche.`;
 
     zoneJeu.innerHTML = `
     
