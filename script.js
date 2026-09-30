@@ -315,7 +315,7 @@ if(actionEnCours === "partieTerminee"){
 
     <h2>
         🏆 ${couleurJoueur(indexGagnant)}
-        ${gagnant.nom}
+        ${gagnantPartie.nom}
         ${couleurJoueur(indexGagnant)} 🏆
     </h2>
 
