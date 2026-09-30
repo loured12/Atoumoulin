@@ -1319,14 +1319,16 @@ if(actionEnCours === "double15"){
 
     if(cartesDisponibles.length === 0){
 
-        zoneJeu.innerHTML +=
-        `
-        <h3>${joueur.nom} n'a aucune carte à points à tripler avec le Double 15</h3>
+        historique +=
+        `${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
 
-        <button onclick="terminerDouble15()">
-            Continuer
-        </button>
-        `;
+        actionEnCours = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
 
         return;
     }
@@ -1487,18 +1489,19 @@ if(actionEnCours === "carte17"){
 
     });
 
+
     // Personne n'a plus de carte à donner
-    if(adversairesDisponibles === 0){
+        if(adversairesDisponibles === 0){
 
-        zoneJeu.innerHTML +=
-        `
-        <p>Aucun adversaire n'a encore de carte à donner</p>
-        <button onclick="terminer17SansCarte()">
-        Défausser le 17 et terminer
-        </button>
-        `;
+            zoneJeu.innerHTML +=
+            `
+            <p>Aucun adversaire n'a encore de carte à donner</p>
+            <button onclick="terminer17SansCarte()">
+            Défausser le 17 et terminer
+            </button>
+            `;
 
-    }
+        }
 
 }
 
