@@ -3128,13 +3128,13 @@ function botChoisirCibleStrategique(mode){
         let score=-Infinity;
         if(mode==='1')score=botValeurDoubleVol1(i);
         else if(mode==='3')score=botValeurCibleSansGain(i,20);
-        else if(mode==='9')score=botDangerStrategique(joueurs[i].score)*0.7+(joueurs[i].main.length-joueurs[joueurActuel].main.length)*4;
+        else if(mode==='9')score=(joueurs[i].main.length-joueurs[joueurActuel].main.length)*20+botDangerStrategique(joueurs[i].score)*0.15;
         else if(mode==='13')score=botCartesScore(joueurs[i].nom).reduce((m,c)=>Math.max(m,botValeurCible(i,c.valeur)),-Infinity);
         else if(mode==='17')score=botExpectedStolenValue(i)+botProximiteStrategique(joueurs[i].score)*0.8;
         else if(mode==='19')score=botEval19Target(i,false);
         else if(mode==='21')score=botValeurCibleSansGain(i,20);
         else if(mode==='double3')score=botValeurCibleSansGain(i,40);
-        else if(mode==='double9')score=botDangerStrategique(joueurs[i].score)*0.8+botQualiteMain(i)-botQualiteMain(joueurActuel);
+        else if(mode==='double9')score=botQualiteMain(i)*2+(joueurs[i].main.length-joueurs[joueurActuel].main.length)*5+botDangerStrategique(joueurs[i].score)*0.15;
         else if(mode==='double13'){
             const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
             for(let a=0;a<vals.length;a++)for(let b=a+1;b<vals.length;b++)score=Math.max(score,botValeurCible(i,vals[a]+vals[b]));
