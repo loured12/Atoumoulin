@@ -1489,19 +1489,14 @@ if(actionEnCours === "carte17"){
 
     });
 
-
     // Personne n'a plus de carte à donner
-        if(adversairesDisponibles === 0){
+    if(adversairesDisponibles === 0){
 
-            zoneJeu.innerHTML +=
-            `
-            <p>Aucun adversaire n'a encore de carte à donner</p>
-            <button onclick="terminer17SansCarte()">
-            Défausser le 17 et terminer
-            </button>
-            `;
+        terminer17SansCarte();
 
-        }
+        return;
+
+    }
 
 }
 
