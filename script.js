@@ -2283,10 +2283,6 @@ if(typeof carte === "number" && carte % 2 === 0){
 
     joueur.score += carte;
 
-    if(verifierFinPartie()){
-        return;
-    }
-
     cartesTable.push({
 
         valeur: carte,
@@ -2297,6 +2293,10 @@ if(typeof carte === "number" && carte % 2 === 0){
 
     historique +=
     `${joueur.nom} joue ${carte} (+${carte})<br>`;
+
+    if(verifierFinPartie()){
+        return;
+    }
 
 }else{
 
@@ -2388,10 +2388,6 @@ if(typeof carte === "number" && carte % 2 === 0){
 
         joueur.score += 20;
 
-        if(verifierFinPartie()){
-            return;
-        }
-
         cartesTable.push({
             valeur: 20,
             proprietaire: joueur.nom,
@@ -2401,6 +2397,10 @@ if(typeof carte === "number" && carte % 2 === 0){
 
         historique +=
         `${joueur.nom} joue 7 (+20)<br>`;
+
+        if(verifierFinPartie()){
+            return;
+        }        
 
         if(!gererFinTourMultijoueur()){
             passerJoueur();
@@ -3457,13 +3457,13 @@ function choisirAdversaireVol1(index){
 
         cartesTable.push(carteVolee);
 
+        historique +=
+        `${joueur.nom} vole la dernière carte (${carteVolee.valeur}) de ${cible.nom} avec le 1<br>`;
+
         if(verifierFinPartie()){
             afficherJeu();
             return;
         }
-
-        historique +=
-        `${joueur.nom} vole la dernière carte (${carteVolee.valeur}) de ${cible.nom} avec le 1<br>`;
         
     }else{
 
@@ -3515,14 +3515,14 @@ function choisirAdversaireCarte3(index){
         historiqueCarte: [3]
     });
 
+    historique +=
+    `${joueurs[joueurActuel].nom} inflige (-20) à ${cible.nom} avec le 3<br>`;
+
     if(verifierFinPartie()){
         afficherJeu();
         return;
     }
-
-    historique +=
-    `${joueurs[joueurActuel].nom} inflige (-20) à ${cible.nom} avec le 3<br>`;
-
+    
     // Si le 3 vient du double 17,
     // on revient à la deuxième carte
 
@@ -3609,10 +3609,6 @@ function effetCarte11(valeur){
 
     joueur.score += valeur;
 
-    if(verifierFinPartie()){
-        return;
-    }
-
     cartesTable.push({
         valeur: valeur,
         proprietaire: joueur.nom,
@@ -3622,6 +3618,10 @@ function effetCarte11(valeur){
 
     historique +=
     `${joueur.nom} (${valeur > 0 ? "+" : ""}${valeur}) avec le 11<br>`;
+
+    if(verifierFinPartie()){
+        return;
+    }
 
     // Si le 11 vient du double 17,
     // on continue avec la deuxième carte
@@ -3925,12 +3925,12 @@ function jouerCarte17(){
 
         joueur.score += carte;
 
+        historique +=
+        `${joueur.nom} joue ${carte} obtenue avec le 17 (+${carte})<br>`;
+
         if(verifierFinPartie()){
             return;
         }
-
-        historique +=
-        `${joueur.nom} joue ${carte} obtenue avec le 17 (+${carte})<br>`;
 
         // Pioche finale
 
@@ -4370,10 +4370,6 @@ function choisirAdversaireCarte19(index){
     joueur.score += valeurCible - valeurJoueur;
     cible.score += valeurJoueur - valeurCible;
 
-    if(verifierFinPartie()){
-        return;
-    }
-
     // Échange des propriétaires
 
     carteJoueur.proprietaire = cible.nom;
@@ -4381,7 +4377,11 @@ function choisirAdversaireCarte19(index){
 
     historique +=
     `${joueur.nom} échange sa dernière carte jouée (${valeurJoueur}) avec la dernière (${valeurCible}) de ${cible.nom} avec le 19<br>`;
-  
+
+    if(verifierFinPartie()){
+        return;
+    }
+
     // SI LE 19 VIENT DU DOUBLE 17
 
     if(double17EnCours){
@@ -4562,12 +4562,12 @@ function effetJoker(choix){
             historiqueCarte: ["Joker"]
         });
 
+        historique +=
+        `${joueur.nom} (+10) avec le Joker<br>`;
+
         if(verifierFinPartie()){
             return;
         }
-
-        historique +=
-        `${joueur.nom} (+10) avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
@@ -4611,12 +4611,12 @@ function effetJoker(choix){
             joker: true
         });
 
+        historique +=
+        `${joueur.nom} (+22) avec le Joker<br>`;
+
         if(verifierFinPartie()){
             return;
         }
-
-        historique +=
-        `${joueur.nom} (+22) avec le Joker<br>`;
 
         // SI LE JOKER VIENT DU DOUBLE 17
 
