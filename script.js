@@ -2571,7 +2571,7 @@ afficherJeu();
 function botConfig(){
     const configs = {
         facile:{strategique:0,tolerance:1000000},
-        normal:{strategique:.75,tolerance:10},
+        normal:{strategique:.65,tolerance:15},
         difficile:{strategique:.90,tolerance:5},
         expert:{strategique:1,tolerance:0}
     };
@@ -3083,6 +3083,10 @@ function botChoisirValeurInitiale(){
     const cfg=botConfig();
     const pool=candidats.filter(c=>c.score>=candidats[0].score-cfg.tolerance);
     if(niveauBots==='expert')return candidats[0];
+
+    if(niveauBots === 'facile'){
+        return pool[Math.floor(Math.random()*pool.length)];
+    }
 
     if(Math.random()>cfg.strategique){
         const largeur=Math.min(pool.length,Math.max(1,Math.ceil(pool.length*.65)));
