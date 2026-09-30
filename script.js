@@ -849,6 +849,8 @@ if(actionEnCours === "double1"){
         historique +=
         `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le Double 1<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -1114,6 +1116,8 @@ if(actionEnCours === "double13"){
         historique +=
         `${joueurs[joueurActuel].nom} joue Double 13, aucune carte disponible<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -1322,6 +1326,8 @@ if(actionEnCours === "double15"){
         historique +=
         `${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -1535,6 +1541,8 @@ if(actionEnCours === "double19"){
         historique +=
         `${joueurs[joueurActuel].nom} joue Double 19, aucune carte disponible<br>`;
 
+        piocherCarte(joueur);
+            
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
