@@ -1324,53 +1324,53 @@ ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
 
 if(actionEnCours === "double15"){
 
-    let cartesDisponibles = cartesTable.filter(carte =>
-        carte.proprietaire === joueur.nom &&
-        carte.valeur !== 0
-    );
+let cartesDisponibles = cartesTable.filter(carte =>
+    carte.proprietaire === joueur.nom &&
+    carte.valeur !== 0
+);
 
-    if(cartesDisponibles.length === 0){
+if(cartesDisponibles.length === 0){
 
-        historique +=
-        `${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
+historique +=
+`${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
 
-        piocherCarte(joueur);
+piocherCarte(joueur);
         
-        actionEnCours = null;
+actionEnCours = null;
 
-        if(!gererFinTourMultijoueur()){
-            passerJoueur();
-        }
+if(!gererFinTourMultijoueur()){
+passerJoueur();
+}
 
-        afficherJeu();
+afficherJeu();
 
-        return;
-    }
+return;
+}
 
-    zoneJeu.innerHTML +=
-    `
-    <h3>Choisir une carte à points à tripler :</h3>
-    `;
+zoneJeu.innerHTML +=
+`
+<h3>Choisir une carte à points à tripler :</h3>
+`;
 
-    cartesTable.forEach((carte, carteIndex)=>{
+cartesTable.forEach((carte, carteIndex)=>{
 
-        if(
-            carte.proprietaire === joueur.nom &&
-            carte.valeur !== 0
-        ){
+if(
+carte.proprietaire === joueur.nom &&
+carte.valeur !== 0
+){
 
-            zoneJeu.innerHTML +=
-            `
-            <button
-                onclick="triplerCarte15(${carteIndex})"
-            >
-                ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
-            </button>
-            `;
+zoneJeu.innerHTML +=
+`
+<button
+onclick="triplerCarte15(${carteIndex})"
+>
+${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+</button>
+`;
 
-        }
+}
 
-    });
+});
 
 }
 
@@ -1417,12 +1417,32 @@ ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
 
 if(actionEnCours === "double17"){
 
+let adversairesDisponibles = 0;
+
+joueurs.forEach((adversaire,index)=>{
+
+if(index !== joueurActuel && adversaire.main.length > 0){
+
+adversairesDisponibles++;
+
+}
+
+});
+
+if(adversairesDisponibles === 0){
+
+terminerDouble17();
+
+return;
+
+}
+
 zoneJeu.innerHTML +=
 "<h3>Choisir un adversaire :</h3>";
 
 joueurs.forEach((adversaire,index)=>{
 
-if(index !== joueurActuel){
+if(index !== joueurActuel && adversaire.main.length > 0){
 
 zoneJeu.innerHTML +=
 `
