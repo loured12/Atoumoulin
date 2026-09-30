@@ -2570,7 +2570,7 @@ afficherJeu();
 
 function botConfig(){
     const configs = {
-        facile:{strategique:.20,tolerance:30},
+        facile:{strategique:0,tolerance:1000000},
         normal:{strategique:.75,tolerance:10},
         difficile:{strategique:.90,tolerance:5},
         expert:{strategique:1,tolerance:0}
