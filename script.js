@@ -3112,16 +3112,26 @@ function jouerTourBot(){
 
 function botChoisirCibleStrategique(mode){
     // Ne proposer que des cibles légalement sélectionnables.
-    // 13 : la cible doit posséder au moins une carte à points sur la table.
-    // 17 : la cible doit avoir au moins une carte en main à voler.
+    // 1,Double1,13,Double13,19,Double19 : la cible doit posséder au moins une carte à points sur la table.
+    // 17,Double17 : la cible doit avoir au moins une carte en main à voler.
     const adversaires=botAdversaires().filter(i=>{
-        if(mode==='13' || mode==='double13'){
-            return botCartesScore(joueurs[i].nom).length > 0;
-        }
-        if(mode==='17' || mode==='double17'){
-            return joueurs[i].main.length > 0;
-        }
-        return true;
+
+    if(
+        mode==='1' ||
+        mode==='double1' ||
+        mode==='13' ||
+        mode==='double13' ||
+        mode==='19' ||
+        mode==='double19'
+    ){
+        return botCartesScore(joueurs[i].nom).length > 0;
+    }
+
+    if(mode==='17' || mode==='double17'){
+        return joueurs[i].main.length > 0;
+    }
+
+    return true;
     });
     if(!adversaires.length)return null;
     const evals=adversaires.map(i=>{
@@ -3214,101 +3224,61 @@ function botChoisirCarte17(){
     return Math.random()>cfg.strategique?proches[Math.floor(Math.random()*proches.length)].i:proches[0].i;
 }
 
+function terminerPouvoirSansCible(valeur){
+    const joueur=joueurs[joueurActuel];
+    historique +=
+        `${joueur.nom} joue ${valeur}, aucune carte disponible. Le pouvoir est défaussé sans effet.<br>`;
+    // Cas particulier : le pouvoir vient d'un Double 17.
+    // On doit continuer avec la deuxième carte du Double 17.
+    if(double17EnCours){
+        actionEnCours=null;
+        carteChoisie=null;
+        cibleChoisie=null;
+        reprendreDouble17();     
+        return;
+    }
+    // Pouvoir normal : pioche de fin de tour.
+    piocherCarte(joueur);
+    actionEnCours=null;
+    cibleChoisie=null;
+    carteChoisie=null;
+    if(!gererFinTourMultijoueur()){
+        passerJoueur();
+    }
+    afficherJeu();
+}
+
 function gererActionBot(){
     const joueur=joueurs[joueurActuel];
     if(!joueur.bot||actionEnCours===null)return;
     let cible=null;
     switch(actionEnCours){
-        case 'vol1': cible=botChoisirCibleStrategique('1'); if(cible!==null) choisirAdversaireVol1(cible); return;
-        case 'double1': cible=botChoisirCibleStrategique('1'); if(cible!==null) choisirAdversaireDouble1(cible); return;
+        case 'vol1': cible=botChoisirCibleStrategique('1'); if(cible!==null) {choisirAdversaireVol1(cible); }else{ terminerPouvoirSansCible(1);} return;
+        case 'double1': cible=botChoisirCibleStrategique('double1'); if(cible!==null) {choisirAdversaireDouble1(cible); }else{ terminerPouvoirSansCible('Double 1');} return;
         case 'carte3': cible=botChoisirCibleStrategique('3'); if(cible!==null) choisirAdversaireCarte3(cible); return;
         case 'double3': cible=botChoisirCibleStrategique('double3'); if(cible!==null) choisirAdversaireDouble3(cible); return;
         case 'carte9': cible=botChoisirCibleStrategique('9'); if(cible!==null) choisirAdversaireCarte9(cible); return;
         case 'double9': cible=botChoisirCibleStrategique('double9'); if(cible!==null) choisirAdversaireDouble9(cible); return;
         case 'carte11': { const choix=botChoisirOption([{value:10,score:botScoreValeur(10)},{value:-10,score:botScoreValeur(-10)}]); if(choix)effetCarte11(choix.value); return; }
         case 'double11': { const choix=botChoisirOption([{value:20,score:botScoreValeur(20)},{value:-20,score:botScoreValeur(-20)}]); if(choix)effetDouble11(choix.value); return; }
-        case 'carte13': {
-            cible=botChoisirCibleStrategique('13');
-            if(cible!==null) {
-                choisirAdversaireCarte13(cible);
-            } else {
-                terminerCarte13SansCible();
-            }
-            return;
-        }
-        case 'carte13choix': {
-            const cibleValide = joueurs[cibleChoisie] && botCartesScore(joueurs[cibleChoisie].nom).length > 0;
-            const choix = cibleValide ? botChoisirCartesScore(joueurs[cibleChoisie].nom,1) : [];
-            if(choix.length) volerCarte13(choix[0]);
-            else terminerCarte13SansCible();
-            return;
-        }
-        case 'double13': {
-            cible=botChoisirCibleStrategique('double13');
-            if(cible!==null) choisirAdversaireDouble13(cible);
-            else terminerDouble13();
-            return;
-        }
+        case 'carte13': { cible=botChoisirCibleStrategique('13'); if(cible!==null) {choisirAdversaireCarte13(cible); } else { terminerCarte13SansCible();} return; }
+        case 'carte13choix': { const cibleValide = joueurs[cibleChoisie] && botCartesScore(joueurs[cibleChoisie].nom).length > 0; const choix = cibleValide ? botChoisirCartesScore(joueurs[cibleChoisie].nom,1) : []; if(choix.length) volerCarte13(choix[0]); else terminerCarte13SansCible(); return; }
+        case 'double13': { cible=botChoisirCibleStrategique('double13'); if(cible!==null) choisirAdversaireDouble13(cible); else terminerDouble13(); return; }
         case 'double13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,2); carteChoisie=choix; if(choix.length)volerCartesDouble13(); else terminerDouble13(); return; }
-        case 'carte15': {
-            const options=botCartesScore(joueur.nom).map(c=>{
-                const idx=cartesTable.indexOf(c);
-                return {value:idx,score:botValeurCarte15(idx,2)};
-            });
-            const choix=botChoisirOption(options);
-            if(choix)doublerCarte15(choix.value); else terminerActionPouvoir();
-            return;
-        }
-        case 'double15': {
-            const options=botCartesScore(joueur.nom).map(c=>{
-                const idx=cartesTable.indexOf(c);
-                return {value:idx,score:botValeurCarte15(idx,3)};
-            });
-            const choix=botChoisirOption(options);
-            if(choix)triplerCarte15(choix.value); else terminerActionPouvoir();
-            return;
-        }
-        case 'carte17': {
-            cible=botChoisirCibleStrategique('17');
-            if(cible!==null) choisirAdversaireCarte17(cible);
-            else terminer17SansCarte();
-            return;
-        }
+        case 'carte15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,2)};}); const choix=botChoisirOption(options); if(choix)doublerCarte15(choix.value); else terminerActionPouvoir(); return; }
+        case 'double15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,3)};}); const choix=botChoisirOption(options); if(choix)triplerCarte15(choix.value); else terminerActionPouvoir(); return; }
+        case 'carte17': { cible=botChoisirCibleStrategique('17'); if(cible!==null) choisirAdversaireCarte17(cible); else terminer17SansCarte(); return; }
         case 'carte17revelee': continuerCarte17(); return;
         case 'double17': cible=botChoisirCibleStrategique('double17'); if(cible!==null) choisirAdversaireDouble17(cible); return;
         case 'double17revelee': { const i=botChoisirCarte17(); if(i!==null)choisirCarteDouble17(i); return; }
         case 'double17jouer': continuerDouble17(); return;
-        case 'carte19': cible=botChoisirCibleStrategique('19'); if(cible!==null) choisirAdversaireCarte19(cible); return;
-        case 'double19': cible=botChoisirCibleStrategique('double19'); if(cible!==null) choisirAdversaireDouble19(cible); return;
-        case 'carte21': {
-            const options=[{value:20,score:botScoreValeur(20)}];
-            botAdversaires().forEach(i=>options.push({value:-20,score:botValeurCibleSansGain(i,20)}));
-            const choix=botChoisirOption(options);
-            if(choix)effetCarte21(choix.value);
-            return;
-        }
+        case 'carte19': cible=botChoisirCibleStrategique('19'); if(cible!==null){ choisirAdversaireCarte19(cible); }else{ terminerPouvoirSansCible(19);} return;
+        case 'double19': cible=botChoisirCibleStrategique('double19'); if(cible!==null){ choisirAdversaireDouble19(cible); }else{ terminerPouvoirSansCible('Double 19');} return;
+        case 'carte21': { const options=[{value:20,score:botScoreValeur(20)}]; botAdversaires().forEach(i=>options.push({value:-20,score:botValeurCibleSansGain(i,20)})); const choix=botChoisirOption(options); if(choix)effetCarte21(choix.value); return; }
         case 'carte21cible': cible=botChoisirCibleStrategique('21'); if(cible!==null)cibleCarte21(cible); return;
-        case 'double21': {
-            const options=[{value:40,score:botScoreValeur(40)}];
-            botAdversaires().forEach(i=>options.push({value:-40,score:botValeurCibleSansGain(i,40)}));
-            const choix=botChoisirOption(options);
-            if(choix)effetDouble21(choix.value);
-            return;
-        }
+        case 'double21': { const options=[{value:40,score:botScoreValeur(40)}]; botAdversaires().forEach(i=>options.push({value:-40,score:botValeurCibleSansGain(i,40)})); const choix=botChoisirOption(options); if(choix)effetDouble21(choix.value); return; }
         case 'double21cible': cible=botChoisirCibleStrategique('double21'); if(cible!==null)cibleDouble21(cible); return;
-    case 'joker': {
-    const moi = joueurs[joueurActuel];
-
-    const vals = [
-        {
-            v: 10,
-            s: botScoreValeur(10)
-        },
-        {
-            v: 22,
-            s: botScoreValeur(22)
-        }
-    ];
+        case 'joker': { const moi = joueurs[joueurActuel]; const vals = [{v:10,s: botScoreValeur(10)},{v:22,s: botScoreValeur(22)}];
 
     // Comparer chaque échange possible avec le même moteur stratégique
     botAdversaires().forEach(i => {
@@ -5687,23 +5657,29 @@ function volerCartesDouble13(){
 function terminerDouble13(){
 
     let joueur = joueurs[joueurActuel];
-    let cible = joueurs[cibleChoisie];
+    let cible = cibleChoisie !== null
+        ? joueurs[cibleChoisie]
+        : null;
 
-    historique +=
-    `${joueur.nom} joue le Double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+    if(cible){
+        historique +=
+        `${joueur.nom} joue le Double 13, aucune carte disponible à voler à ${cible.nom}<br>`;
+    }else{
+        historique +=
+        `${joueur.nom} joue le Double 13, aucune carte disponible à voler<br>`;
+    }
 
     piocherCarte(joueur);
 
-    actionEnCours = null;
-    cibleChoisie = null;
-    carteChoisie = null;
+    actionEnCours=null;
+    cibleChoisie=null;
+    carteChoisie=null;
 
     if(!gererFinTourMultijoueur()){
         passerJoueur();
     }
 
     afficherJeu();
-
 }
 
 function triplerCarte15(carteIndex){
