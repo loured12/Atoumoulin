@@ -311,11 +311,19 @@ if(actionEnCours === "partieTerminee"){
 
     <h2> PARTIE TERMINÉE !</h2>
 
-    <h3 class="fin-gagnant">
-    🏆 ${couleurJoueur(indexGagnant)}
-    ${gagnantPartie.nom}
-    ${couleurJoueur(indexGagnant)} 🏆
+    <div class="fin-gagnant">
+
+    <h2>
+        🏆 ${couleurJoueur(indexGagnant)}
+        ${gagnant.nom}
+        ${couleurJoueur(indexGagnant)} 🏆
+    </h2>
+
+    <h3>
+        Remporte la partie !
     </h3>
+
+    </div>
 
     <div class="fin-scores">
 
@@ -4925,11 +4933,19 @@ if(modeJeu === 1){
 
     <h2> PARTIE TERMINÉE !</h2>
 
-    <h3 class="fin-gagnant">
-    🏆 ${couleurJoueur(indexGagnant)}
-    ${gagnantPartie.nom}
-    ${couleurJoueur(indexGagnant)} 🏆
+    <div class="fin-gagnant">
+
+    <h2>
+        🏆 ${couleurJoueur(indexGagnant)}
+        ${gagnant.nom}
+        ${couleurJoueur(indexGagnant)} 🏆
+    </h2>
+
+    <h3>
+        Remporte la partie !
     </h3>
+
+    </div>
 
     <div class="fin-scores">
 
@@ -4996,15 +5012,15 @@ if(modeJeu > 1 && victoires[indexGagnant] >= modeJeu){
 
     <div class="fin-gagnant">
 
-    <h3>
+    <h2>
         🏆 ${couleurJoueur(indexGagnant)}
         ${gagnant.nom}
         ${couleurJoueur(indexGagnant)} 🏆
-    </h3>
+    </h2>
 
-    <div>
-        remporte la partie !
-    </div>
+    <h3>
+        Remporte la partie !
+    </h3>
 
     </div>
 
