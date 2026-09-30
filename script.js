@@ -3283,7 +3283,7 @@ function gererActionBot(){
         case 'double15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,3)};}); const choix=botChoisirOption(options); if(choix)triplerCarte15(choix.value); else terminerActionPouvoir(); return; }
         case 'carte17': { cible=botChoisirCibleStrategique('17'); if(cible!==null) choisirAdversaireCarte17(cible); else terminer17SansCarte(); return; }
         case 'carte17revelee': continuerCarte17(); return;
-        case 'double17': cible=botChoisirCibleStrategique('double17'); if(cible!==null) choisirAdversaireDouble17(cible); return;
+        case 'double17': cible=botChoisirCibleStrategique('double17'); if(cible!==null) choisirAdversaireDouble17(cible); else terminerDouble17(); return;
         case 'double17revelee': { const i=botChoisirCarte17(); if(i!==null)choisirCarteDouble17(i); return; }
         case 'double17jouer': continuerDouble17(); return;
         case 'carte19': cible=botChoisirCibleStrategique('19'); if(cible!==null){ choisirAdversaireCarte19(cible); }else{ terminerPouvoirSansCible(19);} return;
