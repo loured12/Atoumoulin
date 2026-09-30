@@ -2818,7 +2818,7 @@ function botEvalCarteSimple(carte){
         botAdversaires().forEach(i=>{
             const menace=botMenaceScore(joueurs[i].score);
             const diffMain=joueurs[i].main.length-moi.main.length;
-            best=Math.max(best,menace*0.55+diffMain*5);
+            best=Math.max(best,menace*0.15+diffMain*20);
         });
         return isFinite(best)?best:0;
     }
