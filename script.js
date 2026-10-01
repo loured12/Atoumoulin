@@ -5000,10 +5000,10 @@ function terminerActionPouvoir(){
 
         // Plus aucune carte à piocher. On vérifie maintenant la fin de la manche.
 
-        verifierFinPartie();
-        return;
+        if(verifierFinPartie()){
+            return;
+        }
     }
-
     // Tour suivant
     // En multijoueur, si le joueur actif est à 0, on passe au prochain joueur ayant des cartes.
 
