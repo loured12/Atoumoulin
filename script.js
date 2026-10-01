@@ -3275,11 +3275,6 @@ function botChoisirCartesScore(cibleNom,nombre){
     return disponibles.slice(0,nombre).map(x=>x.i);
 }
 
-// Compatibilité avec les éventuels appels existants.
-function botChoisirCarteScore(cibleNom,nombre){
-    return botChoisirCartesScore(cibleNom,nombre);
-}
-
 function botChoisirCarte17(){
     if(!cartesDouble17.length)return null;
     const scores=cartesDouble17.map((c,i)=>({i,score:botEvalCarteSimple(c)})).sort((a,b)=>b.score-a.score);
