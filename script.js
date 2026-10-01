@@ -5274,7 +5274,13 @@ function nouvelleManche(nouveauMode){
     }
 
     // Le joueur suivant commence
-    passerJoueur();
+    premierJoueur++;
+
+    if(premierJoueur >= joueurs.length){
+        premierJoueur = 0;
+    }
+
+    joueurActuel = premierJoueur;
 
     // Réinitialisation de la manche
     paquet = [];
