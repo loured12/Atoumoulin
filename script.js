@@ -914,6 +914,8 @@ if(actionEnCours === "vol1"){
         historique +=
         `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 1<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -1256,6 +1258,8 @@ if(actionEnCours === "carte13"){
         historique +=
         `${joueurs[joueurActuel].nom} joue 13, aucune carte disponible<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -1385,6 +1389,8 @@ if(cartesADoubler.length === 0){
 historique +=
 `${joueur.nom} n'a aucune carte à points à doubler avec le 15<br>`;
 
+piocherCarte(joueur);
+    
 actionEnCours = null;
 
 passerJoueur();
@@ -1626,6 +1632,8 @@ if(actionEnCours === "carte19"){
         historique +=
         `${joueurs[joueurActuel].nom} joue 19, aucune carte disponible<br>`;
 
+        piocherCarte(joueur);
+        
         actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
@@ -3675,6 +3683,8 @@ function terminerCarte13SansCible(){
         valeur: 13,
         joueur: joueur.nom
     });
+
+    piocherCarte(joueur);
 
     actionEnCours = null;
     cibleChoisie = null;
