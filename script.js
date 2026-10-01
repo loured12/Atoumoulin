@@ -1350,7 +1350,7 @@ let cartesDisponibles = cartesTable.filter(carte =>
 if(cartesDisponibles.length === 0){
 
 historique +=
-`${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
+`${joueur.nom} n'a aucune carte à points à tripler avec le Double 15<br>`;
 
 piocherCarte(joueur);
         
@@ -1583,7 +1583,7 @@ if(actionEnCours === "double19"){
     if(cartesJoueur.length === 0){
 
         historique +=
-        `${joueur.nom} n'a aucune carte à échanger avec le Double 19<br>`;
+        `${joueur.nom} ne trouve aucune carte à échanger avec le Double 19<br>`;
 
         piocherCarte(joueur);
 
@@ -1618,7 +1618,7 @@ if(actionEnCours === "double19"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} n'a aucune carte à échanger avec le Double 19<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à échanger avec le Double 19<br>`;
 
         piocherCarte(joueur);
             
@@ -1665,7 +1665,7 @@ if(actionEnCours === "carte19"){
     if(cartesJoueur.length === 0){
 
         historique +=
-        `${joueur.nom} n'a aucune carte à échanger avec le 19<br>`;
+        `${joueur.nom} ne trouve aucune carte à échanger avec le 19<br>`;
 
         piocherCarte(joueur);
 
@@ -1700,7 +1700,7 @@ if(actionEnCours === "carte19"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} n'a aucune carte à échanger avec le 19<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à échanger avec le 19<br>`;
 
         piocherCarte(joueur);
         
