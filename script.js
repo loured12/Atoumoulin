@@ -1133,7 +1133,7 @@ if(actionEnCours === "double13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} joue Double 13, aucune carte disponible<br>`;
+        `${joueurs[joueurActuel].nom} n'a aucune carte a voler avec le Double 13<br>`;
 
         piocherCarte(joueur);
         
@@ -1265,7 +1265,7 @@ if(actionEnCours === "carte13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} joue 13, aucune carte disponible<br>`;
+        `${joueurs[joueurActuel].nom} n'a aucune carte a voler avec le 13<br>`;
 
         piocherCarte(joueur);
         
@@ -1583,7 +1583,7 @@ if(actionEnCours === "double19"){
     if(cartesJoueur.length === 0){
 
         historique +=
-        `${joueur.nom} joue Double 19, aucune carte à échanger<br>`;
+        `${joueur.nom} n'a aucune carte à échanger avec le Double 19<br>`;
 
         piocherCarte(joueur);
 
@@ -1618,7 +1618,7 @@ if(actionEnCours === "double19"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} joue Double 19, aucune carte disponible<br>`;
+        `${joueurs[joueurActuel].nom} n'a aucune carte à échanger avec le Double 19<br>`;
 
         piocherCarte(joueur);
             
@@ -1665,7 +1665,7 @@ if(actionEnCours === "carte19"){
     if(cartesJoueur.length === 0){
 
         historique +=
-        `${joueur.nom} joue 19, aucune carte à échanger<br>`;
+        `${joueur.nom} n'a aucune carte à échanger avec le 19<br>`;
 
         piocherCarte(joueur);
 
@@ -1684,7 +1684,7 @@ if(actionEnCours === "carte19"){
 
     let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-        if(index === joueurActuel){
+        if(index === joueurActuel){<
             return false;
         }
 
@@ -1700,7 +1700,7 @@ if(actionEnCours === "carte19"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} joue 19, aucune carte disponible<br>`;
+        `${joueurs[joueurActuel].nom} n'a aucune carte à échanger avec le 19<br>`;
 
         piocherCarte(joueur);
         
