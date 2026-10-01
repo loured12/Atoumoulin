@@ -616,7 +616,7 @@ if(paquet.length === 0){
     zoneJeu.innerHTML +=
     `
     <div class="pioche-vide">
-        Vide
+        Pioche vide
     </div>
     `;
 
