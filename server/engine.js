@@ -337,7 +337,6 @@ export class AtoumoulinEngine {
     "volerCartesDouble13",
     "terminerDouble13",
     "triplerCarte15",
-    "terminerDouble15",
     "choisirAdversaireDouble17",
     "choisirCarteDouble17",
     "continuerDouble17",
