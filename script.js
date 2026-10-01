@@ -6563,6 +6563,7 @@ globalThis.__atoumoulinInitMultiplayer = function(noms, bots, mode = 1){
     paquet.sort(() => Math.random() - 0.5);
 
     joueurActuel = Math.floor(Math.random() * joueurs.length);
+    premierJoueur = joueurActuel;
 
     joueurs.forEach(j => {
         for(let i=0;i<4;i++){
