@@ -5613,35 +5613,6 @@ function triplerCarte15(carteIndex){
 
 }
 
-function terminerDouble15(){
-
-    let joueur = joueurs[joueurActuel];
-
-    historique +=
-    `${joueur.nom} ne peut pas utiliser le Double 15 car il n'a aucune carte à points<br>`;
-
-    if(verifierFinPartie()){
-        return;
-    }
-
-    // Pioche quand même 1 carte
-
-    piocherCarte(joueur);
-
-    actionEnCours = null;
-    cibleChoisie = null;
-    carteChoisie = null;
-
-    // Tour suivant
-
-    if(!gererFinTourMultijoueur()){
-        passerJoueur();
-    }
-
-    afficherJeu();
-
-}
-
 function choisirAdversaireDouble17(index){
 
     let joueur = joueurs[joueurActuel];
