@@ -3932,7 +3932,7 @@ function choisirAdversaireCarte17(index){
     if(cible.main.length === 0){
 
         historique +=
-        `${joueur.nom} joue 17, aucune carte disponible<br>`;
+        `${joueur.nom} ne trouve aucune carte à voler avec le 17<br>`;
 
         afficherJeu();
 
