@@ -72,8 +72,8 @@ Même moteur stratégique pour tous les niveaux.
 
 | Difficulté | Stratégique | Random |
 | ---------- | ----------: | -----: |
-| Facile     |        40 % |   60 % |
-| Normale    |        75 % |   25 % |
+| Facile     |        0 % |   100 % |
+| Normale    |        60 % |   40 % |
 | Difficile  |        90 % |   10 % |
 | Expert     |       100 % |    0 % |
 
