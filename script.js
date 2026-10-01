@@ -63,7 +63,7 @@ let gagnantPartie = null;
 let gagnantManche = null;
 let mancheTerminee = false;
 let niveauBots = "facile";
-let premierJoueur = 0;
+let premierJoueur = Math.floor(Math.random() * joueurs.length);
 
 globalThis.__atoumoulinSetBotLevel = function(level){
     const niveaux = ["facile", "normal", "difficile", "expert"];
