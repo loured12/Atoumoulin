@@ -5,7 +5,7 @@ export const ACTIONS = new Set([
   "continuerCarte17","choisirAdversaireCarte19","cibleCarte21","echangeJoker",
   "choisirAdversaireDouble1","choisirAdversaireDouble3","choisirAdversaireDouble9",
   "choisirAdversaireDouble13","volerCartesDouble13","terminerDouble13","triplerCarte15",
-  "terminerDouble15","choisirAdversaireDouble17","choisirCarteDouble17","continuerDouble17",
+  "choisirAdversaireDouble17","choisirCarteDouble17","continuerDouble17",
   "choisirAdversaireDouble19","effectuerEchangeDouble19","cibleDouble21",
   "terminer17SansCarte","preparerNouvelleManche"
 ]);
