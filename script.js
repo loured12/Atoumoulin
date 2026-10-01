@@ -3424,29 +3424,6 @@ function choisirCibleBot(){ return botChoisirCibleStrategique('score'); }
 function choisirCible9Bot(){ return botChoisirCibleStrategique('9'); }
 function choisirCibleJokerBot(){ return botChoisirCibleStrategique('joker'); }
 
-function afficherChoixCible(){
-
-let joueur = joueurs[joueurActuel];
-
-zoneJeu.innerHTML += "<h3>Choisir un adversaire :</h3>";
-
-joueurs.forEach((adversaire,index)=>{
-
-if(index !== joueurActuel){
-
-zoneJeu.innerHTML +=
-`
-<button onclick="choisirCible(${index})">
-${adversaire.nom}
-</button>
-`;
-
-}
-
-});
-
-}
-
 function choisirCible(index){
 
 cibleChoisie = index;
