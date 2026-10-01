@@ -3422,17 +3422,6 @@ function gererActionBot(){
     }
 }
 
-function choisirCible(index){
-
-cibleChoisie = index;
-
-historique +=
-`${joueurs[joueurActuel].nom} cible ${joueurs[index].nom}<br>`;
-
-afficherJeu();
-
-}
-
 function choisirAdversaireVol1(index){
 
     let cible = joueurs[index];
