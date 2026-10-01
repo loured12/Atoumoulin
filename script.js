@@ -1667,11 +1667,17 @@ if(actionEnCours === "carte19"){
         historique +=
         `${joueur.nom} ne trouve aucune carte à échanger avec le 19<br>`;
 
-        piocherCarte(joueur);
-
         actionEnCours = null;
         cibleChoisie = null;
         carteChoisie = null;
+        
+        if(double17EnCours){
+
+            reprendreDouble17();
+            return;
+        }
+
+        piocherCarte(joueur);
 
         if(!gererFinTourMultijoueur()){
             passerJoueur();
