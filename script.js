@@ -4771,35 +4771,6 @@ function echangeJoker(index){
 
 }
 
-function verifierFinDeManche(){
-
-    if(actionEnCours !== null){
-        return false;
-    }
-
-    if(paquet.length > 0){
-        return false;
-    }
-
-    // Vérifier si au moins un joueur possède encore des cartes
-    let joueurAvecCarte = joueurs.some(joueur =>
-        joueur.main.length > 0
-    );
-
-    // Tant qu'un joueur possède encore une carte, la manche continue.
-    if(joueurAvecCarte){
-        return false;
-    }
-
-    // Plus de pioche et plus aucune carte en main.
-    historique +=
-        `🏁 Plus aucune carte n'est disponible. Fin de la manche.<br>`;
-
-    verifierFinPartie();
-
-    return true;
-}
-
 function genererHistoriqueFinHTML(){
 
     let historiqueInverse = historique
