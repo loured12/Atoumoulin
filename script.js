@@ -133,7 +133,9 @@ paquet = [];
 cartesTable = [];
 defaussePouvoirs = [];
 historique = "";
+    
 joueurActuel = Math.floor(Math.random() * nombreJoueurs);
+premierJoueur = joueurActuel;
 
 actionEnCours = null;
 cibleChoisie = null;
