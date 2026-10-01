@@ -918,6 +918,12 @@ if(actionEnCours === "vol1"){
         
         actionEnCours = null;
 
+        if(double17EnCours){
+            reprendreDouble17();
+            return;
+        }
+
+
         if(!gererFinTourMultijoueur()){
         passerJoueur();
         }
@@ -1262,6 +1268,11 @@ if(actionEnCours === "carte13"){
         
         actionEnCours = null;
 
+        if(double17EnCours){
+            reprendreDouble17();
+            return;
+        }
+
         if(!gererFinTourMultijoueur()){
         passerJoueur();
         }
@@ -1392,6 +1403,12 @@ historique +=
 piocherCarte(joueur);
     
 actionEnCours = null;
+
+if(double17EnCours){
+    reprendreDouble17();
+    return;
+}
+
 
 passerJoueur();
 
@@ -1635,6 +1652,11 @@ if(actionEnCours === "carte19"){
         piocherCarte(joueur);
         
         actionEnCours = null;
+
+        if(double17EnCours){
+            reprendreDouble17();
+            return;
+        }
 
         if(!gererFinTourMultijoueur()){
         passerJoueur();
