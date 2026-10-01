@@ -3420,10 +3420,6 @@ function gererActionBot(){
     }
 }
 
-function choisirCibleBot(){ return botChoisirCibleStrategique('score'); }
-function choisirCible9Bot(){ return botChoisirCibleStrategique('9'); }
-function choisirCibleJokerBot(){ return botChoisirCibleStrategique('joker'); }
-
 function choisirCible(index){
 
 cibleChoisie = index;
