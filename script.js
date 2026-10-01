@@ -595,6 +595,7 @@ if(defaussePouvoirs.length === 0){
 
     zoneJeu.innerHTML +=
     `
+    <div class="defausse-pouvoirs">
     ${
         defaussePouvoirs.map(carte => `
             <strong class="defausse-pouvoir-carte">
@@ -604,7 +605,7 @@ if(defaussePouvoirs.length === 0){
             ' <span class="separateur-score">➜</span> '
         )
     }
-    <br>
+    </div>
     `;
 
 }
