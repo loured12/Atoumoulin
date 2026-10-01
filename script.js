@@ -1690,7 +1690,7 @@ if(actionEnCours === "carte19"){
 
     let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
-        if(index === joueurActuel){<
+        if(index === joueurActuel){
             return false;
         }
 
