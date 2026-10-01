@@ -1133,7 +1133,7 @@ if(actionEnCours === "double13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} n'a aucune carte a voler avec le Double 13<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte a voler avec le Double 13<br>`;
 
         piocherCarte(joueur);
         
@@ -1265,7 +1265,7 @@ if(actionEnCours === "carte13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} n'a aucune carte a voler avec le 13<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte a voler avec le 13<br>`;
 
         piocherCarte(joueur);
         
