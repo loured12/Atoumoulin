@@ -5922,28 +5922,6 @@ afficherJeu();
 
 }
 
-function continuerApresDouble17(){
-
-let joueur = joueurs[joueurActuel];
-
-// S'il reste une deuxième carte
-
-if(cartesDouble17.length > 0){
-
-actionEnCours = "double17revelee";
-
-afficherJeu();
-
-return;
-
-}
-
-// Plus de carte à jouer
-
-terminerDouble17();
-
-}
-
 function terminerDouble17(){
 
     let joueur = joueurs[joueurActuel];
