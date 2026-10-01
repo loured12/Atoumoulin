@@ -1133,7 +1133,7 @@ if(actionEnCours === "double13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} ne trouve aucune carte a voler avec le Double 13<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le Double 13<br>`;
 
         piocherCarte(joueur);
         
@@ -1265,7 +1265,7 @@ if(actionEnCours === "carte13"){
     if(adversairesDisponibles.length === 0){
 
         historique +=
-        `${joueurs[joueurActuel].nom} ne trouve aucune carte a voler avec le 13<br>`;
+        `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 13<br>`;
 
         piocherCarte(joueur);
         
@@ -3715,7 +3715,7 @@ function effetCarte11(valeur){
 function terminerCarte13SansCible(){
     const joueur = joueurs[joueurActuel];
     historique +=
-        `${joueur.nom} ne trouve aucune carte a voler avec le 13<br>`;
+        `${joueur.nom} ne trouve aucune carte à voler avec le 13<br>`;
 
     defaussePouvoirs.push({
         valeur: 13,
@@ -4246,7 +4246,7 @@ function choisirAdversaireCarte19(index){
     if(carteJoueur === null || carteCible === null){
 
         historique +=
-        `${joueur.nom} joue 19, aucune carte disponible<br>`;
+        `${joueur.nom} ne trouve aucune carte à echanger avec le 19<br>`;
 
         // SI LE 19 VIENT DU DOUBLE 17
 
@@ -5299,7 +5299,7 @@ function volerDouble1(){
     else{
 
         historique +=
-        `${joueur.nom} joue Double 1, aucune carte disponible<br>`;
+        `${joueur.nom} aucune carte à voler avec le Double 1<br>`;
 
     }
 
@@ -6093,7 +6093,7 @@ function effectuerEchangeDouble19(){
     else{
 
         historique +=
-        `${joueur.nom} joue le Double 19, aucune carte disponible<br>`;
+        `${joueur.nom} aucune carte à echanger avec le Double 19<br>`;
 
     }
 
