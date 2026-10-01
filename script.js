@@ -3329,7 +3329,7 @@ function gererActionBot(){
         case 'carte13choix': { const cibleValide = joueurs[cibleChoisie] && botCartesScore(joueurs[cibleChoisie].nom).length > 0; const choix = cibleValide ? botChoisirCartesScore(joueurs[cibleChoisie].nom,1) : []; if(choix.length) volerCarte13(choix[0]); else terminerCarte13SansCible(); return; }
         case 'double13': { cible=botChoisirCibleStrategique('double13'); if(cible!==null) choisirAdversaireDouble13(cible); else terminerDouble13(); return; }
         case 'double13choix': { const choix=botChoisirCartesScore(joueurs[cibleChoisie].nom,2); carteChoisie=choix; if(choix.length)volerCartesDouble13(); else terminerDouble13(); return; }
-        case 'carte15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,2)};}); const choix=botChoisirOption(options); if(choix)doublerCarte15(choix.value); else terminerActionPouvoir(); return; }
+        case 'carte15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,2)};}); const choix=botChoisirOption(options); if(choix)doublerCarte15(choix.value); else{ if(double17EnCours) {reprendreDouble17(); }else{ terminerActionPouvoir();}} return; }
         case 'double15': { const options=botCartesScore(joueur.nom).map(c=>{ const idx=cartesTable.indexOf(c); return {value:idx,score:botValeurCarte15(idx,3)};}); const choix=botChoisirOption(options); if(choix)triplerCarte15(choix.value); else terminerActionPouvoir(); return; }
         case 'carte17': { cible=botChoisirCibleStrategique('17'); if(cible!==null) choisirAdversaireCarte17(cible); else terminer17SansCarte(); return; }
         case 'carte17revelee': continuerCarte17(); return;
@@ -3711,6 +3711,11 @@ function terminerCarte13SansCible(){
     actionEnCours = null;
     cibleChoisie = null;
     carteChoisie = null;
+
+    if(double17EnCours){
+        reprendreDouble17();
+        return;
+    }
 
     if(!gererFinTourMultijoueur()){
         passerJoueur();
