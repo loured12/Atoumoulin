@@ -1,7 +1,6 @@
 {
   "total_functions": 65,
   "game_related_functions": [
-    "afficherChoixCible",
     "afficherRolesCartes",
     "cartesDoublesAffichables",
     "choisirAdversaireCarte13",
@@ -17,7 +16,6 @@
     "choisirAdversaireDouble9",
     "choisirAdversaireVol1",
     "choisirCarteDouble17",
-    "choisirCibleBot",
     "cibleCarte21",
     "cibleDouble21",
     "continuerApresDouble17",
