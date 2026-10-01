@@ -1575,6 +1575,31 @@ Continuer
 
 if(actionEnCours === "double19"){
 
+    let cartesJoueur = cartesTable.filter(carte =>
+        carte.proprietaire === joueur.nom &&
+        carte.valeur !== 0
+    );
+
+    if(cartesJoueur.length === 0){
+
+        historique +=
+        `${joueur.nom} joue Double 19, aucune carte à échanger<br>`;
+
+        piocherCarte(joueur);
+
+        actionEnCours = null;
+        cibleChoisie = null;
+        carteChoisie = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+        return;
+    }
+
     let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
         if(index === joueurActuel){
@@ -1631,6 +1656,31 @@ if(actionEnCours === "double19"){
 }
 
 if(actionEnCours === "carte19"){
+
+    let cartesJoueur = cartesTable.filter(carte =>
+        carte.proprietaire === joueur.nom &&
+        carte.valeur !== 0
+    );
+
+    if(cartesJoueur.length === 0){
+
+        historique +=
+        `${joueur.nom} joue 19, aucune carte à échanger<br>`;
+
+        piocherCarte(joueur);
+
+        actionEnCours = null;
+        cibleChoisie = null;
+        carteChoisie = null;
+
+        if(!gererFinTourMultijoueur()){
+            passerJoueur();
+        }
+
+        afficherJeu();
+
+        return;
+    }
 
     let adversairesDisponibles = joueurs.filter((adversaire,index) => {
 
