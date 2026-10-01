@@ -825,6 +825,11 @@ label {
   font-weight: bold;
 }
 
+.defausse-pouvoirs {
+  line-height: 1.25;
+  word-wrap: break-word;
+}
+
 .cartes-marquees.vide {
   height: 4px;
 }
