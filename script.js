@@ -6171,6 +6171,8 @@ function terminer17SansCarte(){
     historique +=
     `${joueur.nom} ne peut plus voler de carte avec le 17. Le 17 est défaussé sans effet.<br>`;
 
+    piocherCarte(joueur);
+    
     // Le 17 va dans la défausse
 
     defaussePouvoirs.push({
