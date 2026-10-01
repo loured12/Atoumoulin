@@ -3709,7 +3709,7 @@ function effetCarte11(valeur){
 function terminerCarte13SansCible(){
     const joueur = joueurs[joueurActuel];
     historique +=
-        `${joueur.nom} ne peut pas utiliser le 13 : aucune carte à points disponible. Le 13 est défaussé sans effet.<br>`;
+        `${joueur.nom} ne trouve aucune carte a voler avec le 13<br>`;
 
     defaussePouvoirs.push({
         valeur: 13,
