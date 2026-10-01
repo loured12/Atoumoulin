@@ -1,5 +1,5 @@
 {
-  "total_functions": 94,
+  "total_functions": 65,
   "game_related_functions": [
     "afficherRolesCartes",
     "cartesDoublesAffichables",
