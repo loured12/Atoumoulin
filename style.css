@@ -1051,7 +1051,7 @@ label {
 }
 
 .titre-defausse-ligne {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
 }
