@@ -6675,7 +6675,7 @@ globalThis.__atoumoulinInitMultiplayer = function(noms, bots, mode = 1){
         paquet = paquet.concat(cartesBase);
     }
 
-    paquet.sort(() => Math.random() - 0.5);
+    melangerPaquet(paquet);
 
     joueurActuel = Math.floor(Math.random() * joueurs.length);
     premierJoueur = joueurActuel;
