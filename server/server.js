@@ -532,20 +532,101 @@ if(m.type==="game:select"){
  if(player.index!==room.engine.currentIndex())
   throw Error("Ce n'est pas votre tour.");
 
- if(Array.isArray(m.selection)){
+ const state=room.engine.stateFor(player.index);
+ const selection=m.selection;
 
-  room.engine.setSelection(
-   m.selection.map(Number)
-  );
+ /*
+  * DOUBLE 13
+  *
+  * Les indices correspondent aux cartes de la table.
+  */
+ if(state.action==="double13choix"){
 
-  player.selection=m.selection;
+  if(!Array.isArray(selection))
+   throw Error("Sélection Double 13 invalide.");
+
+  if(selection.length<1 || selection.length>2)
+   throw Error("Le Double 13 permet de sélectionner 1 ou 2 cartes.");
+
+  const indices=selection.map(Number);
+
+  if(
+   indices.some(i=>!Number.isInteger(i)) ||
+   new Set(indices).size!==indices.length
+  ){
+   throw Error("Sélection Double 13 invalide.");
+  }
+
+  const cibleIndex=Number(state.target);
+
+  if(
+   !Number.isInteger(cibleIndex) ||
+   !state.players[cibleIndex]
+  ){
+   throw Error("Cible Double 13 invalide.");
+  }
+
+  const cibleNom=state.players[cibleIndex].name;
+
+  for(const index of indices){
+
+   const carte=state.table[index];
+
+   if(!carte)
+    throw Error("Carte Double 13 invalide.");
+
+   if(carte.proprietaire!==cibleNom)
+    throw Error("Cette carte n'appartient pas à la cible.");
+
+   if(Number(carte.valeur)===0)
+    throw Error("Cette carte ne peut pas être volée avec le Double 13.");
+  }
+
+  room.engine.setSelection(indices);
+  player.selection=indices;
+
+  sendState(room);
+  return;
+ }
+
+ /*
+  * SÉLECTION D'UNE CARTE DE LA MAIN
+  */
+ if(Array.isArray(selection)){
+
+  if(selection.length!==2)
+   throw Error("Une sélection multiple doit contenir exactement 2 cartes.");
+
+  const main=state.players[player.index]?.main || [];
+
+  const indices=selection.map(Number);
+
+  if(
+   indices.some(i=>!Number.isInteger(i) || i<0 || i>=main.length) ||
+   new Set(indices).size!==indices.length
+  ){
+   throw Error("Sélection de cartes invalide.");
+  }
+
+  if(main[indices[0]]!==main[indices[1]])
+   throw Error("Les deux cartes doivent être identiques.");
+
+  room.engine.setSelection(indices);
+  player.selection=indices;
 
  }else{
 
-  const idx=Number(m.selection);
+  const idx=Number(selection);
 
-  if(!Number.isInteger(idx)||idx<0)
+  const main=state.players[player.index]?.main || [];
+
+  if(
+   !Number.isInteger(idx) ||
+   idx<0 ||
+   idx>=main.length
+  ){
    throw Error("Sélection invalide.");
+  }
 
   room.engine.selectCard(
    idx,
