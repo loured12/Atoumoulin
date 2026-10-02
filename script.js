@@ -631,7 +631,7 @@ if(defaussePouvoirs.length > 0){
         ${
             defaussePouvoirs.map(carte => `
                 <strong class="defausse-pouvoir-carte">
-                    <span class="nom-pouvoir-defausse">${carte.valeur}</span>
+                    ${carte.valeur}
                 </strong>
             `).join(
                 ' <span class="separateur-score">➜</span> '
