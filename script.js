@@ -2959,11 +2959,12 @@ function botEvalCarteSimple(carte){
     if(carte===17){
         let best=-Infinity;
         botAdversaires().forEach(i=>{
-            // Pas de lecture de la main adverse : on estime seulement
-            // l'intérêt de la cible via ses informations publiques.
             const menace=botMenaceScore(joueurs[i].score);
-            const q=botQualiteMain(i);
-            best=Math.max(best,menace*0.8+q*0.5);
+            const nombreCartes=joueurs[i].main.length;
+            if(nombreCartes>0){
+                const valeur=nombreCartes*2.5 + menace*0.4;
+                best=Math.max(best,valeur);
+            }
         });
         return isFinite(best)?best:0;
     }
@@ -3032,7 +3033,14 @@ function botEvalDouble(valeur){
 
     if(valeur===17){
         let best=-Infinity;
-        botAdversaires().forEach(i=>best=Math.max(best,botMenaceScore(joueurs[i].score)*0.9+botQualiteMain(i)));
+        botAdversaires().forEach(i=>{
+            const menace=botMenaceScore(joueurs[i].score);
+            const nombreCartes=joueurs[i].main.length;
+            if(nombreCartes>0){
+                const valeur=nombreCartes*2.5 + menace*0.4;
+                best=Math.max(best,valeur);
+            }
+        });
         return isFinite(best)?best:0;
     }
 
