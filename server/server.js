@@ -163,6 +163,41 @@ function lobby(r){
  broadcast(r,{type:"lobby:update",room:view(r)});
 }
 
+function transfererHoteSiNecessaire(r){
+
+  const hote=r.players.find(
+    p=>p.id===r.hostId
+  );
+
+  // L'hôte actuel est toujours un humain connecté.
+  if(
+    hote &&
+    !hote.bot &&
+    hote.connected
+  ){
+    return;
+  }
+
+  // Cherche un joueur humain actuellement connecté.
+  const nouveauHote=r.players.find(
+    p=>
+      !p.bot &&
+      p.connected
+  );
+
+  if(!nouveauHote)
+    return;
+
+  r.hostId=nouveauHote.id;
+
+  broadcast(r,{
+    type:"host:changed",
+    hostId:r.hostId
+  });
+
+  lobby(r);
+}
+
 function runBots(r){
 
  if(!r.engine)return;
@@ -1016,7 +1051,7 @@ if(fn==="effetJoker"){
 }
 
  /* ---------------------------------------------------------
-  * 13
+  * 13 / Double 13
   * --------------------------------------------------------- */
  if(fn==="volerCarte13"){
   if(state.action!=="carte13choix")
@@ -1040,85 +1075,6 @@ if(fn==="effetJoker"){
    throw Error("Cette carte ne peut pas être volée avec le 13.");
  }
 
- /* ---------------------------------------------------------
-  * 15 / Double 15
-  * --------------------------------------------------------- */
- if(fn==="doublerCarte15"||fn==="triplerCarte15"){
-  const actionAttendue=
-   fn==="doublerCarte15" ? "carte15" : "double15";
-
-  if(state.action!==actionAttendue)
-   throw Error("Cette action n'est pas autorisée à ce moment.");
-
-  if(args.length!==1)
-   throw Error("Carte 15 invalide.");
-
-  const index=Number(args[0]);
-  const carte=state.table[index];
-
-  if(
-   !Number.isInteger(index)||
-   !carte||
-   carte.proprietaire!==state.players[player.index]?.name
-  ){
-   throw Error("Cette carte ne peut pas être modifiée.");
-  }
-
-  if(typeof carte.valeur!=="number"||carte.valeur===0)
-   throw Error("Cette carte ne peut pas être modifiée.");
- }
-
- /* ---------------------------------------------------------
-  * 17 / Double 17
-  * --------------------------------------------------------- */
- if(fn==="continuerCarte17"){
-  if(args.length!==0||state.action!=="carte17revelee")
-   throw Error("Cette action n'est pas autorisée à ce moment.");
- }
-
- if(fn==="choisirCarteDouble17"){
-  if(args.length!==1||state.action!=="double17revelee")
-   throw Error("Cette action n'est pas autorisée à ce moment.");
-
-  const index=Number(args[0]);
-
-  if(
-   !Number.isInteger(index)||
-   !Array.isArray(state.double17Cards)||
-   index<0||
-   index>=state.double17Cards.length
-  ){
-   throw Error("Carte Double 17 invalide.");
-  }
- }
-
- if(fn==="continuerDouble17"){
-  if(args.length!==0||state.action!=="double17jouer")
-   throw Error("Cette action n'est pas autorisée à ce moment.");
- }
-
- if(fn==="terminer17SansCarte"){
-  if(args.length!==0)
-   throw Error("Arguments invalides.");
-
-  if(
-   state.action!=="carte17"&&
-   state.action!=="double17"
-  ){
-   throw Error("Cette action n'est pas autorisée à ce moment.");
-  }
-
-  const adversaireAvecMain=state.players.some(
-   (p,i)=>i!==player.index&&p.cardCount>0
-  );
-
-  if(adversaireAvecMain)
-   throw Error("Un adversaire possède encore une carte en main.");
- }
-
- /* ---------------------------------------------------------
-  * Double 13
-  * --------------------------------------------------------- */
  if(fn==="volerCartesDouble13"){
   if(state.action!=="double13choix")
    throw Error("Cette action n'est pas autorisée à ce moment.");
@@ -1199,6 +1155,82 @@ if(fn==="effetJoker"){
  }
 
  /* ---------------------------------------------------------
+  * 15 / Double 15
+  * --------------------------------------------------------- */
+ if(fn==="doublerCarte15"||fn==="triplerCarte15"){
+  const actionAttendue=
+   fn==="doublerCarte15" ? "carte15" : "double15";
+
+  if(state.action!==actionAttendue)
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
+  if(args.length!==1)
+   throw Error("Carte 15 invalide.");
+
+  const index=Number(args[0]);
+  const carte=state.table[index];
+
+  if(
+   !Number.isInteger(index)||
+   !carte||
+   carte.proprietaire!==state.players[player.index]?.name
+  ){
+   throw Error("Cette carte ne peut pas être modifiée.");
+  }
+
+  if(typeof carte.valeur!=="number"||carte.valeur===0)
+   throw Error("Cette carte ne peut pas être modifiée.");
+ }
+
+ /* ---------------------------------------------------------
+  * 17 / Double 17
+  * --------------------------------------------------------- */
+ if(fn==="continuerCarte17"){
+  if(args.length!==0||state.action!=="carte17revelee")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+ }
+
+ if(fn==="choisirCarteDouble17"){
+  if(args.length!==1||state.action!=="double17revelee")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
+  const index=Number(args[0]);
+
+  if(
+   !Number.isInteger(index)||
+   !Array.isArray(state.double17Cards)||
+   index<0||
+   index>=state.double17Cards.length
+  ){
+   throw Error("Carte Double 17 invalide.");
+  }
+ }
+
+ if(fn==="continuerDouble17"){
+  if(args.length!==0||state.action!=="double17jouer")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+ }
+
+ if(fn==="terminer17SansCarte"){
+  if(args.length!==0)
+   throw Error("Arguments invalides.");
+
+  if(
+   state.action!=="carte17"&&
+   state.action!=="double17"
+  ){
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+  }
+
+  const adversaireAvecMain=state.players.some(
+   (p,i)=>i!==player.index&&p.cardCount>0
+  );
+
+  if(adversaireAvecMain)
+   throw Error("Un adversaire possède encore une carte en main.");
+ }
+
+ /* ---------------------------------------------------------
   * CIBLES 21 / DOUBLE 21 / JOKER
   * --------------------------------------------------------- */
  if(fn==="cibleCarte21"||fn==="cibleDouble21"||fn==="echangeJoker"){
@@ -1244,14 +1276,12 @@ if(fn==="effetJoker"){
 
  const stateApres=room.engine.stateFor(player.index);
 
- if(stateApres.roundEnded){
-  sendState(room);
-  return;
- }
+ if(stateApres.roundEnded || stateApres.winner){
 
- if(stateApres.winner){
-  sendState(room);
-  return;
+   transfererHoteSiNecessaire(room);
+
+   sendState(room);
+   return;
  }
 
  runBots(room);
