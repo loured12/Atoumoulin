@@ -4,6 +4,7 @@
     "mettreAJourNombreBots",
     "couleurJoueur",
     "lancerNouvellePartie",
+    "melangerPaquet",
     "afficherJeu",
     "selectionnerCarte",
     "jouerCarte",
