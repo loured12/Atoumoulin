@@ -836,7 +836,8 @@ if(m.type==="game:action"){
    "preparerNouvelleManche",
    [nouveauMode]
   );
-
+  
+  runBots(room);
   sendState(room);
   return;
  }
