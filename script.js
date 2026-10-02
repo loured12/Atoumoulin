@@ -1183,15 +1183,6 @@ if(actionEnCours === "double13choix"){
 
     if(nombreASelectionner === 0){
 
-        zoneJeu.innerHTML +=
-        `
-        <h3>${cible.nom} n'a aucune carte à points à voler.</h3>
-
-        <button onclick="terminerDouble13()">
-            Continuer
-        </button>
-        `;
-
         return;
     }
 
