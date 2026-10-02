@@ -1050,7 +1050,7 @@ label {
     color: #ff4a4a !important;
 }
 
-.titre-defausse {
+.titre-defausse-ligne {
     display: flex;
     align-items: center;
     gap: 6px;
