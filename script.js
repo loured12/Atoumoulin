@@ -662,6 +662,19 @@ let monIndex = globalThis.__atoumoulinRemote &&
 let joueur = joueurs[monIndex];
 let joueurTour = joueurs[joueurActuel];
 
+// Vérifier si ce joueur doit passer un tour à cause du double Joker
+
+if(toursJoker[joueurActuel] > 0 && actionEnCours === null){
+
+    toursJoker[joueurActuel]--;
+
+    passerJoueur();
+
+    afficherJeu();
+
+    return;
+}
+
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
     if(actionEnCours === null){
@@ -675,20 +688,6 @@ if(joueur.bot && !globalThis.__atoumoulinRemote){
     }
 
     return;
-}
-
-// Vérifier si ce joueur doit passer un tour à cause du double Joker
-
-if(toursJoker[joueurActuel] > 0 && actionEnCours === null){
-
-toursJoker[joueurActuel]--;
-
-passerJoueur();
-
-afficherJeu();
-
-return;
-
 }
 
 if(!globalThis.__atoumoulinRemote &&
