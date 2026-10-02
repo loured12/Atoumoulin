@@ -17,7 +17,7 @@ const makeCode=()=>{
  return c;
 };
 
-const name=n=>String(n||"Joueur").trim().slice(0,24)||"Joueur";
+const name=n=>String(n||"Joueur").trim().replace(/[<>]/g,"").slice(0,24)||"Joueur";
 
 function nomUnique(room, nomBase){
 
