@@ -3559,7 +3559,10 @@ function choisirAdversaireVol1(index){
 
     for(let i = cartesTable.length - 1; i >= 0; i--){
 
-        if(cartesTable[i].proprietaire === cible.nom){
+        if(
+            cartesTable[i].proprietaire === cible.nom &&
+            cartesTable[i].valeur !== 0
+        ){
 
             carteVolee = cartesTable[i];
             cartesTable.splice(i,1);
