@@ -950,27 +950,47 @@ if(m.type==="game:action"){
  /* ---------------------------------------------------------
   * VALEURS DES POUVOIRS
   * --------------------------------------------------------- */
- if(fn==="effetCarte11"){
+if(fn==="effetCarte11"){
+
+  if(state.action!=="carte11")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
   if(args.length!==1 || ![10,-10].includes(Number(args[0])))
    throw Error("Valeur invalide pour le 11.");
- }
+}
 
- if(fn==="effetDouble11"){
+if(fn==="effetDouble11"){
+
+  if(state.action!=="double11")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
   if(args.length!==1 || ![20,-20].includes(Number(args[0])))
    throw Error("Valeur invalide pour le Double 11.");
- }
+}
 
- if(fn==="effetCarte21"){
+if(fn==="effetCarte21"){
+
+  if(state.action!=="carte21")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
   if(args.length!==1 || ![20,-20].includes(Number(args[0])))
    throw Error("Valeur invalide pour le 21.");
- }
+}
 
- if(fn==="effetDouble21"){
+if(fn==="effetDouble21"){
+
+  if(state.action!=="double21")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
   if(args.length!==1 || ![40,-40].includes(Number(args[0])))
    throw Error("Valeur invalide pour le Double 21.");
- }
+}
 
- if(fn==="effetJoker"){
+if(fn==="effetJoker"){
+
+  if(state.action!=="joker")
+   throw Error("Cette action n'est pas autorisée à ce moment.");
+
   if(args.length!==1)
    throw Error("Choix Joker invalide.");
 
@@ -983,7 +1003,7 @@ if(m.type==="game:action"){
   ){
    throw Error("Choix Joker invalide.");
   }
- }
+}
 
  /* ---------------------------------------------------------
   * 13
