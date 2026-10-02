@@ -918,12 +918,15 @@ if(m.type==="game:action"){
   player.selection=null;
 
   const stateApres=room.engine.stateFor(player.index);
-
+  
   if(stateApres.roundEnded || stateApres.winner){
-   sendState(room);
-   return;
-  }
 
+     transfererHoteSiNecessaire(room);
+
+     sendState(room);
+     return;
+  }
+  
   runBots(room);
   sendState(room);
   return;
