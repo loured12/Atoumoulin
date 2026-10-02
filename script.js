@@ -609,6 +609,7 @@ zoneJeu.innerHTML +=
 `
 <div class="titre-section">
     🪄 Défausse pouvoirs
+    </div>
 
     <button
         class="bouton-affichage-defausse"
