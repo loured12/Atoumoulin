@@ -102,13 +102,6 @@ button:active {
     0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
-.bouton-affichage-defausse {
-  margin-left: 8px;
-  padding: 4px 9px;
-  font-size: 13px;
-  font-weight: bold;
-}
-
 /* =========================
    CARTES
    ========================= */
@@ -1026,6 +1019,25 @@ label {
   padding: 0;
   object-fit: fill;
   display: inline-block;
+}
+
+.bouton-affichage-defausse {
+  margin-left: 8px;
+  padding: 4px 9px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.ligne-compteurs {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin: 2px 0;
+    text-align: center;
+}
+
+.compteur-defausse {
+    color: white;
 }
 
 /* =========================
