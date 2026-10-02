@@ -64,6 +64,7 @@ let gagnantManche = null;
 let mancheTerminee = false;
 let niveauBots = "facile";
 let premierJoueur = 0;
+let modeAffichageDefausse = "historique";
 
 globalThis.__atoumoulinSetBotLevel = function(level){
     const niveaux = ["facile", "normal", "difficile", "expert"];
@@ -233,6 +234,15 @@ function melangerPaquet(paquet){
     }
 
     return paquet;
+}
+
+function basculerAffichageDefausse(){
+    modeAffichageDefausse =
+        modeAffichageDefausse === "historique"
+            ? "compteurs"
+            : "historique";
+
+    afficherJeu();
 }
 
 function afficherJeu(){
@@ -599,27 +609,66 @@ zoneJeu.innerHTML +=
 `
 <div class="titre-section">
     🪄 Défausse pouvoirs
+
+    <button
+        class="bouton-affichage-defausse"
+        onclick="basculerAffichageDefausse()"
+    >
+        ${modeAffichageDefausse === "historique"
+            ? "Compteurs"
+            : "Historique"}
+    </button>
 </div>
 `;
 
-if(defaussePouvoirs.length === 0){
+if(defaussePouvoirs.length > 0){
 
-}else{
+    if(modeAffichageDefausse === "historique"){
 
-    zoneJeu.innerHTML +=
-    `
-    <div class="defausse-pouvoirs">
-    ${
-        defaussePouvoirs.map(carte => `
-            <strong class="defausse-pouvoir-carte">
-            ${carte.valeur}
-            </strong>
-        `).join(
-            ' <span class="separateur-score">➜</span> '
-        )
+        zoneJeu.innerHTML +=
+        `
+        <div class="defausse-pouvoirs">
+        ${
+            defaussePouvoirs.map(carte => `
+                <strong class="defausse-pouvoir-carte">
+                ${carte.valeur}
+                </strong>
+            `).join(
+                ' <span class="separateur-score">➜</span> '
+            )
+        }
+        </div>
+        `;
+
+    }else{
+
+        const valeursPouvoirs = [
+            1, 3, 5, 7, 9, 11,
+            13, 15, 17, 19, 21, "Joker"
+        ];
+
+        zoneJeu.innerHTML +=
+        `
+        <div class="defausse-pouvoirs defausse-compteurs">
+        ${
+            valeursPouvoirs.map(valeur => {
+
+                const nombre = defaussePouvoirs.filter(
+                    carte => String(carte.valeur) === String(valeur)
+                ).length;
+
+                return `
+                    <strong class="defausse-pouvoir-carte">
+                        ${valeur}(${nombre})
+                    </strong>
+                `;
+
+            }).join(" &nbsp; ")
+        }
+        </div>
+        `;
+
     }
-    </div>
-    `;
 
 }
 
