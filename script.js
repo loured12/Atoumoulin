@@ -607,11 +607,8 @@ if(cartesTable.length > 0){
 
 zoneJeu.innerHTML +=
 `
-<div class="titre-defausse-ligne">
-
-    <div class="titre-section">
-        🪄 Défausse pouvoirs
-    </div>
+<div class="titre-section titre-defausse">
+    🪄 Défausse pouvoirs
 
     <button
         class="bouton-affichage-defausse"
@@ -620,7 +617,6 @@ zoneJeu.innerHTML +=
     >
         ⇄
     </button>
-
 </div>
 `;
 
