@@ -167,6 +167,14 @@ export class AtoumoulinEngine {
       };
     });
 
+    const voitCartes17 =
+      Number(viewIndex) === Number(raw.joueurActuel) &&
+      (
+        raw.actionEnCours === "carte17revelee" ||
+        raw.actionEnCours === "double17revelee" ||
+        raw.actionEnCours === "double17jouer"
+      );
+
     return {
       players,
       deckCount: raw.paquet.length,
@@ -193,8 +201,17 @@ export class AtoumoulinEngine {
 
       roundEnded: !!raw.mancheTerminee,
       player17: raw.joueur17,
-      card17Pending: raw.carte17EnAttente,
-      double17Cards: raw.cartesDouble17,
+
+      card17Pending:
+        voitCartes17
+          ? raw.carte17EnAttente
+          : null,
+
+      double17Cards:
+        voitCartes17
+          ? [...raw.cartesDouble17]
+          : [],
+
       double17Active: !!raw.double17EnCours,
       player19: raw.joueur19,
       victories: raw.victoires,
@@ -220,6 +237,14 @@ export class AtoumoulinEngine {
     const estLeJoueurDuDouble9 =
       Number(viewIndex) ===
       Number(this.double9PlayerIndex);
+
+    const voitCartes17 =
+      Number(viewIndex) === Number(raw.joueurActuel) &&
+      (
+        raw.actionEnCours === "carte17revelee" ||
+        raw.actionEnCours === "double17revelee" ||
+        raw.actionEnCours === "double17jouer"
+      );
 
     return {
       players: raw.joueurs.map((p, i) => ({
@@ -259,8 +284,17 @@ export class AtoumoulinEngine {
 
       roundEnded: !!raw.mancheTerminee,
       player17: raw.joueur17,
-      card17Pending: raw.carte17EnAttente,
-      double17Cards: raw.cartesDouble17,
+
+      card17Pending:
+        voitCartes17
+          ? raw.carte17EnAttente
+          : null,
+
+      double17Cards:
+        voitCartes17
+          ? [...raw.cartesDouble17]
+          : [],
+
       double17Active: !!raw.double17EnCours,
       player19: raw.joueur19,
       victories: raw.victoires,
