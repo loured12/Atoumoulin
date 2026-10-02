@@ -1030,7 +1030,7 @@ label {
     background: #f5d76e;
     color: #245331;
     border: 2px solid #ff4a4a;
-    border-radius: 0;
+    border-radius: 6px;
 }
 
 .ligne-compteurs {
