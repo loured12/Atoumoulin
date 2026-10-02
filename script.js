@@ -3718,11 +3718,6 @@ function terminerCarte13SansCible(){
     historique +=
         `${joueur.nom} ne trouve aucune carte à voler avec le 13<br>`;
 
-    defaussePouvoirs.push({
-        valeur: 13,
-        joueur: joueur.nom
-    });
-
     piocherCarte(joueur);
 
     actionEnCours = null;
