@@ -1029,11 +1029,8 @@ label {
 }
 
 .ligne-compteurs {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
     margin: 2px 0;
-    text-align: center;
+    line-height: 1.4;
 }
 
 .compteur-defausse {
