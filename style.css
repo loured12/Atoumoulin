@@ -1050,6 +1050,12 @@ label {
     color: #ff4a4a !important;
 }
 
+.titre-defausse {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* =========================
    MOBILE
    ========================= */
