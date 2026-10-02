@@ -920,9 +920,7 @@ if(m.type==="game:action"){
   const stateApres=room.engine.stateFor(player.index);
   
   if(stateApres.roundEnded || stateApres.winner){
-
      transfererHoteSiNecessaire(room);
-
      sendState(room);
      return;
   }
