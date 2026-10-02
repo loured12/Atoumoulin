@@ -1050,10 +1050,11 @@ label {
     color: #ff4a4a !important;
 }
 
-.titre-defausse { 
-    display: flex; 
-    align-items: 
-    center; gap: 6px; 
+.titre-defausse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 /* =========================
