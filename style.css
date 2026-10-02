@@ -1033,6 +1033,7 @@ label {
     border-radius: 6px;
 
     line-height: 1;
+    vertical-align: middle;
 }
 
 .ligne-compteurs {
