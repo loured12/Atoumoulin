@@ -664,7 +664,7 @@ if(defaussePouvoirs.length > 0){
                         </strong>
                     `;
 
-                }).join("")
+                }).join(" / ")
             }
             </div>
 
@@ -682,7 +682,7 @@ if(defaussePouvoirs.length > 0){
                         </strong>
                     `;
 
-                }).join("")
+                }).join(" / ")
             }
             </div>
         </div>
