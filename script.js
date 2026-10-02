@@ -5989,13 +5989,6 @@ function terminer17SansCarte(){
     `${joueur.nom} ne peut plus voler de carte avec le 17<br>`;
 
     piocherCarte(joueur);
-    
-    // Le 17 va dans la défausse
-
-    defaussePouvoirs.push({
-        valeur: 17,
-        joueur: joueur.nom
-    });
 
     // Vérifier si la manche est terminée avant de changer de joueur
 
