@@ -358,6 +358,31 @@ export class AtoumoulinEngine {
     this.sandbox.__atoumoulinSelectDouble13(index);
   }
 
+  advanceAutomaticTurns(){
+
+    const s = this.sandbox;
+
+    while(true){
+
+        const state = s.__atoumoulinGetState();
+
+        if(!state || state.mancheTerminee || state.gagnantPartie){
+            return state;
+        }
+
+        const index = Number(state.joueurActuel);
+        const tours = Number(s.toursJoker?.[index] || 0);
+
+        if(tours <= 0){
+            return state;
+        }
+
+        s.toursJoker[index]--;
+
+        s.passerJoueur();
+    }
+}
+
   apply(fn, args = []) {
     if (!ACTIONS.has(fn)) {
       throw new Error("Action non autorisée.");
@@ -374,6 +399,8 @@ export class AtoumoulinEngine {
     );
 
     f(...args);
+
+    this.advanceAutomaticTurns();
 
     const state =
       this.sandbox.__atoumoulinGetState();
