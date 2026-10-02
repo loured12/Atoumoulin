@@ -3991,19 +3991,10 @@ function choisirAdversaireCarte17(index){
 
     joueur17 = joueurActuel;
 
-    // VÉRIFIER QU'IL RESTE UNE CARTE
-
     if(cible.main.length === 0){
-
-        historique +=
-        `${joueur.nom} ne trouve aucune carte à voler avec le 17<br>`;
-
-        afficherJeu();
-
+        terminer17SansCarte();
         return;
     }
-
-    // TIRAGE AU HASARD
 
     let indexAleatoire =
         Math.floor(Math.random() * cible.main.length);
@@ -4015,19 +4006,12 @@ function choisirAdversaireCarte17(index){
         return;
     }
 
-    // IMPORTANT :
-    // Si la cible arrive à 0 carte, on ne termine pas
-    // l'action du 17. Le joueur actif doit continuer
-    // son action normalement.
-
-    // Mémoriser la carte volée
+    // Si la cible arrive à 0 carte, on ne termine pas l'action du 17. Le joueur actif doit continuer son action normalement.
 
     carte17EnAttente = cartePiochee;
 
     historique +=
     `${joueur.nom} vole une carte dans la main de ${cible.nom} avec le 17<br>`;
-
-    // Afficher la carte avant de la jouer
 
     actionEnCours = "carte17revelee";
 
@@ -4049,8 +4033,7 @@ function continuerCarte17(){
         return;
     }
 
-    // Une carte pouvoir volée avec le 17
-    // va dans la défausse des pouvoirs.
+    // Une carte pouvoir volée avec le 17 va dans la défausse des pouvoirs.
     if(
     carte === 1 ||
     carte === 3 ||
@@ -4095,8 +4078,7 @@ function continuerCarte17(){
         actionEnCours = null;
         carteChoisie = null;
 
-        // Si le 17 venait d'un double 17,
-        // on revient jouer la carte restante du double 17
+        // Si le 17 venait d'un double 17, on revient jouer la carte restante du double 17
         if(double17EnCours){
             joueur17 = null;
             reprendreDouble17();
