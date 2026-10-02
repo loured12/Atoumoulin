@@ -678,7 +678,7 @@ if(defaussePouvoirs.length > 0){
 
                     return `
                         <strong class="defausse-pouvoir-carte">
-                            ${valeur}<span class="compteur-defausse">(${nombre})</span>
+                            <span class="nom-pouvoir-defausse">${valeur}</span><span class="compteur-defausse">(${nombre})</span>
                         </strong>
                     `;
 
