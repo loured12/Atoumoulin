@@ -62,7 +62,9 @@ function makeSandbox() {
       appendChild() {}
     },
     getElementById(id) {
-      if (!els.has(id)) els.set(id, element(id));
+      if (!els.has(id)) {
+        els.set(id, element(id));
+      }
       return els.get(id);
     },
     createElement() {
@@ -101,7 +103,12 @@ function makeSandbox() {
 }
 
 export class AtoumoulinEngine {
-  constructor(names, bots = [], mode = 1, botLevel = "facile") {
+  constructor(
+    names,
+    bots = [],
+    mode = 1,
+    botLevel = "facile"
+  ) {
     this.sandbox = makeSandbox();
     this.sandbox.niveauBots = botLevel;
     this.double9PlayerIndex = null;
@@ -195,7 +202,10 @@ export class AtoumoulinEngine {
     };
   }
 
-  getDouble9MultiplayerState(viewIndex, selection = null) {
+  getDouble9MultiplayerState(
+    viewIndex,
+    selection = null
+  ) {
     const s = this.sandbox;
     const raw = s.__atoumoulinGetState();
 
@@ -208,7 +218,8 @@ export class AtoumoulinEngine {
     }
 
     const estLeJoueurDuDouble9 =
-      Number(viewIndex) === Number(this.double9PlayerIndex);
+      Number(viewIndex) ===
+      Number(this.double9PlayerIndex);
 
     return {
       players: raw.joueurs.map((p, i) => ({
@@ -286,16 +297,17 @@ export class AtoumoulinEngine {
     }
 
     if (state.actionEnCours === null) {
-        s.jouerTourBot();
+      s.jouerTourBot();
     } else {
-        s.gererActionBot();
+      s.gererActionBot();
     }
 
     return true;
   }
 
   setPlayerIndex(index) {
-    this.sandbox.__atoumoulinPlayerIndex = Number(index);
+    this.sandbox.__atoumoulinPlayerIndex =
+      Number(index);
   }
 
   setSelection(value) {
@@ -312,39 +324,41 @@ export class AtoumoulinEngine {
     this.sandbox.__atoumoulinSelectDouble13(index);
   }
 
-  if (!ACTIONS.has(fn)) {
-    throw new Error("Action non autorisée.");
+  apply(fn, args = []) {
+    if (!ACTIONS.has(fn)) {
+      throw new Error("Action non autorisée.");
+    }
+
+    const f = this.sandbox[fn];
+
+    if (typeof f !== "function") {
+      throw new Error("Action introuvable.");
+    }
+
+    const playerIndex = Number(
+      this.sandbox.__atoumoulinPlayerIndex
+    );
+
+    f(...args);
+
+    const state =
+      this.sandbox.__atoumoulinGetState();
+
+    if (
+      fn === "jouerCarte" &&
+      state &&
+      state.actionEnCours === "double9"
+    ) {
+      this.double9PlayerIndex = playerIndex;
+    }
+
+    if (
+      state &&
+      state.actionEnCours !== "double9"
+    ) {
+      this.double9PlayerIndex = null;
+    }
+
+    return state;
   }
-
-  const f = this.sandbox[fn];
-
-  if (typeof f !== "function") {
-    throw new Error("Action introuvable.");
-  }
-
-  const playerIndex = Number(
-    this.sandbox.__atoumoulinPlayerIndex
-  );
-
-  f(...args);
-
-  const state = this.sandbox.__atoumoulinGetState();
-
-  if (
-    fn === "jouerCarte" &&
-    state &&
-    state.actionEnCours === "double9"
-  ) {
-    this.double9PlayerIndex = playerIndex;
-  }
-
-  if (
-    state &&
-    state.actionEnCours !== "double9"
-  ) {
-    this.double9PlayerIndex = null;
-  }
-
-  return state;
-}
 }
