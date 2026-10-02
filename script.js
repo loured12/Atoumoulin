@@ -917,15 +917,14 @@ if(actionEnCours === "vol1"){
         historique +=
         `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 1<br>`;
 
-        piocherCarte(joueur);
-        
-        actionEnCours = null;
-
         if(double17EnCours){
             reprendreDouble17();
             return;
         }
-
+        
+        piocherCarte(joueur);
+        
+        actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
         passerJoueur();
@@ -1267,14 +1266,14 @@ if(actionEnCours === "carte13"){
         historique +=
         `${joueurs[joueurActuel].nom} ne trouve aucune carte à voler avec le 13<br>`;
 
-        piocherCarte(joueur);
-        
-        actionEnCours = null;
-
         if(double17EnCours){
             reprendreDouble17();
             return;
         }
+        
+        piocherCarte(joueur);
+        
+        actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
         passerJoueur();
@@ -1403,15 +1402,14 @@ if(cartesADoubler.length === 0){
 historique +=
 `${joueur.nom} n'a aucune carte à points à doubler avec le 15<br>`;
 
-piocherCarte(joueur);
-    
-actionEnCours = null;
-
 if(double17EnCours){
     reprendreDouble17();
     return;
 }
-
+    
+piocherCarte(joueur);
+    
+actionEnCours = null;
 
 passerJoueur();
 
@@ -1670,13 +1668,13 @@ if(actionEnCours === "carte19"){
         actionEnCours = null;
         cibleChoisie = null;
         carteChoisie = null;
-        
+
         if(double17EnCours){
 
             reprendreDouble17();
             return;
         }
-
+        
         piocherCarte(joueur);
 
         if(!gererFinTourMultijoueur()){
@@ -1708,14 +1706,14 @@ if(actionEnCours === "carte19"){
         historique +=
         `${joueurs[joueurActuel].nom} ne trouve aucune carte à échanger avec le 19<br>`;
 
-        piocherCarte(joueur);
-        
-        actionEnCours = null;
-
         if(double17EnCours){
             reprendreDouble17();
             return;
         }
+        
+        piocherCarte(joueur);
+        
+        actionEnCours = null;
 
         if(!gererFinTourMultijoueur()){
         passerJoueur();
