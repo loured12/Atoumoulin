@@ -733,7 +733,9 @@ if(estSpectateur){
 
 // Vérifier si ce joueur doit passer un tour à cause du double Joker
 
-if(toursJoker[joueurActuel] > 0 && actionEnCours === null){
+if(!globalThis.__atoumoulinRemote &&
+   toursJoker[joueurActuel] > 0 &&
+   actionEnCours === null){
 
     toursJoker[joueurActuel]--;
 
