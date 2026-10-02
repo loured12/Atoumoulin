@@ -498,9 +498,14 @@ wss.on("connection",ws=>{
       `Il y a déjà ${room.players.length} joueurs humains dans le salon.`
     );  
 
-  room.mode = Number(m.mode) || 1;
+  const nouveauMode=Number(m.mode)||1;
 
-  room.botLevel = m.botLevel || "facile";
+  if(![1,2,3,5,10].includes(nouveauMode))
+    throw Error("Mode de jeu invalide.");
+
+    room.mode=nouveauMode;
+
+    room.botLevel = m.botLevel || "facile";
 
     // Ajout des bots
   for(let i=0;i<nombreBots;i++){
