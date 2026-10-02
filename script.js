@@ -609,15 +609,15 @@ zoneJeu.innerHTML +=
 `
 <div class="titre-section">
     🪄 Défausse pouvoirs
-</div>
 
-<button
-    class="bouton-affichage-defausse"
-    onclick="basculerAffichageDefausse()"
-    title="Changer l'affichage"
->
-    ⇄
-</button>
+    <button
+        class="bouton-affichage-defausse"
+        onclick="basculerAffichageDefausse()"
+        title="Changer l'affichage"
+    >
+        ⇄
+    </button>
+</div>
 `;
 
 if(defaussePouvoirs.length > 0){
