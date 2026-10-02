@@ -3346,7 +3346,7 @@ function botChoisirCarte17(){
 function terminerPouvoirSansCible(valeur){
     const joueur=joueurs[joueurActuel];
     historique +=
-        `${joueur.nom} joue ${valeur}, aucune carte disponible. Le pouvoir est défaussé sans effet.<br>`;
+        `${joueur.nom} joue ${valeur}, aucune carte disponible<br>`;
     // Cas particulier : le pouvoir vient d'un Double 17.
     // On doit continuer avec la deuxième carte du Double 17.
     if(double17EnCours){
@@ -5986,7 +5986,7 @@ function terminer17SansCarte(){
     let joueur = joueurs[joueurActuel];
 
     historique +=
-    `${joueur.nom} ne peut plus voler de carte avec le 17. Le 17 est défaussé sans effet.<br>`;
+    `${joueur.nom} ne peut plus voler de carte avec le 17<br>`;
 
     piocherCarte(joueur);
     
