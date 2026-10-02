@@ -3220,6 +3220,11 @@ function botChoisirOption(options){
     valides.sort((a,b)=>b.score-a.score);
     const cfg=botConfig();
 
+    // Facile : choix totalement aléatoire parmi toutes les options légales.
+    if(niveauBots==='facile'){
+        return valides[Math.floor(Math.random()*valides.length)];
+    }
+
     // Expert : meilleur choix stratégique sans aléa.
     if(niveauBots==='expert')return valides[0];
 
