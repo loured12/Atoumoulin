@@ -961,7 +961,7 @@ room.engine.apply(fn,args);
 
 player.selection=null;
 
-const state = room.engine.stateFor(player.index);
+let state = room.engine.stateFor(player.index);
 
 // Manche terminée
 if(state.roundEnded){
