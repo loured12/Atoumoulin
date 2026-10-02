@@ -650,24 +650,43 @@ if(defaussePouvoirs.length > 0){
         zoneJeu.innerHTML +=
         `
         <div class="defausse-pouvoirs defausse-compteurs">
-        ${
-            valeursPouvoirs.map(valeur => {
+            <div class="ligne-compteurs">
+            ${
+                valeursPouvoirs.slice(0, 6).map(valeur => {
 
-                const nombre = defaussePouvoirs.filter(
-                    carte => String(carte.valeur) === String(valeur)
-                ).length;
+                    const nombre = defaussePouvoirs.filter(
+                        carte => String(carte.valeur) === String(valeur)
+                    ).length;
 
-                return `
-                    <strong class="defausse-pouvoir-carte">
-                        ${valeur}(${nombre})
-                    </strong>
-                `;
+                    return `
+                        <strong class="defausse-pouvoir-carte">
+                            ${valeur}<span class="compteur-defausse">(${nombre})</span>
+                        </strong>
+                    `;
 
-            }).join(" &nbsp; ")
-        }
+                }).join("")
+            }
+            </div>
+
+            <div class="ligne-compteurs">
+            ${
+                valeursPouvoirs.slice(6, 12).map(valeur => {
+
+                    const nombre = defaussePouvoirs.filter(
+                        carte => String(carte.valeur) === String(valeur)
+                    ).length;
+
+                    return `
+                        <strong class="defausse-pouvoir-carte">
+                            ${valeur}<span class="compteur-defausse">(${nombre})</span>
+                        </strong>
+                    `;
+
+                }).join("")
+            }
+            </div>
         </div>
         `;
-
     }
 
 }
