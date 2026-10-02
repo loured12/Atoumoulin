@@ -620,8 +620,6 @@ zoneJeu.innerHTML +=
 </div>
 `;
 
-if(defaussePouvoirs.length > 0){
-
     if(modeAffichageDefausse === "historique"){
 
         zoneJeu.innerHTML +=
