@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
+import { ACTIONS } from "./action-schema.js";
 
 const gameSource = fs.readFileSync(
   path.join(process.cwd(), "..", "script.js"),
@@ -311,43 +312,7 @@ export class AtoumoulinEngine {
     this.sandbox.__atoumoulinSelectDouble13(index);
   }
 
- apply(fn, args = []) {
-  const allowed = new Set([
-    "jouerCarte",
-    "effetCarte11",
-    "effetCarte21",
-    "effetDouble11",
-    "effetDouble21",
-    "effetJoker",
-    "choisirAdversaireVol1",
-    "choisirAdversaireCarte3",
-    "choisirAdversaireCarte9",
-    "choisirAdversaireCarte13",
-    "volerCarte13",
-    "doublerCarte15",
-    "choisirAdversaireCarte17",
-    "continuerCarte17",
-    "choisirAdversaireCarte19",
-    "cibleCarte21",
-    "echangeJoker",
-    "choisirAdversaireDouble1",
-    "choisirAdversaireDouble3",
-    "choisirAdversaireDouble9",
-    "choisirAdversaireDouble13",
-    "volerCartesDouble13",
-    "terminerDouble13",
-    "triplerCarte15",
-    "choisirAdversaireDouble17",
-    "choisirCarteDouble17",
-    "continuerDouble17",
-    "choisirAdversaireDouble19",
-    "effectuerEchangeDouble19",
-    "cibleDouble21",
-    "terminer17SansCarte",
-    "preparerNouvelleManche"
-  ]);
-
-  if (!allowed.has(fn)) {
+  if (!ACTIONS.has(fn)) {
     throw new Error("Action non autorisée.");
   }
 
