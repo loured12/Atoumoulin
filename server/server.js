@@ -218,7 +218,15 @@ function runBots(r){
   if(before===after)break;
  }
 
- sendState(r);
+  const state=r.engine.stateFor(
+    r.engine.currentIndex()
+  );
+
+  if(state.roundEnded || state.winner){
+    transfererHoteSiNecessaire(r);
+  }
+
+  sendState(r);
 }
 
 const httpServer=http.createServer((req,res)=>{
