@@ -687,6 +687,9 @@ if(m.type==="game:action"){
    throw Error("Arguments invalides pour la nouvelle partie.");
 
   const nouveauMode=Number(args[0])||room.mode||1;
+    if(![1,2,3,5,10].includes(nouveauMode))
+    throw Error("Mode de jeu invalide.");
+  
   const nouveauNiveau=String(args[2]||room.botLevel||"facile");
 
   const joueursHumains=room.players.filter(p=>!p.bot);
@@ -789,8 +792,7 @@ if(m.type==="game:action"){
    throw Error("Arguments invalides pour la nouvelle manche.");
 
   const nouveauMode=Number(args[0]);
-
-  if(!Number.isInteger(nouveauMode))
+   if(![1,2,3,5,10].includes(nouveauMode))
    throw Error("Mode de jeu invalide.");
 
   room.mode=nouveauMode;
