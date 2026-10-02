@@ -161,7 +161,7 @@ for(let i=0;i<nombrePaquets;i++){
 }
 
 // Mélange
-paquet.sort(()=>Math.random()-0.5);
+melangerPaquet(paquet);
 
 // Création joueurs
 let positionsBots = [];
@@ -221,6 +221,19 @@ bouton.onclick = function(){
     lancerNouvellePartie();
 
 };
+
+function melangerPaquet(paquet){
+
+    for(let i = paquet.length - 1; i > 0; i--){
+
+        const j = Math.floor(Math.random() * (i + 1));
+
+        [paquet[i], paquet[j]] =
+            [paquet[j], paquet[i]];
+    }
+
+    return paquet;
+}
 
 function afficherJeu(){
 
@@ -5221,7 +5234,7 @@ function nouvelleManche(nouveauMode){
     }
 
     // Mélange
-    paquet.sort(() => Math.random() - 0.5);
+    melangerPaquet(paquet);
 
     // Distribution de 4 cartes
     joueurs.forEach(joueur => {
