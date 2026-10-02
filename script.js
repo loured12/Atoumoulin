@@ -4524,7 +4524,8 @@ function effetJoker(choix){
             valeur: 22,
             proprietaire: joueur.nom,
             liee: false,
-            joker: true
+            joker: true,
+            historiqueCarte: ["Joker"]
         });
 
         historique +=
