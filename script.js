@@ -614,10 +614,9 @@ zoneJeu.innerHTML +=
 <button
     class="bouton-affichage-defausse"
     onclick="basculerAffichageDefausse()"
+    title="Changer l'affichage"
 >
-    ${modeAffichageDefausse === "historique"
-        ? "Compteurs"
-        : "Historique"}
+    ⇄
 </button>
 `;
 
