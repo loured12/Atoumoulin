@@ -686,8 +686,6 @@ zoneJeu.innerHTML +=
         `;
     }
 
-}
-
 let nombreCartesVisibles = Math.min(paquet.length, 3);
 
 if(paquet.length === 0){
