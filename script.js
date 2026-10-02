@@ -6010,6 +6010,7 @@ function terminerDouble17(){
 
     cibleChoisie = null;
     carte17EnAttente = null;
+    joueur17 = null;
     cartesDouble17 = [];
     carteChoisie = null;
 
