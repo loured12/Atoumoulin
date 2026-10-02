@@ -1034,7 +1034,7 @@ label {
 }
 
 .nom-pouvoir-defausse {
-    color: white;
+    color: white !important;
 }
 
 .compteur-defausse {
