@@ -812,6 +812,14 @@ if(m.type==="game:action"){
 
  const state=room.engine.stateFor(player.index);
 
+ if(
+  state.roundEnded ||
+  state.winner ||
+  state.action === "partieTerminee"
+ ){
+  throw Error("Cette partie est déjà terminée.");
+ }
+
  /*
   * jouerCarte ne reçoit volontairement aucun index depuis
   * le client : le serveur utilise uniquement la sélection
