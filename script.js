@@ -609,16 +609,16 @@ zoneJeu.innerHTML +=
 `
 <div class="titre-section">
     🪄 Défausse pouvoirs
-
-    <button
-        class="bouton-affichage-defausse"
-        onclick="basculerAffichageDefausse()"
-    >
-        ${modeAffichageDefausse === "historique"
-            ? "Compteurs"
-            : "Historique"}
-    </button>
 </div>
+
+<button
+    class="bouton-affichage-defausse"
+    onclick="basculerAffichageDefausse()"
+>
+    ${modeAffichageDefausse === "historique"
+        ? "Compteurs"
+        : "Historique"}
+</button>
 `;
 
 if(defaussePouvoirs.length > 0){
@@ -631,7 +631,7 @@ if(defaussePouvoirs.length > 0){
         ${
             defaussePouvoirs.map(carte => `
                 <strong class="defausse-pouvoir-carte">
-                ${carte.valeur}
+                    ${carte.valeur}
                 </strong>
             `).join(
                 ' <span class="separateur-score">➜</span> '
