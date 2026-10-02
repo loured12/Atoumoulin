@@ -1,4 +1,3 @@
-```js
 import http from "node:http";
 import crypto from "node:crypto";
 import { WebSocketServer } from "ws";
@@ -1060,18 +1059,3 @@ httpServer.listen(
   `Atoumoulin server listening on ${PORT}`
  )
 );
-```
-
-Le changement important autour de l'erreur est donc bien :
-
-```js
-let state = room.engine.stateFor(player.index);
-```
-
-puis :
-
-```js
-state = room.engine.stateFor(player.index);
-```
-
-et `cibleIndex` est maintenant accessible dans tout le bloc où il est utilisé.
