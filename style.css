@@ -1022,10 +1022,15 @@ label {
 }
 
 .bouton-affichage-defausse {
-  margin-left: 8px;
-  padding: 4px 9px;
-  font-size: 13px;
-  font-weight: bold;
+    margin: 4px 0 6px 0;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: bold;
+
+    background: #f5d76e;
+    color: #245331;
+    border: 2px solid #ff4a4a;
+    border-radius: 0;
 }
 
 .ligne-compteurs {
