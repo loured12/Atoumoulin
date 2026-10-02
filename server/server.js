@@ -1,3 +1,4 @@
+```js
 import http from "node:http";
 import crypto from "node:crypto";
 import { WebSocketServer } from "ws";
@@ -261,19 +262,19 @@ wss.on("connection",ws=>{
   // ---------------------------------------------------------
 
   const existing=wanted.players.find(
-  p =>
-    m.playerId &&
-    m.token &&
-    p.id===m.playerId &&
-    p.token===m.token
+    p =>
+      m.playerId &&
+      m.token &&
+      p.id===m.playerId &&
+      p.token===m.token
 );
 
   const existingSpectator=wanted.spectators.find(
-  p =>
-    m.playerId &&
-    m.token &&
-    p.id===m.playerId &&
-    p.token===m.token
+    p =>
+      m.playerId &&
+      m.token &&
+      p.id===m.playerId &&
+      p.token===m.token
 );
 
   if(existing){
@@ -394,6 +395,7 @@ wss.on("connection",ws=>{
       id:id(),
       token:id(),
       name:nomUnique(room, name(m.name)),
+      bot:false,
       connected:true,
       ws
     };
@@ -831,9 +833,11 @@ const actionsAvecCible = new Set([
   "choisirAdversaireDouble19"
 ]);
 
+let cibleIndex = null;
+
 if(actionsAvecCible.has(fn)){
 
-  const cibleIndex = Number(args[0]);
+  cibleIndex = Number(args[0]);
 
   // L'index doit être un entier correspondant à un joueur existant
   if(
@@ -856,7 +860,7 @@ if(actionsAvecCible.has(fn)){
 
 }
 
-const state = room.engine.stateFor(player.index);
+let state = room.engine.stateFor(player.index);
 
 const actionsCibles = {
   choisirAdversaireVol1: {
@@ -961,7 +965,7 @@ room.engine.apply(fn,args);
 
 player.selection=null;
 
-let state = room.engine.stateFor(player.index);
+state = room.engine.stateFor(player.index);
 
 // Manche terminée
 if(state.roundEnded){
@@ -1056,3 +1060,18 @@ httpServer.listen(
   `Atoumoulin server listening on ${PORT}`
  )
 );
+```
+
+Le changement important autour de l'erreur est donc bien :
+
+```js
+let state = room.engine.stateFor(player.index);
+```
+
+puis :
+
+```js
+state = room.engine.stateFor(player.index);
+```
+
+et `cibleIndex` est maintenant accessible dans tout le bloc où il est utilisé.
