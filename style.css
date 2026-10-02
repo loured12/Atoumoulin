@@ -1038,7 +1038,7 @@ label {
 }
 
 .compteur-defausse {
-    color: #d7b72f;
+    color: #d7b72f !important;
 }
 
 /* =========================
