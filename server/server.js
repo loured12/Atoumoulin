@@ -1228,6 +1228,8 @@ if(m.type==="game:action"){
  sendState(room);
  return;
 
+ }
+
  }catch(e){
 
   console.error(e.stack || e);
