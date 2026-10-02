@@ -815,6 +815,148 @@ room.engine.setPlayerIndex(
     player.index
 );
 
+// Validation des actions qui utilisent un index de joueur comme cible
+const actionsAvecCible = new Set([
+  "choisirAdversaireVol1",
+  "choisirAdversaireCarte3",
+  "choisirAdversaireCarte9",
+  "choisirAdversaireCarte13",
+  "choisirAdversaireCarte17",
+  "choisirAdversaireCarte19",
+  "choisirAdversaireDouble1",
+  "choisirAdversaireDouble3",
+  "choisirAdversaireDouble9",
+  "choisirAdversaireDouble13",
+  "choisirAdversaireDouble17",
+  "choisirAdversaireDouble19"
+]);
+
+if(actionsAvecCible.has(fn)){
+
+  const cibleIndex = Number(args[0]);
+
+  // L'index doit être un entier correspondant à un joueur existant
+  if(
+    !Number.isInteger(cibleIndex) ||
+    cibleIndex < 0 ||
+    cibleIndex >= room.players.length
+  ){
+    throw Error("Cible invalide.");
+  }
+
+  // Impossible de se cibler soi-même
+  if(cibleIndex === player.index){
+    throw Error("Vous ne pouvez pas vous cibler vous-même.");
+  }
+
+  // La cible doit être un vrai joueur
+  if(!room.players[cibleIndex]){
+    throw Error("Cible invalide.");
+  }
+
+}
+
+const state = room.engine.stateFor(player.index);
+
+const actionsCibles = {
+  choisirAdversaireVol1: {
+    actions: ["vol1"],
+    besoin: "points"
+  },
+
+  choisirAdversaireCarte3: {
+    actions: ["carte3"],
+    besoin: "aucun"
+  },
+
+  choisirAdversaireCarte9: {
+    actions: ["carte9"],
+    besoin: "aucun"
+  },
+
+  choisirAdversaireCarte13: {
+    actions: ["carte13"],
+    besoin: "points"
+  },
+
+  choisirAdversaireCarte17: {
+    actions: ["carte17"],
+    besoin: "main"
+  },
+
+  choisirAdversaireCarte19: {
+    actions: ["carte19"],
+    besoin: "points"
+  },
+
+  choisirAdversaireDouble1: {
+    actions: ["double1"],
+    besoin: "points"
+  },
+
+  choisirAdversaireDouble3: {
+    actions: ["double3"],
+    besoin: "aucun"
+  },
+
+  choisirAdversaireDouble9: {
+    actions: ["double9"],
+    besoin: "aucun"
+  },
+
+  choisirAdversaireDouble13: {
+    actions: ["double13"],
+    besoin: "points"
+  },
+
+  choisirAdversaireDouble17: {
+    actions: ["double17"],
+    besoin: "main"
+  },
+
+  choisirAdversaireDouble19: {
+    actions: ["double19"],
+    besoin: "points"
+  }
+};
+
+const regleCible = actionsCibles[fn];
+
+if(regleCible){
+
+  // Le pouvoir demandé doit réellement être celui en cours
+  if(!regleCible.actions.includes(state.action)){
+    throw Error("Cette cible n'est pas autorisée à ce moment.");
+  }
+
+  const cibleState = state.players[cibleIndex];
+
+  if(!cibleState){
+    throw Error("Cible invalide.");
+  }
+
+  if(regleCible.besoin === "points"){
+
+    const cartesPoints = state.table.filter(carte =>
+      carte &&
+      carte.proprietaire === cibleState.name &&
+      typeof carte.valeur === "number" &&
+      carte.valeur !== 0
+    );
+
+    if(cartesPoints.length === 0){
+      throw Error("Cette cible ne possède aucune carte à points.");
+    }
+  }
+
+  if(regleCible.besoin === "main"){
+
+    if(cibleState.cardCount <= 0){
+      throw Error("Cette cible n'a aucune carte en main.");
+    }
+  }
+}
+
 room.engine.apply(fn,args);
 
 player.selection=null;
