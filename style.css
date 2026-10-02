@@ -1033,8 +1033,12 @@ label {
     line-height: 1.4;
 }
 
-.compteur-defausse {
+.nom-pouvoir-defausse {
     color: white;
+}
+
+.compteur-defausse {
+    color: #fff06a;
 }
 
 /* =========================
