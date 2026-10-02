@@ -3718,16 +3718,19 @@ function terminerCarte13SansCible(){
     historique +=
         `${joueur.nom} ne trouve aucune carte à voler avec le 13<br>`;
 
-    piocherCarte(joueur);
-
-    actionEnCours = null;
-    cibleChoisie = null;
-    carteChoisie = null;
-
     if(double17EnCours){
+        actionEnCours = null;
+        cibleChoisie = null;
+        carteChoisie = null;
         reprendreDouble17();
         return;
     }
+
+    piocherCarte(joueur);
+    
+    actionEnCours = null;
+    cibleChoisie = null;
+    carteChoisie = null;
 
     if(!gererFinTourMultijoueur()){
         passerJoueur();
@@ -5983,6 +5986,16 @@ function terminer17SansCarte(){
     historique +=
     `${joueur.nom} ne peut plus voler de carte avec le 17<br>`;
 
+    if(double17EnCours){
+        carte17EnAttente = null;
+        joueur17 = null;
+        actionEnCours = null;
+        carteChoisie = null;
+        cibleChoisie = null;
+        reprendreDouble17();
+        return;
+    }
+    
     piocherCarte(joueur);
 
     // Vérifier si la manche est terminée avant de changer de joueur
@@ -5995,15 +6008,6 @@ function terminer17SansCarte(){
     joueur17 = null;
     actionEnCours = null;
     carteChoisie = null;
-
-    // Si ce 17 faisait partie d'un double 17, on revient jouer la carte restante.
-
-    if(double17EnCours){
-
-        reprendreDouble17();
-
-        return;
-    }
 
     // 17 normal : tour suivant
 
