@@ -2,6 +2,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { WebSocketServer } from "ws";
 import { AtoumoulinEngine } from "./engine.js";
+import { validateAction } from "./action-schema.js";
 
 const PORT=Number(process.env.PORT||3000);
 const rooms=new Map();
@@ -651,6 +652,15 @@ if(m.type==="game:action"){
   throw Error("Vous êtes spectateur.");
 
  const fn=String(m.fn||"");
+
+ const validation = validateAction({
+    action: fn,
+    args: Array.isArray(m.args) ? m.args : []
+ });
+
+ if(!validation.ok){
+    throw new Error(validation.error);
+ }
 
  let args=
   Array.isArray(m.args)
