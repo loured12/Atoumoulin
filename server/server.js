@@ -473,7 +473,7 @@ wss.on("connection",ws=>{
     room.players.push({
       id:id(),
       token:id(),
-      name:`Bot ${i+1}`,
+      name:nomUnique(room, `Bot ${i+1}`),
       bot:true,
       connected:true,
       ws:null,
@@ -737,7 +737,7 @@ if(m.type==="game:action"){
    room.players.push({
     id:id(),
     token:id(),
-    name:`Bot ${i+1}`,
+    name:nomUnique(room, `Bot ${i+1}`),
     bot:true,
     connected:true,
     ws:null,
