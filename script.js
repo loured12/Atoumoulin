@@ -659,8 +659,64 @@ let monIndex = globalThis.__atoumoulinRemote &&
     ? globalThis.__atoumoulinPlayerIndex
     : joueurActuel;
 
-let joueur = joueurs[monIndex];
+let estSpectateur =
+    globalThis.__atoumoulinRemote &&
+    monIndex === -1;
+
+let joueur = estSpectateur
+    ? null
+    : joueurs[monIndex];
+
 let joueurTour = joueurs[joueurActuel];
+
+if(estSpectateur){
+
+    zoneJeu.innerHTML +=
+    `
+    <div class="tour-joueur">
+        ${couleursJoueurs[joueurActuel].rond}
+        Tour de ${joueurTour.nom}
+        ${couleursJoueurs[joueurActuel].rond}
+    </div>
+    `;
+
+    zoneJeu.innerHTML +=
+    `
+    <h3>Mode spectateur</h3>
+    <p>Vous regardez actuellement la partie.</p>
+    `;
+
+    if(joueurTour){
+
+        zoneJeu.innerHTML +=
+        `<h3>Cartes de ${joueurTour.nom} :</h3>`;
+
+        for(
+            let i = 0;
+            i < Number(
+                joueurTour.cardCount ||
+                joueurTour.main.length
+            );
+            i++
+        ){
+
+            zoneJeu.innerHTML +=
+            `
+            <img
+                src="cartes/dos.png"
+                class="carte-dos-adversaire"
+                alt="Dos de carte"
+            >
+            `;
+
+        }
+
+    }
+
+    // Le spectateur ne doit exécuter aucune logique automatique de joueur.
+
+    return;
+}
 
 // Vérifier si ce joueur doit passer un tour à cause du double Joker
 
