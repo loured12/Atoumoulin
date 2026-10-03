@@ -1089,6 +1089,14 @@ label {
     margin-right: auto;
 }
 
+.valeur-carte-table {
+    color: #ff4a4a;
+}
+
+.compteur-carte-table {
+    color: #d7b72f;
+}
+
 /* =========================
    MOBILE
    ========================= */
