@@ -634,29 +634,47 @@ if(modeAffichagePointsMarques === "joueurs"){
         cartesRegroupees[carte.valeur]++;
     });
 
-    let affichageCartes = Object.entries(cartesRegroupees)
+    let cartesAffichees = Object.entries(cartesRegroupees)
         .sort((a,b) => Number(b[0]) - Number(a[0]))
         .map(([valeur, nombre]) =>
             nombre > 1
                 ? `
-                  <strong class="points-score">
-                      <span class="valeur-carte-table">${valeur}</span><span class="compteur-carte-table">(${nombre})</span>
-                  </strong>
-                  `
+                <strong class="points-score">
+                    <span class="valeur-carte-table">${valeur}</span><span class="compteur-carte-table">(${nombre})</span>
+                </strong>
+                `
                 : `
-                  <strong class="points-score">
-                      <span class="valeur-carte-table">${valeur}</span>
-                  </strong>
-                  `
-            )
-        .join(' <span class="separateur-score">/</span> ');
+                <strong class="points-score">
+                    <span class="valeur-carte-table">${valeur}</span>
+                </strong>
+                `
+        );
 
-    zoneJeu.innerHTML +=
-    `
-    <div class="cartes-marquees">
-        ${affichageCartes}
-    </div>
-    `;
+    let nombreCartes = cartesAffichees.length;
+    let nombreLignes = Math.ceil(nombreCartes / 8);
+    let tailleBase = Math.floor(nombreCartes / nombreLignes);
+    let reste = nombreCartes % nombreLignes;
+
+    let lignes = [];
+    let index = 0;
+
+    for(let i = 0; i < nombreLignes; i++){
+
+        let tailleLigne = tailleBase + (i < reste ? 1 : 0);
+
+        lignes.push(`
+            <div class="cartes-marquees">
+                ${cartesAffichees
+                    .slice(index, index + tailleLigne)
+                    .join(' <span class="separateur-score">/</span> ')
+                }
+            </div>
+        `);
+
+        index += tailleLigne;
+    }
+
+    zoneJeu.innerHTML += lignes.join('');
 
 }
 
