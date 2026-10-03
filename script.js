@@ -538,7 +538,7 @@ zoneJeu.innerHTML +=
         onclick="basculerAffichagePointsMarques()"
         title="Changer l'affichage"
     >
-        ⇄
+        <span class="fleche-points">⇄</span>
     </button>
 </div>
 `;
@@ -623,7 +623,7 @@ zoneJeu.innerHTML +=
         onclick="basculerAffichageDefausse()"
         title="Changer l'affichage"
     >
-        ⇄
+        <span class="fleche-defausse">⇄</span>
     </button>
 </div>
 `;
