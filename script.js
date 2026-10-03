@@ -638,9 +638,17 @@ if(modeAffichagePointsMarques === "joueurs"){
         .sort((a,b) => Number(b[0]) - Number(a[0]))
         .map(([valeur, nombre]) =>
             nombre > 1
-                ? `<strong class="points-score">${valeur}(${nombre})</strong>`
-                : `<strong class="points-score">${valeur}</strong>`
-        )
+                ? `
+                  <strong class="points-score">
+                      <span class="valeur-carte-table">${valeur}</span><span class="compteur-carte-table">(${nombre})</span>
+                  </strong>
+                  `
+                : `
+                  <strong class="points-score">
+                      <span class="valeur-carte-table">${valeur}</span>
+                  </strong>
+                  `
+            )
         .join(' <span class="separateur-score">/</span> ');
 
     zoneJeu.innerHTML +=
