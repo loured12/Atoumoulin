@@ -865,8 +865,6 @@ if(estSpectateur){
 
     }
 
-    // Le spectateur ne doit exécuter aucune logique automatique de joueur.
-
     return;
 }
 
@@ -885,7 +883,8 @@ if(!globalThis.__atoumoulinRemote &&
     return;
 }
 
-if(joueur.bot && !globalThis.__atoumoulinRemote){
+// Le bot joue automatiquement en local
+if(joueurTour.bot && !globalThis.__atoumoulinRemote){
 
     if(!botActionEnAttente){
 
@@ -911,30 +910,24 @@ if(joueur.bot && !globalThis.__atoumoulinRemote){
 
 }
 
+// Gestion d'un joueur sans cartes
 if(!globalThis.__atoumoulinRemote &&
    joueurTour.main.length === 0 &&
    actionEnCours === null){
 
     let joueursAvecCartes = joueurs.filter(j => j.main.length > 0);
 
-    // PLUS PERSONNE N'A DE CARTE
+    if(joueursAvecCartes.length === 0){
 
-   if(joueursAvecCartes.length === 0){
+        historique +=
+        `🏁 Plus aucun joueur n'a de carte. Fin de la manche.<br>`;
 
-    historique +=
-    `🏁 Plus aucun joueur n'a de carte. Fin de la manche.<br>`;
+        verifierFinPartie();
 
-    verifierFinPartie();
-
-    return;
-}
-
-    // CE JOUEUR N'A PLUS DE CARTE
+        return;
+    }
 
     historique += `${joueurTour.nom} n'a plus de cartes et passe son tour.<br>`;
-
-    // Chercher le prochain joueur possédant
-    // encore au moins une carte
 
     let prochainJoueur = joueurActuel;
 
@@ -967,79 +960,113 @@ zoneJeu.innerHTML +=
 </div>
 `;
 
-// Cartes de l'adversaire si ce n'est pas mon tour
-
-if(monIndex !== joueurActuel && !joueurTour.bot){
-
-    zoneJeu.innerHTML +=
-    `<h3>Cartes de ${joueurTour.nom} :</h3>`;
-
-    for(let i = 0; i < Number(joueurTour.cardCount || joueurTour.main.length); i++){
-        zoneJeu.innerHTML +=
-        `
-        <img src="cartes/dos.png" class="carte-dos-adversaire" alt="Dos de carte">
-        `;
-    }
-}
-
-// Ma propre main
+// =====================================================
+// AFFICHAGE DES CARTES DU JOUEUR ACTUEL
+// =====================================================
+//
+// Local :
+//   - humain => face des cartes
+//   - bot   => dos des cartes
+//
+// Distant :
+//   - on conserve l'ancien comportement :
+//     si ce n'est pas notre tour, on voit le dos.
+// =====================================================
 
 zoneJeu.innerHTML +=
-"<h3>Votre main :</h3>";
+`<h3>Cartes de ${joueurTour.nom} :</h3>`;
 
-let maMain = joueurs[monIndex];
+// BOT : toujours cacher ses cartes
+if(joueurTour.bot){
 
-if(!maMain){
-    return;
+    for(
+        let i = 0;
+        i < Number(
+            joueurTour.cardCount ||
+            joueurTour.main.length
+        );
+        i++
+    ){
+
+        zoneJeu.innerHTML +=
+        `
+        <img
+            src="cartes/dos.png"
+            class="carte-dos-adversaire"
+            alt="Dos de carte"
+        >
+        `;
+
+    }
+
 }
+// HUMAIN : afficher les cartes face visible
+else{
 
-let aUn7 = maMain.main.includes(7);
-let doubles = trouverDoubles(maMain.main);
-let doublesAffichables = cartesDoublesAffichables(maMain.main);
+    let mainJoueur = joueurTour.main;
 
-maMain.main.forEach((carte,index)=>{
+    let aUn7 = mainJoueur.includes(7);
+    let doubles = trouverDoubles(mainJoueur);
+    let doublesAffichables = cartesDoublesAffichables(mainJoueur);
 
-    if(aUn7 && carte !== 7){
-        return;
-    }
+    mainJoueur.forEach((carte,index)=>{
 
-    if(!aUn7 &&
-       doubles.length > 0 &&
-       !doublesAffichables.includes(carte)){
-        return;
-    }
+        if(aUn7 && carte !== 7){
+            return;
+        }
 
-    let nombreDejaAffichees = maMain.main
-        .slice(0,index)
-        .filter(c => c === carte)
-        .length;
+        if(!aUn7 &&
+           doubles.length > 0 &&
+           !doublesAffichables.includes(carte)){
+            return;
+        }
 
-    if(nombreDejaAffichees >= 2){
-        return;
-    }
+        let nombreDejaAffichees = mainJoueur
+            .slice(0,index)
+            .filter(c => c === carte)
+            .length;
 
-    let selectionnable = monIndex === joueurActuel;
+        if(nombreDejaAffichees >= 2){
+            return;
+        }
 
-    zoneJeu.innerHTML +=
-    `
-    <button
-        class="carte ${
-            selectionnable &&
-            (
-                Array.isArray(carteChoisie)
-                    ? carteChoisie.includes(index)
-                    : carteChoisie === index
-            ) &&
-            actionEnCours === null
-                ? "selectionnee"
-                : ""
-        }"
-        ${selectionnable ? `onclick="selectionnerCarte(${index})"` : ""}
-    >
-    <img src="cartes/${carte === "Joker" ? "joker" : String(carte).padStart(2, "0")}.png" class="image-carte" alt="Carte">
-    </button>
-    `;
-});
+        let selectionnable =
+            !joueurTour.bot &&
+            joueurActuel === monIndex;
+
+        zoneJeu.innerHTML +=
+        `
+        <button
+            class="carte ${
+                selectionnable &&
+                (
+                    Array.isArray(carteChoisie)
+                        ? carteChoisie.includes(index)
+                        : carteChoisie === index
+                ) &&
+                actionEnCours === null
+                    ? "selectionnee"
+                    : ""
+            }"
+            ${selectionnable
+                ? `onclick="selectionnerCarte(${index})"`
+                : ""}
+        >
+            <img
+                src="cartes/${
+                    carte === "Joker"
+                        ? "joker"
+                        : String(carte).padStart(2, "0")
+                }.png"
+                class="image-carte"
+                alt="Carte"
+            >
+        </button>
+        `;
+
+    });
+
+}
 
 if(monIndex === joueurActuel &&
    carteChoisie !== null &&
