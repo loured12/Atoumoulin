@@ -1,11 +1,12 @@
 {
-  "total_functions": 96,
+  "total_functions": 97,
   "game_related_functions": [
     "mettreAJourNombreBots",
     "couleurJoueur",
     "lancerNouvellePartie",
     "melangerPaquet",
     "basculerAffichageDefausse",
+    "basculerAffichagePointsMarques",
     "afficherJeu",
     "selectionnerCarte",
     "jouerCarte",
