@@ -969,7 +969,7 @@ zoneJeu.innerHTML +=
 
 // Cartes de l'adversaire si ce n'est pas mon tour
 
-if(monIndex !== joueurActuel){
+if(monIndex !== joueurActuel && !joueurTour.bot){
 
     zoneJeu.innerHTML +=
     `<h3>Cartes de ${joueurTour.nom} :</h3>`;
