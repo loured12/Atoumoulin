@@ -202,31 +202,72 @@ function runBots(r){
 
  if(!r.engine)return;
 
- for(let i=0;i<32;i++){
-
-  const idx=r.engine.currentIndex();
-  const p=r.players[idx];
-
-  if(!p||!p.bot)break;
-
-  const before=JSON.stringify(r.engine.stateFor(idx));
-
-  r.engine.runBotTurn(idx);
-
-  const after=JSON.stringify(r.engine.stateFor(idx));
-
-  if(before===after)break;
+ if(r.__botTimer){
+   return;
  }
 
-  const state=r.engine.stateFor(
-    r.engine.currentIndex()
-  );
+ function jouerBot(){
 
-  if(state.roundEnded || state.winner){
-    transfererHoteSiNecessaire(r);
-  }
+   r.__botTimer=null;
 
-  sendState(r);
+   if(!r.engine)return;
+
+   const idx=r.engine.currentIndex();
+   const p=r.players[idx];
+
+   if(!p||!p.bot){
+     sendState(r);
+     return;
+   }
+
+   const before=
+     JSON.stringify(r.engine.stateFor(idx));
+
+   r.engine.runBotTurn(idx);
+
+   const after=
+     JSON.stringify(r.engine.stateFor(idx));
+
+   const state=
+     r.engine.stateFor(
+       r.engine.currentIndex()
+     );
+
+   if(state.roundEnded || state.winner){
+
+     transfererHoteSiNecessaire(r);
+     sendState(r);
+     return;
+   }
+
+   sendState(r);
+
+   if(before===after){
+     return;
+   }
+
+   const prochainIndex=
+     r.engine.currentIndex();
+
+   const prochainJoueur=
+     r.players[prochainIndex];
+
+   if(prochainJoueur && prochainJoueur.bot){
+
+     r.__botTimer=setTimeout(
+       jouerBot,
+       1000
+     );
+
+   }
+
+ }
+
+ r.__botTimer=setTimeout(
+   jouerBot,
+   1000
+ );
+
 }
 
 const httpServer=http.createServer((req,res)=>{
