@@ -63,6 +63,7 @@ let gagnantPartie = null;
 let gagnantManche = null;
 let mancheTerminee = false;
 let niveauBots = "facile";
+let botActionEnAttente = false;
 let premierJoueur = 0;
 let modeAffichageDefausse = "historique";
 let modeAffichagePointsMarques = "joueurs";
