@@ -65,6 +65,7 @@ let mancheTerminee = false;
 let niveauBots = "facile";
 let premierJoueur = 0;
 let modeAffichageDefausse = "historique";
+let modeAffichagePointsMarques = "joueurs";
 
 globalThis.__atoumoulinSetBotLevel = function(level){
     const niveaux = ["facile", "normal", "difficile", "expert"];
@@ -241,6 +242,15 @@ function basculerAffichageDefausse(){
         modeAffichageDefausse === "historique"
             ? "compteurs"
             : "historique";
+
+    afficherJeu();
+}
+
+function basculerAffichagePointsMarques(){
+    modeAffichagePointsMarques =
+        modeAffichagePointsMarques === "joueurs"
+            ? "table"
+            : "joueurs";
 
     afficherJeu();
 }
