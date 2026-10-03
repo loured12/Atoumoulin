@@ -887,13 +887,25 @@ if(!globalThis.__atoumoulinRemote &&
 
 if(joueur.bot && !globalThis.__atoumoulinRemote){
 
-    if(actionEnCours === null){
+    if(!botActionEnAttente){
 
-        jouerTourBot();
+        botActionEnAttente = true;
 
-    }else{
+        setTimeout(() => {
 
-        gererActionBot();
+            botActionEnAttente = false;
+
+            if(actionEnCours === null){
+
+                jouerTourBot();
+
+            }else{
+
+                gererActionBot();
+
+            }
+
+        }, 1000);
 
     }
 
