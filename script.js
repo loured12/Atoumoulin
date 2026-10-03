@@ -909,7 +909,6 @@ if(joueur.bot && !globalThis.__atoumoulinRemote){
 
     }
 
-    return;
 }
 
 if(!globalThis.__atoumoulinRemote &&
