@@ -530,8 +530,16 @@ zoneJeu.innerHTML +=
 
 zoneJeu.innerHTML +=
 `
-<div class="titre-section">
+<div class="titre-section titre-points">
     🎴 Points marqués
+
+    <button
+        class="bouton-affichage-points"
+        onclick="basculerAffichagePointsMarques()"
+        title="Changer l'affichage"
+    >
+        ⇄
+    </button>
 </div>
 `;
 
