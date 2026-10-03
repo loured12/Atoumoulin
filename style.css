@@ -1080,10 +1080,13 @@ label {
 }
 
 .titre-points {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* =========================
