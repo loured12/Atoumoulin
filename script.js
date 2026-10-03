@@ -806,43 +806,47 @@ if(paquet.length === 0){
 
 }
 
-let monIndex = globalThis.__atoumoulinRemote
-    ? Number(globalThis.__atoumoulinPlayerIndex)
+let monIndex = globalThis.__atoumoulinRemote &&
+               Number.isInteger(globalThis.__atoumoulinPlayerIndex)
+    ? globalThis.__atoumoulinPlayerIndex
     : joueurActuel;
+
+let estSpectateur =
+    globalThis.__atoumoulinRemote &&
+    monIndex === -1;
+
+let joueur = estSpectateur
+    ? null
+    : joueurs[monIndex];
 
 let joueurTour = joueurs[joueurActuel];
 
-if(globalThis.__atoumoulinRemote){
-
-    if(
-        !Number.isInteger(monIndex) ||
-        !joueurs[monIndex]
-    ){
-        return;
-    }
-
-    let couleurTour = couleursJoueurs[joueurActuel];
+if(estSpectateur){
 
     zoneJeu.innerHTML +=
     `
     <div class="tour-joueur">
-        ${couleurTour.rond}
+        ${couleursJoueurs[joueurActuel].rond}
         Tour de ${joueurTour.nom}
-        ${couleurTour.rond}
+        ${couleursJoueurs[joueurActuel].rond}
     </div>
     `;
 
-    if(monIndex !== joueurActuel){
+    zoneJeu.innerHTML +=
+    `
+    <h3>Mode spectateur</h3>
+    <p>Vous regardez actuellement la partie.</p>
+    `;
+
+    if(joueurTour){
 
         zoneJeu.innerHTML +=
-        `
-        <h3>Cartes de ${joueurTour.nom} :</h3>
-        `;
+        `<h3>Cartes de ${joueurTour.nom} :</h3>`;
 
         for(
             let i = 0;
             i < Number(
-                joueurTour.cardCount ??
+                joueurTour.cardCount ||
                 joueurTour.main.length
             );
             i++
@@ -861,236 +865,181 @@ if(globalThis.__atoumoulinRemote){
 
     }
 
-    zoneJeu.innerHTML +=
-    `
-    <h3>Votre main :</h3>
-    `;
+    // Le spectateur ne doit exécuter aucune logique automatique de joueur.
 
-    let maMain = joueurs[monIndex];
+    return;
+}
 
-    if(!maMain){
-        return;
-    }
+// Vérifier si ce joueur doit passer un tour à cause du double Joker
 
-    let aUn7 = maMain.main.includes(7);
+if(!globalThis.__atoumoulinRemote &&
+   toursJoker[joueurActuel] > 0 &&
+   actionEnCours === null){
 
-    let doubles = trouverDoubles(maMain.main);
+    toursJoker[joueurActuel]--;
 
-    let doublesAffichables =
-        cartesDoublesAffichables(maMain.main);
+    passerJoueur();
 
+    afficherJeu();
 
-    maMain.main.forEach((carte,index)=>{
+    return;
+}
 
-        if(aUn7 && carte !== 7){
-            return;
-        }
+if(joueur.bot && !globalThis.__atoumoulinRemote){
 
-        if(
-            !aUn7 &&
-            doubles.length > 0 &&
-            !doublesAffichables.includes(carte)
-        ){
-            return;
-        }
+    if(!botActionEnAttente){
 
-        let nombreDejaAffichees =
-            maMain.main
-                .slice(0,index)
-                .filter(c => c === carte)
-                .length;
+        botActionEnAttente = true;
 
-        if(nombreDejaAffichees >= 2){
-            return;
-        }
+        setTimeout(() => {
 
-        let selectionnable =
-            monIndex === joueurActuel;
+            botActionEnAttente = false;
 
-        zoneJeu.innerHTML +=
-        `
-        <button
-            class="carte ${
-                selectionnable &&
-                (
-                    Array.isArray(carteChoisie)
-                        ? carteChoisie.includes(index)
-                        : carteChoisie === index
-                ) &&
-                actionEnCours === null
-                    ? "selectionnee"
-                    : ""
-            }"
-            ${
-                selectionnable
-                    ? `onclick="selectionnerCarte(${index})"`
-                    : ""
+            if(actionEnCours === null){
+
+                jouerTourBot();
+
+            }else{
+
+                gererActionBot();
+
             }
-        >
-            <img
-                src="cartes/${
-                    carte === "Joker"
-                        ? "joker"
-                        : String(carte).padStart(2,"0")
-                }.png"
-                class="image-carte"
-                alt="Carte"
-            >
-        </button>
-        `;
 
-    });
-
-    if(
-        monIndex === joueurActuel &&
-        carteChoisie !== null &&
-        actionEnCours === null
-    ){
-
-        zoneJeu.innerHTML +=
-        `
-        <br>
-        <button onclick="jouerCarte()">
-            Jouer
-        </button>
-        `;
+        }, 1000);
 
     }
 
 }
 
-else{
+if(!globalThis.__atoumoulinRemote &&
+   joueurTour.main.length === 0 &&
+   actionEnCours === null){
 
-    let couleurTour =
-        couleursJoueurs[joueurActuel];
+    let joueursAvecCartes = joueurs.filter(j => j.main.length > 0);
 
-    zoneJeu.innerHTML +=
-    `
-    <div class="tour-joueur">
-        ${couleurTour.rond}
-        Tour de ${joueurTour.nom}
-        ${couleurTour.rond}
-    </div>
-    `;
+    // PLUS PERSONNE N'A DE CARTE
 
-    zoneJeu.innerHTML +=
-    `
-    <h3>Cartes de ${joueurTour.nom} :</h3>
-    `;
+   if(joueursAvecCartes.length === 0){
 
-    if(joueurTour.bot){
+    historique +=
+    `🏁 Plus aucun joueur n'a de carte. Fin de la manche.<br>`;
 
-        for(
-            let i = 0;
-            i < Number(
-                joueurTour.cardCount ??
-                joueurTour.main.length
-            );
-            i++
-        ){
+    verifierFinPartie();
 
-            zoneJeu.innerHTML +=
-            `
-            <img
-                src="cartes/dos.png"
-                class="carte-dos-adversaire"
-                alt="Dos de carte"
-            >
-            `;
+    return;
+}
 
+    // CE JOUEUR N'A PLUS DE CARTE
+
+    historique += `${joueurTour.nom} n'a plus de cartes et passe son tour.<br>`;
+
+    // Chercher le prochain joueur possédant
+    // encore au moins une carte
+
+    let prochainJoueur = joueurActuel;
+
+    do {
+
+        prochainJoueur++;
+
+        if(prochainJoueur >= joueurs.length){
+            prochainJoueur = 0;
         }
 
+    } while(
+        joueurs[prochainJoueur].main.length === 0 &&
+        prochainJoueur !== joueurActuel
+    );
+
+    joueurActuel = prochainJoueur;
+
+    afficherJeu();
+
+    return;
+}
+
+let couleurTour = couleursJoueurs[joueurActuel];
+
+zoneJeu.innerHTML +=
+`
+<div class="tour-joueur">
+    ${couleurTour.rond} Tour de ${joueurTour.nom} ${couleurTour.rond}
+</div>
+`;
+
+// Cartes de l'adversaire si ce n'est pas mon tour
+
+if(monIndex !== joueurActuel){
+
+    zoneJeu.innerHTML +=
+    `<h3>Cartes de ${joueurTour.nom} :</h3>`;
+
+    for(let i = 0; i < Number(joueurTour.cardCount || joueurTour.main.length); i++){
+        zoneJeu.innerHTML +=
+        `
+        <img src="cartes/dos.png" class="carte-dos-adversaire" alt="Dos de carte">
+        `;
+    }
+}
+
+// Ma propre main
+
+zoneJeu.innerHTML +=
+"<h3>Votre main :</h3>";
+
+let maMain = joueurs[monIndex];
+
+if(!maMain){
+    return;
+}
+
+let aUn7 = maMain.main.includes(7);
+let doubles = trouverDoubles(maMain.main);
+let doublesAffichables = cartesDoublesAffichables(maMain.main);
+
+maMain.main.forEach((carte,index)=>{
+
+    if(aUn7 && carte !== 7){
+        return;
     }
 
-    else{
+    if(!aUn7 &&
+       doubles.length > 0 &&
+       !doublesAffichables.includes(carte)){
+        return;
+    }
 
-        let mainJoueur = joueurTour.main;
+    let nombreDejaAffichees = maMain.main
+        .slice(0,index)
+        .filter(c => c === carte)
+        .length;
 
-        let aUn7 =
-            mainJoueur.includes(7);
+    if(nombreDejaAffichees >= 2){
+        return;
+    }
 
-        let doubles =
-            trouverDoubles(mainJoueur);
+    let selectionnable = monIndex === joueurActuel;
 
-        let doublesAffichables =
-            cartesDoublesAffichables(mainJoueur);
-
-
-        mainJoueur.forEach((carte,index)=>{
-
-            if(aUn7 && carte !== 7){
-                return;
-            }
-
-            if(
-                !aUn7 &&
-                doubles.length > 0 &&
-                !doublesAffichables.includes(carte)
-            ){
-                return;
-            }
-
-            let nombreDejaAffichees =
-                mainJoueur
-                    .slice(0,index)
-                    .filter(c => c === carte)
-                    .length;
-
-            if(nombreDejaAffichees >= 2){
-                return;
-            }
-
-            let selectionnable = true;
-
-            zoneJeu.innerHTML +=
-            `
-            <button
-                class="carte ${
-                    selectionnable &&
-                    (
-                        Array.isArray(carteChoisie)
-                            ? carteChoisie.includes(index)
-                            : carteChoisie === index
-                    ) &&
-                    actionEnCours === null
-                        ? "selectionnee"
-                        : ""
-                }"
-                onclick="selectionnerCarte(${index})"
-            >
-                <img
-                    src="cartes/${
-                        carte === "Joker"
-                            ? "joker"
-                            : String(carte).padStart(2,"0")
-                    }.png"
-                    class="image-carte"
-                    alt="Carte"
-                >
-            </button>
-            `;
-
-        });
-
-
-        if(
-            carteChoisie !== null &&
+    zoneJeu.innerHTML +=
+    `
+    <button
+        class="carte ${
+            selectionnable &&
+            (
+                Array.isArray(carteChoisie)
+                    ? carteChoisie.includes(index)
+                    : carteChoisie === index
+            ) &&
             actionEnCours === null
-        ){
-
-            zoneJeu.innerHTML +=
-            `
-            <br>
-            <button onclick="jouerCarte()">
-                Jouer
-            </button>
-            `;
-
-        }
-
-    }
-
-}
+                ? "selectionnee"
+                : ""
+        }"
+        ${selectionnable ? `onclick="selectionnerCarte(${index})"` : ""}
+    >
+    <img src="cartes/${carte === "Joker" ? "joker" : String(carte).padStart(2, "0")}.png" class="image-carte" alt="Carte">
+    </button>
+    `;
+});
 
 if(monIndex === joueurActuel &&
    carteChoisie !== null &&
@@ -1104,12 +1053,9 @@ if(monIndex === joueurActuel &&
 }
 
 const afficherActions =
-    !joueurTour.bot &&
-    (
-        !globalThis.__atoumoulinRemote ||
-        Number(globalThis.__atoumoulinPlayerIndex) ===
-        Number(joueurActuel)
-    );
+    !globalThis.__atoumoulinRemote ||
+    Number(globalThis.__atoumoulinPlayerIndex) ===
+    Number(joueurActuel);
 
 if(afficherActions){
 
