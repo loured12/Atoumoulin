@@ -969,7 +969,10 @@ zoneJeu.innerHTML +=
 
 // Cartes de l'adversaire si ce n'est pas mon tour
 
-if(monIndex !== joueurActuel && !joueurTour.bot){
+if(
+    (!globalThis.__atoumoulinRemote && joueurTour.bot) ||
+    (globalThis.__atoumoulinRemote && monIndex !== joueurActuel)
+){
 
     zoneJeu.innerHTML +=
     `<h3>Cartes de ${joueurTour.nom} :</h3>`;
@@ -981,8 +984,10 @@ if(monIndex !== joueurActuel && !joueurTour.bot){
         `;
     }
 }
-
+    
 // Ma propre main
+
+if(globalThis.__atoumoulinRemote || !joueurTour.bot){
 
 zoneJeu.innerHTML +=
 "<h3>Votre main :</h3>";
@@ -992,7 +997,7 @@ let maMain = joueurs[monIndex];
 if(!maMain){
     return;
 }
-
+    
 let aUn7 = maMain.main.includes(7);
 let doubles = trouverDoubles(maMain.main);
 let doublesAffichables = cartesDoublesAffichables(maMain.main);
