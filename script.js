@@ -1053,9 +1053,12 @@ if(monIndex === joueurActuel &&
 }
 
 const afficherActions =
-    !globalThis.__atoumoulinRemote ||
-    Number(globalThis.__atoumoulinPlayerIndex) ===
-    Number(joueurActuel);
+    !joueurTour.bot &&
+    (
+        !globalThis.__atoumoulinRemote ||
+        Number(globalThis.__atoumoulinPlayerIndex) ===
+        Number(joueurActuel)
+    );
 
 if(afficherActions){
 
