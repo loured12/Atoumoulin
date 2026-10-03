@@ -553,71 +553,102 @@ zoneJeu.innerHTML +=
 </div>
 `;
 
-if(cartesTable.length > 0){
+if(modeAffichagePointsMarques === "joueurs"){
 
-    joueurs.forEach(joueur => {
+    if(cartesTable.length > 0){
 
-        let cartesJoueur = cartesTable.filter(carte =>
-            carte.proprietaire === joueur.nom
-        );
+        joueurs.forEach(joueur => {
 
-        let couleurJoueur =
-            couleursJoueurs[joueurs.indexOf(joueur)];
+            let cartesJoueur = cartesTable.filter(carte =>
+                carte.proprietaire === joueur.nom
+            );
 
-        zoneJeu.innerHTML +=
-        `
-        <div class="points-marques-joueur">
-            ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
-        </div>
-        `;
-
-        if(cartesJoueur.length > 0){
-
-        zoneJeu.innerHTML +=
-        `
-        <div class="cartes-marquees">
-
-        ${
-        cartesJoueur.map(carte => {
-
-        if(carte.historiqueCarte){
-
-            return `
-            <span class="historique-carte">
-                (${carte.historiqueCarte.join("/")})
-            </span>
-            <strong class="points-score">
-                ${carte.valeur}
-            </strong>
-            `;
-
-            }
-
-            return `
-            <strong class="points-score">
-            ${carte.valeur}
-            </strong>
-            `;
-
-            }).join(
-            ' <span class="separateur-score">➜</span> '
-            )
-
-            }
-
-            </div>
-            `;
-
-            }else{
+            let couleurJoueur =
+                couleursJoueurs[joueurs.indexOf(joueur)];
 
             zoneJeu.innerHTML +=
             `
-            <div class="cartes-marquees vide"></div>
+            <div class="points-marques-joueur">
+                ${couleurJoueur.rond} ${joueur.nom} ${couleurJoueur.rond}
+            </div>
             `;
 
-       }
+            if(cartesJoueur.length > 0){
 
-   });
+                zoneJeu.innerHTML +=
+                `
+                <div class="cartes-marquees">
+
+                ${
+                    cartesJoueur.map(carte => {
+
+                        if(carte.historiqueCarte){
+
+                            return `
+                            <span class="historique-carte">
+                                (${carte.historiqueCarte.join("/")})
+                            </span>
+                            <strong class="points-score">
+                                ${carte.valeur}
+                            </strong>
+                            `;
+
+                        }
+
+                        return `
+                        <strong class="points-score">
+                            ${carte.valeur}
+                        </strong>
+                        `;
+
+                    }).join(
+                        ' <span class="separateur-score">➜</span> '
+                    )
+                }
+
+                </div>
+                `;
+
+            }else{
+
+                zoneJeu.innerHTML +=
+                `
+                <div class="cartes-marquees vide"></div>
+                `;
+
+            }
+
+        });
+
+    }
+
+}else{
+
+    let cartesRegroupees = {};
+
+    cartesTable.forEach(carte => {
+        if(!cartesRegroupees[carte.valeur]){
+            cartesRegroupees[carte.valeur] = 0;
+        }
+
+        cartesRegroupees[carte.valeur]++;
+    });
+
+    let affichageCartes = Object.entries(cartesRegroupees)
+        .sort((a,b) => Number(b[0]) - Number(a[0]))
+        .map(([valeur, nombre]) =>
+            nombre > 1
+                ? `<strong class="points-score">${valeur}(${nombre})</strong>`
+                : `<strong class="points-score">${valeur}</strong>`
+        )
+        .join(' <span class="separateur-score">/</span> ');
+
+    zoneJeu.innerHTML +=
+    `
+    <div class="cartes-marquees">
+        ${affichageCartes}
+    </div>
+    `;
 
 }
 
