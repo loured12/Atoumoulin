@@ -1057,6 +1057,8 @@ if(monIndex === joueurActuel &&
 
 }
 
+}
+
 const afficherActions =
     !joueurTour.bot &&
     (
