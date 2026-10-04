@@ -476,7 +476,7 @@ zoneJeu.innerHTML +=
 <div class="scores-fixes">
 
     <div class="scores-titre">
-        🎯 ${scoreVictoire} points / SCORES
+        🎯 ${scoreVictoire} points / SCORES :
     </div>
 
     <div class="scores-joueurs">
