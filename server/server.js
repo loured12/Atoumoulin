@@ -726,6 +726,14 @@ if(m.type==="game:select"){
 
   player.selection=
    room.engine.stateFor(player.index).selection;
+
+  console.log(
+    "DEBUG SELECT",
+    player.name,
+    player.index,
+    player.selection
+  );
+  
  }
 
  sendState(room);
@@ -933,6 +941,13 @@ if(m.type==="game:action"){
   }
 
   const selection=player.selection;
+
+  console.log(
+  "DEBUG JOUER",
+  player.name,
+  player.index,
+  selection
+);
 
   if(selection===null || selection===undefined)
    throw Error("Aucune carte sélectionnée.");
