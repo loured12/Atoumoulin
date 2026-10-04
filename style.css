@@ -632,7 +632,7 @@ label {
 }
 
 .score-cible-points {
-  color: #ff4a4a;
+  color: #ff4a4a !important;
   font-weight: 900;
 }
 
