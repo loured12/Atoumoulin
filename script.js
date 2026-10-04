@@ -467,31 +467,16 @@ if(actionEnCours === "entreManches"){
 
 zoneJeu.innerHTML = "";
 
-// Score à atteindre
+// Scores
 
 let scoreVictoire = obtenirScoreVictoire();
-
-zoneJeu.innerHTML +=
-`
-<div class="score-cible">
-    <span class="score-cible-label">
-        🎯 Score à atteindre :
-    </span>
-
-    <span class="score-cible-points">
-        ${scoreVictoire} points
-    </span>
-</div>
-`;
-
-// Scores
 
 zoneJeu.innerHTML +=
 `
 <div class="scores-fixes">
 
     <div class="scores-titre">
-        SCORES
+        🎯 ${scoreVictoire} points / SCORES
     </div>
 
     <div class="scores-joueurs">
