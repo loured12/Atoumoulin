@@ -647,7 +647,7 @@ for(let bots = 0; bots <= nombreBots; bots++){
       👁️ Spectateurs (${spectateurs.length})
     </div>
     ${spectateurs.map(p =>
-      `<div>👁️ ${p.name}</div>`
+      `<div>♟️ <strong>${p.name}</strong></div>`
     ).join("")}
     `
     : "");
