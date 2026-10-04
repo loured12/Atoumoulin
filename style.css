@@ -631,6 +631,11 @@ label {
   font-weight: bold;
 }
 
+.score-cible-points {
+  color: #ff4a4a;
+  font-weight: 900;
+}
+
 .scores-fixes {
   position: sticky;
   top: 0;
