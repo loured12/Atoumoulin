@@ -737,7 +737,7 @@ zoneJeu.innerHTML +=
                         </strong>
                     `;
 
-                }).join(" / ")
+                }).join(' <span class="separateur-score">/</span> ')
             }
             </div>
 
@@ -755,7 +755,7 @@ zoneJeu.innerHTML +=
                         </strong>
                     `;
 
-                }).join(" / ")
+                }).join(' <span class="separateur-score">/</span> ')
             }
             </div>
         </div>
