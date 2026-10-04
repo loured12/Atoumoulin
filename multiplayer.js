@@ -934,7 +934,7 @@ for(let bots = 0; bots <= nombreBots; bots++){
 
     if (
       started &&
-      globalThis.__atoumoulinSpectateur
+      Number(globalThis.__atoumoulinPlayerIndex) === -1
     ){
       return status("👁️ Vous êtes spectateur.");
     }
