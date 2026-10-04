@@ -819,8 +819,7 @@ if(estSpectateur){
 
     zoneJeu.innerHTML +=
     `
-    <h3>Mode spectateur</h3>
-    <p>Vous regardez actuellement la partie.</p>
+    <h3>👁️ Mode spectateur 👁️</h3>
     `;
 
     if(joueurTour){
