@@ -631,33 +631,6 @@ label {
   font-weight: bold;
 }
 
-.score-cible {
-  display: inline-block;
-
-  margin: 12px auto 10px;
-  padding: 10px 22px;
-
-  border: 2px solid #d7b72f;
-  border-radius: 12px;
-
-  background: #183d22;
-
-  font-size: 1.15em;
-  font-weight: bold;
-
-  box-shadow: 0 0 8px rgba(215, 183, 47, 0.3);
-}
-
-.score-cible-label {
-  color: #ffe066;
-}
-
-.score-cible-points {
-  color: #ff4a4a;
-  font-size: 1.15em;
-  font-weight: 900;
-}
-
 .scores-fixes {
   position: sticky;
   top: 0;
@@ -667,7 +640,7 @@ label {
   max-width: 100%;
   box-sizing: border-box;
 
-  margin: 10px auto 12px;
+  margin: 8px auto 12px;
   padding: 7px;
 
   border: 2px solid #d7b72f;
