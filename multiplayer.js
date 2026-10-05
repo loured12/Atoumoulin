@@ -725,6 +725,14 @@ for(let bots = 0; bots <= nombreBots; bots++){
     }
 
     ws.onopen = () => {
+
+console.log("🟢 WS OPEN", {
+myId,
+sessionToken,
+roomCode: localStorage.getItem("atoumoulin_room_code"),
+pendingAction
+});
+      
       cacherMessageConnexion();
       status("Connecté au serveur");
 
@@ -732,11 +740,22 @@ for(let bots = 0; bots <= nombreBots; bots++){
       if (pendingAction) {
         const action = pendingAction;
         pendingAction = null;
+
+console.log("📤 ENVOI pendingAction", action);
+        
         send(action);
       }
     };
 
     ws.onclose = () => {
+
+console.log("🔴 WS CLOSE", {
+myId,
+sessionToken,
+roomCode: localStorage.getItem("atoumoulin_room_code"),
+spectator: globalThis.__atoumoulinSpectateur,
+playerIndex: globalThis.__atoumoulinPlayerIndex
+});
 
       started = false;
 
