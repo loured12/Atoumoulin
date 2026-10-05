@@ -117,6 +117,15 @@
 
   const send = m => {
 
+console.log("📤 WS SEND", {
+action: m,
+readyState: ws?.readyState,
+myId,
+roomCode: localStorage.getItem("atoumoulin_room_code"),
+spectator: globalThis.__atoumoulinSpectateur,
+playerIndex: globalThis.__atoumoulinPlayerIndex
+});
+    
   if (!ws || ws.readyState !== WebSocket.OPEN)
     return false;
 
