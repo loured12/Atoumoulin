@@ -779,6 +779,9 @@ playerIndex: globalThis.__atoumoulinPlayerIndex
     };
 
     ws.onmessage = e => {
+
+console.log("📥 WS MESSAGE", e.data);
+      
       let m;
 
       try {
