@@ -727,15 +727,19 @@ label {
     font-size: 0.78em;
   }
 
+}
+
+@media (max-width: 450px) {
+
   .configuration-jeu select {
-    font-size: 13px;
-    padding: 6px 7px;
-    margin: 2px;
+      font-size: 13px;
+      padding: 6px 7px;
+      margin: 2px;
   }
 
   .configuration-jeu label {
-    font-size: 14px;
-    margin-right: 3px;
+      font-size: 14px;
+      margin-right: 3px;
   }
 
 }
