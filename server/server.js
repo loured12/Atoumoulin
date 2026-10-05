@@ -88,6 +88,15 @@ function roomCreate(n,max){
  return [r,p];
 }
 
+function supprimerRoomSiVide(room) {
+    if (room.players.length === 0 && room.spectators.length === 0) {
+        rooms.delete(room.code);
+        return true;
+    }
+
+    return false;
+}
+
 function view(r){
  return {
   code:r.code,
@@ -1392,7 +1401,11 @@ if(fn==="effetJoker"){
         p=>p!==player
       );
 
-    lobby(room);
+   if (supprimerRoomSiVide(room)) {
+    return;
+   }
+
+   lobby(room);
 
     return;
   }
