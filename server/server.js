@@ -842,6 +842,8 @@ if(state.action==="double13choix"){
  sendState(room);
  return;
 
+}
+
 if(m.type==="game:action"){
 
  if(!room.started)
