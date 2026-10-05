@@ -527,11 +527,6 @@ label {
     0 3px 7px rgba(0, 0, 0, 0.35);
 }
 
-.info-joueur {
-  color: #d7b72f;
-  font-weight: bold;
-}
-
 .points-score {
   color: #ff4a4a;
   font-weight: bold;
@@ -934,16 +929,6 @@ label {
   border-radius: 7px;
 }
 
-.fin-victoires {
-  margin-top: 15px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(212, 175, 55, 0.45);
-}
-
-.fin-manche button {
-  margin-top: 12px;
-}
-
 .fin-manche button {
   display: block;
   margin: 20px auto 5px;
@@ -981,27 +966,6 @@ label {
     position: static !important;
     display: block;
     margin: 0;
-}
-
-.main-adversaire {
-  margin: 12px auto;
-  padding: 10px;
-  max-width: 700px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(212, 175, 55, 0.6);
-  border-radius: 10px;
-}
-
-.main-adversaire h3 {
-  margin: 4px 0 8px;
-  color: #ffe066;
-}
-
-.cartes-adversaire {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 5px;
 }
 
 .carte-dos-adversaire {
