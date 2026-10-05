@@ -727,6 +727,17 @@ label {
     font-size: 0.78em;
   }
 
+  .configuration-jeu select {
+    font-size: 13px;
+    padding: 6px 7px;
+    margin: 2px;
+  }
+
+  .configuration-jeu label {
+    font-size: 14px;
+    margin-right: 3px;
+  }
+
 }
 
 .cartes-marquees {
@@ -1108,17 +1119,6 @@ label {
     font-size: 15px;
     padding: 9px 15px;
   }
-
- .configuration-jeu select {
-    font-size: 13px;
-    padding: 6px 7px;
-    margin: 2px;
-}
-
- .configuration-jeu label {
-    font-size: 14px;
-    margin-right: 3px;
-}
 
   .contenu-regles {
     width: 95%;
