@@ -312,6 +312,7 @@ console.log("🟢 NOUVELLE CONNEXION WS",debugWsId);
 
  ws.on("message",raw=>{
 
+console.log("📥 WS",debugWsId,"MESSAGE",raw.toString());
 console.log("📥 WS SERVER MESSAGE", raw.toString());
   
  let m;
