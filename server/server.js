@@ -519,7 +519,7 @@ console.log("📥 WS SERVER MESSAGE", raw.toString());
 
  if(!room||!player)
 
-console.log("❌ ACTION SANS SESSION", {
+{ console.log("❌ ACTION SANS SESSION", {
 type:m.type,
 fn:m.fn,
 roomExiste:!!room,
@@ -537,6 +537,7 @@ message:m
 });
   
   throw Error("Rejoignez d'abord un salon.");
+}
 
  if(m.type==="chat:send"){
   const t=String(m.text||"").trim().slice(0,300);
