@@ -299,6 +299,9 @@ setInterval(()=>{
 
 wss.on("connection",ws=>{
 
+const debugWsId=id();
+console.log("🟢 NOUVELLE CONNEXION WS",debugWsId);
+
  ws.isAlive=true;
  ws.on("pong",()=>ws.isAlive=true);
 
@@ -514,6 +517,24 @@ console.log("📥 WS SERVER MESSAGE", raw.toString());
   }
 
  if(!room||!player)
+
+console.log("❌ ACTION SANS SESSION", {
+type:m.type,
+fn:m.fn,
+roomExiste:!!room,
+playerExiste:!!player,
+playerId:m.playerId,
+code:m.code
+});
+
+console.log("❌ WS SANS SESSION",{
+ws:debugWsId,
+roomExiste:!!room,
+playerExiste:!!player,
+playerId:player?.id,
+message:m
+});
+  
   throw Error("Rejoignez d'abord un salon.");
 
  if(m.type==="chat:send"){
