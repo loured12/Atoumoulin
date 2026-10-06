@@ -1046,13 +1046,6 @@ if(m.type==="game:action"){
 
   const selection=player.selection;
 
-  console.log(
-  "DEBUG JOUER",
-  player.name,
-  player.index,
-  selection
-);
-
   if(selection===null || selection===undefined)
    throw Error("Aucune carte sélectionnée.");
 
