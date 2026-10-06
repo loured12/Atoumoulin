@@ -490,7 +490,7 @@ console.log("📥 WS SERVER MESSAGE", raw.toString());
 
   }else{
 
-    const spectator={
+    player={
       id:id(),
       token:id(),
       name:nomUnique(room, name(m.name)),
@@ -499,7 +499,7 @@ console.log("📥 WS SERVER MESSAGE", raw.toString());
       ws
     };
 
-    room.spectators.push(spectator);
+    room.spectators.push(player);
 
     send(ws,{
       type:"room:joined",
