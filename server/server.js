@@ -503,8 +503,8 @@ console.log("📥 WS SERVER MESSAGE", raw.toString());
 
     send(ws,{
       type:"room:joined",
-      playerId:spectator.id,
-      token:spectator.token,
+      playerId:player.id,
+      token:player.token,
       spectator:true,
       room:view(room)
     });
