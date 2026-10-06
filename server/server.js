@@ -309,6 +309,8 @@ wss.on("connection",ws=>{
 
  ws.on("message",raw=>{
 
+console.log("📥 WS SERVER MESSAGE", raw.toString());
+  
  let m;
 
  try{
