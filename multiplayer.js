@@ -116,15 +116,6 @@
   }
 
   const send = m => {
-
-console.log("📤 WS SEND", {
-action: m,
-readyState: ws?.readyState,
-myId,
-roomCode: localStorage.getItem("atoumoulin_room_code"),
-spectator: globalThis.__atoumoulinSpectateur,
-playerIndex: globalThis.__atoumoulinPlayerIndex
-});
     
   if (!ws || ws.readyState !== WebSocket.OPEN)
     return false;
@@ -734,13 +725,6 @@ for(let bots = 0; bots <= nombreBots; bots++){
     }
 
     ws.onopen = () => {
-
-console.log("🟢 WS OPEN", {
-myId,
-sessionToken,
-roomCode: localStorage.getItem("atoumoulin_room_code"),
-pendingAction
-});
       
       cacherMessageConnexion();
       status("Connecté au serveur");
@@ -749,22 +733,12 @@ pendingAction
       if (pendingAction) {
         const action = pendingAction;
         pendingAction = null;
-
-console.log("📤 ENVOI pendingAction", action);
         
         send(action);
       }
     };
 
     ws.onclose = () => {
-
-console.log("🔴 WS CLOSE", {
-myId,
-sessionToken,
-roomCode: localStorage.getItem("atoumoulin_room_code"),
-spectator: globalThis.__atoumoulinSpectateur,
-playerIndex: globalThis.__atoumoulinPlayerIndex
-});
 
       started = false;
 
@@ -779,8 +753,6 @@ playerIndex: globalThis.__atoumoulinPlayerIndex
     };
 
     ws.onmessage = e => {
-
-console.log("📥 WS MESSAGE", e.data);
       
       let m;
 
