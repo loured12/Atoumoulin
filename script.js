@@ -3537,7 +3537,12 @@ function botChoisirCibleStrategique(mode){
         else if(mode==='double9')score=botQualiteMain(i)*2+(joueurs[i].main.length-joueurs[joueurActuel].main.length)*5+botDangerStrategique(joueurs[i].score)*0.15;
         else if(mode==='double13'){
             const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
-            for(let a=0;a<vals.length;a++)for(let b=a+1;b<vals.length;b++)score=Math.max(score,botValeurCible(i,vals[a]+vals[b]));
+            if(vals.length === 1){score = botValeurCible(i, vals[0]);
+          }else{
+            for(let a=0;a<vals.length;a++){
+            for(let b=a+1;b<vals.length;b++){score = Math.max(score,botValeurCible(i, vals[a] + vals[b]));}
+            }
+          }
         }
         else if(mode==='double17')score=botExpectedStolenValue(i)+botProximiteStrategique(joueurs[i].score)*0.8;
         else if(mode==='double19')score=botEval19Target(i,true);
@@ -3581,6 +3586,10 @@ function botChoisirCartesScore(cibleNom,nombre){
     if(nombre===1){
         const options=disponibles.map(x=>({value:[x.i],score:botValeurCible(cible,x.c.valeur)}));
         return botChoisirOption(options)?.value || [];
+    }
+
+    if(nombre===2 && disponibles.length===1){
+        return [disponibles[0].i];
     }
 
     if(nombre===2){
