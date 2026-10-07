@@ -3280,9 +3280,11 @@ function botEvalDouble(valeur){
         let best=-Infinity;
         botAdversaires().forEach(i=>{
             const vals=botCartesScore(joueurs[i].nom).map(c=>c.valeur);
+            if(vals.length === 1){best=Math.max(best,botValeurCible(i,vals[0]));
+        }else{
             for(let a=0;a<vals.length;a++){
-                for(let b=a+1;b<vals.length;b++)best=Math.max(best,botValeurCible(i,vals[a]+vals[b]));
-            }
+                for(let b=a+1;b<vals.length;b++){best=Math.max(best,botValeurCible(i,vals[a]+vals[b]));}}
+              }
         });
         return isFinite(best)?best:0;
     }
