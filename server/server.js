@@ -1547,6 +1547,10 @@ if(fn==="volerCartesDouble13"){
     (p,i)=>p.index=i
    );
 
+   if (supprimerRoomSiVide(room)) {
+    return;
+   }
+
    lobby(room);
 
   }
