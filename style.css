@@ -1146,3 +1146,172 @@ label {
     opacity: 0.8;
     font-weight: normal;
 }
+
+/* =========================================================
+   RESPONSIVE GLOBAL — adaptation à la largeur disponible
+   Cette couche surcharge les anciennes tailles fixes sans
+   modifier les règles du jeu ni les styles graphiques.
+   ========================================================= */
+
+:root {
+  --ui-gap: clamp(4px, 1.2vw, 10px);
+  --ui-padding: clamp(8px, 2vw, 15px);
+  --ui-text: clamp(14px, 3.8vw, 16px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  padding: var(--ui-padding);
+  font-size: var(--ui-text);
+}
+
+h1 {
+  font-size: clamp(26px, 7.4vw, 46px);
+  letter-spacing: clamp(1px, 0.8vw, 4px);
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  font-size: clamp(20px, 5.2vw, 30px);
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  font-size: clamp(17px, 4.4vw, 24px);
+  overflow-wrap: anywhere;
+}
+
+button:not(.carte):not(.contenu-regles button):not(.fin-manche button):not(.bouton-affichage-defausse):not(.bouton-affichage-points) {
+  max-width: 100%;
+  padding: clamp(7px, 2.3vw, 11px) clamp(10px, 3.5vw, 19px);
+  font-size: clamp(14px, 4vw, 16px);
+  overflow-wrap: anywhere;
+}
+
+.carte {
+  width: clamp(54px, 16vw, 78px);
+  height: clamp(80px, 23.6vw, 115px);
+  margin: clamp(2px, 0.8vw, 4px);
+  font-size: clamp(23px, 6.9vw, 31px);
+  line-height: clamp(70px, 23.6vw, 100px);
+}
+
+.selectionnee {
+  transform: translateY(clamp(-13px, -2.3vw, -9px)) scale(1.05);
+}
+
+.carte-dos-adversaire {
+  width: clamp(38px, 12.3vw, 48px);
+  height: clamp(56px, 17.9vw, 70px);
+}
+
+.carte-dos-pioche {
+  max-width: min(38px, 10vw);
+}
+
+.historique-jeu,
+.fin-partie,
+.fin-manche,
+.fin-scores,
+.contenu-regles,
+#multiBox {
+  width: min(100%, 700px);
+  min-width: 0;
+}
+
+.scores-fixes {
+  width: fit-content;
+  max-width: 100%;
+  padding: clamp(5px, 1.6vw, 7px);
+}
+
+.scores-joueurs {
+  gap: clamp(3px, 1vw, 5px);
+}
+
+.score-joueur {
+  max-width: 100%;
+  gap: clamp(2px, 0.8vw, 5px);
+  font-size: clamp(11px, 2.8vw, 14px);
+}
+
+.score-joueur-nom {
+  max-width: clamp(48px, 18vw, 120px);
+}
+
+.titre-jeu {
+  max-width: 100%;
+  font-size: clamp(25px, 7vw, 40px);
+  letter-spacing: clamp(1px, 0.7vw, 3px);
+  overflow-wrap: anywhere;
+}
+
+.contenu-regles {
+  padding: clamp(12px, 4vw, 25px);
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+
+.fin-partie,
+.fin-manche {
+  padding: clamp(12px, 4vw, 20px);
+}
+
+#fenetreConfirmationNouvellePartie .contenu-regles > div:last-child {
+  flex-wrap: wrap;
+  gap: clamp(12px, 5vw, 60px);
+}
+
+.mp-action-row {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+#mpName,
+#mpCode {
+  width: min(150px, 42vw);
+  max-width: 100%;
+  font-size: clamp(13px, 3.8vw, 16px);
+}
+
+.historique-contenu {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .scores-joueurs {
+    gap: 2px;
+  }
+
+  .score-joueur {
+    padding: 3px;
+    font-size: 11px;
+  }
+
+  .contenu-regles {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+@media (min-width: 900px) {
+  body {
+    --ui-text: 16px;
+  }
+
+  .carte {
+    width: 78px;
+    height: 115px;
+    font-size: 31px;
+    line-height: 100px;
+    margin: 4px;
+  }
+
+  .selectionnee {
+    transform: translateY(-13px) scale(1.07);
+  }
+}
