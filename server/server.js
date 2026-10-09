@@ -563,7 +563,14 @@ wss.on("connection",ws=>{
 
     room.mode=nouveauMode;
 
-    room.botLevel = m.botLevel || "facile";
+    const niveauxBots=["facile","normal","difficile","expert"];
+
+    const niveauDemande=m.botLevel||"facile";
+
+    if(!niveauxBots.includes(niveauDemande))
+      throw Error("Niveau de bot invalide.");
+
+    room.botLevel=niveauDemande;
 
     // Ajout des bots
   for(let i=0;i<nombreBots;i++){
