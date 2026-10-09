@@ -67,7 +67,8 @@ function roomCreate(n,max){
   spectators:[],
   engine:null,
   mode:1,
-  chatMessages:[]
+  chatMessages:[],
+  __abandonedAt:null
  };
 
  const p={
@@ -294,6 +295,38 @@ setInterval(()=>{
   }
   ws.isAlive=false;
   ws.ping();
+ }
+},30000);
+
+setInterval(()=>{
+ const maintenant=Date.now();
+ const delaiAbandon=30*60*1000;
+
+ for(const room of rooms.values()){
+
+  const humainConnecte=
+   room.players.some(p=>!p.bot&&p.connected)||
+   room.spectators.some(p=>p.connected);
+
+  if(humainConnecte){
+   room.__abandonedAt=null;
+   continue;
+  }
+
+  if(!room.__abandonedAt){
+   room.__abandonedAt=maintenant;
+   continue;
+  }
+
+  if(maintenant-room.__abandonedAt>=delaiAbandon){
+
+   if(room.__botTimer){
+    clearTimeout(room.__botTimer);
+    room.__botTimer=null;
+   }
+
+   rooms.delete(room.code);
+  }
  }
 },30000);
 
