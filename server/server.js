@@ -755,6 +755,9 @@ if(state.action==="double13choix"){
     ){
      throw Error("Sélection invalide.");
     }
+    
+    if(nb7>=2)
+     throw Error("Le Double 7 est obligatoire.");
 
     if(main[idx]!==7)
      throw Error("Le 7 est prioritaire.");
