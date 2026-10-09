@@ -1544,6 +1544,7 @@ if(fn==="volerCartesDouble13"){
 
   player.ws=null;
   player.connected=false;
+  player.selection=null;
 
   if(room.spectators.some(p=>p.id===player.id)){
 
