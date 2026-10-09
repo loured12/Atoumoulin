@@ -1476,7 +1476,7 @@ if(actionEnCours === "double13choix"){
                 class="${selectionnee ? "double13-selectionnee" : ""}"
                 onclick="selectionnerCarteDouble13(${carteIndex})"
             >
-                ${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+                ${carte.valeur > 0 ? "+" : ""}${carte.valeur}
             </button>
             `;
 
@@ -1585,7 +1585,7 @@ if(carte.proprietaire === cible.nom && carte.valeur !== 0){
 zoneJeu.innerHTML +=
 `
 <button onclick="volerCarte13(${carteIndex})">
-${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+${carte.valeur > 0 ? "+" : ""}${carte.valeur}
 </button>
 `;
 
@@ -1637,7 +1637,7 @@ zoneJeu.innerHTML +=
 <button
 onclick="triplerCarte15(${carteIndex})"
 >
-${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+${carte.valeur > 0 ? "+" : ""}${carte.valeur}
 </button>
 `;
 
@@ -1685,7 +1685,7 @@ if(carte.proprietaire === joueur.nom && carte.valeur !== 0){
 zoneJeu.innerHTML +=
 `
 <button onclick="doublerCarte15(${carteIndex})">
-${carte.valeur > 0 ? "+" : ""}${carte.valeur} points
+${carte.valeur > 0 ? "+" : ""}${carte.valeur}
 </button>
 `;
 
