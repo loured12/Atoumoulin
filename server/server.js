@@ -902,23 +902,16 @@ if(m.type==="game:action"){
     throw Error("Mode de jeu invalide.");
   
   const nouveauNiveau=String(args[2]||room.botLevel||"facile");
+  if(!["facile","normal","difficile","expert"].includes(nouveauNiveau))
+    throw Error("Niveau de bot invalide.");
 
   const joueursHumains=room.players.filter(p=>!p.bot);
   const spectateursDisponibles=room.spectators.slice();
   const nombreHumains=joueursHumains.length;
 
-  const nombreJoueurs=Math.max(
-   2,
-   Math.min(
-    8,
-    Number(args[1])||nombreHumains
-   )
-  );
-
+  const nombreJoueurs=Math.max(2,Math.min(8,Number(args[1])||nombreHumains));
   if(nombreJoueurs<nombreHumains)
-   throw Error(
-    `Le nombre de joueurs ne peut pas être inférieur à ${nombreHumains}.`
-   );
+   throw Error(`Le nombre de joueurs ne peut pas être inférieur à ${nombreHumains}.`);
 
   const nombreSpectateurs=Math.min(
    spectateursDisponibles.length,
